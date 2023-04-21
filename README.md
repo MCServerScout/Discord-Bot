@@ -1,14 +1,8 @@
-Dollar Tree Copenheimer! 
+# Dollar Tree Copenheimer (Discord Bot)
 
-This project was inspired by Fifth Column's Copenheimer project. 
+This is a Discord bot that I made for my friends and I to use in our Discord server. It is a work in progress, and I will be adding more features as time goes on.
 
-To-Do:
-- [ ] Make a Mineflayer bot. (Fetches NBT data, players, plugins, etc.)
-- [✓] Make a database with the saved servers.
-- [ ] Make the bot use Masscan to join servers.
-- [ ] Make a Minecraft mod to fetch the servers through an API.
-- [ ] Anything else we think of.
-
-
-License:
-MIT License
+- [ ] Access a database of the servers
+- [ ] Have filters to sort through
+- [ ] Get a random server
+- [ ] Get info about a selected server
