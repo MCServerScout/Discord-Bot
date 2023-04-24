@@ -6,3 +6,12 @@ This is a Discord bot that I made for my friends and I to use in our Discord ser
 - [ ] Have filters to sort through
 - [ ] Get a random server
 - [ ] Get info about a selected server
+
+- Filters
+  - Version, name or id
+  - Player count
+  - Player limit
+  - Player by name or uuid
+  - Sign text
+  - Motd
+  - Cracked

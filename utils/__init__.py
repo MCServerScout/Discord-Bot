@@ -1,7 +1,12 @@
 import pymongo
 
-from .logger import Logger
 from .database import Database
+from .logger import Logger
+from .player import Player
+from .server import Server
+from .message import Message
+from .text import Text
+
 
 class utils:
     """A class to hold all the utils classes"""
@@ -11,7 +16,6 @@ class utils:
         col: pymongo.collection.Collection,
         logger: Logger = None,
         debug=True,
-        allowJoin=False,
         level: int = 20,
     ):
         """Initializes the utils class
@@ -24,11 +28,12 @@ class utils:
         """
         self.col = col
         self.logLevel = level
-        self.logger = (
-            logger
-            if logger
-            else Logger(debug, level=self.logLevel, allowJoin=allowJoin)
-        )
+        self.logger = logger if logger else Logger(debug, level=self.logLevel)
         self.logger.clear()
-        
+
         self.database = Database(self.col, self.logger)
+        
+        self.player = Player(logger=self.logger)
+        self.server = Server(db=self.database, logger=self.logger)
+        self.message = Message(logger=self.logger, db=self.database)
+        self.text = Text(logger=self.logger)
