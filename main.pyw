@@ -287,17 +287,20 @@ async def help(ctx: interactions.SlashContext):
             description="Help",
             color=BLUE,
             timestamp=timeNow(),
-        ).add_field(
+        )
+        .add_field(
             name="find",
             value="Find a server by anything in the database",
             inline=False,
-        ).add_field(
+        )
+        .add_field(
             name="help",
             value="Get help",
             inline=False,
         ),
         ephemeral=True,
     )
+
 
 # main
 if __name__ == "__main__":

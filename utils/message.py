@@ -19,7 +19,7 @@ class Message:
         self.logger = logger
         self.db = db
         self.text = text
-        
+
         self.RED = 0xFF0000  # error
         self.GREEN = 0x00FF00  # success
         self.YELLOW = 0xFFFF00  # warning
@@ -87,15 +87,15 @@ class Message:
         """
 
         totalServers = self.db.countPipeline(pipeline)
-        
+
         if totalServers == 0:
             return None
-        
+
         if index >= totalServers:
             index = 0
-        
+
         data = self.db.get_doc_at_index(pipeline, index)
-        
+
         if data is None:
             return {
                 "embed": self.standardEmbed(
@@ -105,7 +105,7 @@ class Message:
                 ),
                 "components": self.buttons(True, True, True),
             }
-        
+
         isOnline = "🔴"
         try:
             mcstatus.JavaServer(data["host"]["ip"], data["host"]["port"]).ping()
@@ -113,60 +113,62 @@ class Message:
             self.logger.debug("[message.embed] Server is online")
         except:
             pass
-        
+
         embed = self.standardEmbed(
             title=f"{isOnline} {data['host']['hostname']}",
             description=self.text.colorAnsi(data["description"]["text"]),
             color=self.GREEN if isOnline == "🟢" else self.RED,
         )
-        
+
         # set the footer to say the index, pipeline, and total servers
         embed.set_footer(
             f"Showing {index + 1} of {totalServers} servers in: {pipeline[0]}",
         )
         embed.timestamp = self.text.timeNow()
-        
+
         # get the server icon
         if "favicon" in data and isOnline == "🟢":
             bits = data["favicon"].split(",")[1]
             with open("favicon.png", "wb") as f:
                 f.write(base64.b64decode(bits))
-            _file = interactions.File(file_name="favicon.png",)
+            _file = interactions.File(
+                file_name="favicon.png",
+            )
         else:
             _file = None
-        
+
         if _file is not None:
             embed.set_thumbnail(url="attachment://favicon.png")
             self.logger.debug("[message.embed] Server has an icon")
-            
+
         # add the version
         embed.add_field(
             name="Version",
             value=f"{data['version']['name']} ({data['version']['protocol']})",
             inline=True,
         )
-        
+
         # add the player count
         embed.add_field(
             name="Players",
             value=f"{data['players']['online']}/{data['players']['max']}",
             inline=True,
         )
-        
+
         # is cracked
         embed.add_field(
             name="Cracked",
             value="Yes" if data["cracked"] else "No",
             inline=True,
         )
-        
+
         # last online
         embed.add_field(
             name="Time since last scan",
             value=self.text.timeAgo(data["last_online"]),
             inline=False,
         )
-        
+
         return {
             "embed": embed,
             "components": self.buttons(
@@ -175,8 +177,7 @@ class Message:
                 "sample" in data,
             ),
         }
-        
-        
+
     def standardEmbed(
         self,
         title: str,

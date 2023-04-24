@@ -32,7 +32,7 @@ class utils:
         self.logger.clear()
 
         self.database = Database(self.col, self.logger)
-        
+
         self.player = Player(logger=self.logger)
         self.server = Server(db=self.database, logger=self.logger)
         self.message = Message(logger=self.logger, db=self.database)
