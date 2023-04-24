@@ -114,7 +114,14 @@ class Server:
             }
             status["online"] = DatetimeMS(datetime.datetime.utcnow().timestamp() * 1000)
 
-            self.updateDB(status)
+            # if the server is in the db, then get the db doc
+            if self.db.col.find_one({"host.ip": status["host"]["ip"]}) is not None:
+                status["cracked"] = status["cracked"] or self.db.col.find_one(
+                    {"host.ip": status["host"]["ip"]}
+                )["cracked"]
+                self.updateDB(status)
+            else:
+                self.updateDB(status)
 
             return status
         except:
