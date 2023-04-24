@@ -107,15 +107,13 @@ class Server:
                 status["cracked"] = True
             else:
                 status["cracked"] = False
-            
+
             status["host"] = {
                 "ip": self.resolve(host),
                 "hostname": self.resHostname(host),
             }
-            status["online"] = DatetimeMS(
-                datetime.datetime.utcnow().timestamp() * 1000
-            )
-            
+            status["online"] = DatetimeMS(datetime.datetime.utcnow().timestamp() * 1000)
+
             self.updateDB(status)
 
             return status
@@ -293,14 +291,14 @@ class Server:
             data (dict): The data to update the database with
         """
         threading.Thread(target=self._updateDB, args=(data,)).start()
-    
+
     def _updateDB(self, data: dict):
         """Updates the database with the given data
 
         Args:
             data (dict): The data to update the database with
         """
-        
+
         self.db.update_one(
             {"host.ip": data["ip"]},
             {"$set": {data}},

@@ -267,14 +267,14 @@ async def find(
             timestamp=timeNow(),
         ),
     )
-    
+
     index = 0
-    
+
     stuff = messageLib.embed(
         pipeline=pipeline,
         index=index,
     )
-    
+
     embed = stuff["embed"]
     comps = stuff["components"]
 
@@ -282,8 +282,6 @@ async def find(
         embed=embed,
         components=comps,
     )
-    
-    
 
 
 # main
@@ -294,13 +292,13 @@ if __name__ == "__main__":
             bot.run()
         except KeyboardInterrupt:
             # stop the bot
-            bot.close()
+            asyncio.run(bot.close())
             break
         except Exception as e:
             # log the error
             print(f"Error: {e}")
             logger.print(f"[main] Error: {e}")
-            
+
             requests.post(
                 DISCORD_WEBHOOK,
                 json={
