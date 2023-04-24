@@ -138,6 +138,34 @@ class Message:
         if _file is not None:
             embed.set_thumbnail(url="attachment://favicon.png")
             self.logger.debug("[message.embed] Server has an icon")
+            
+        # add the version
+        embed.add_field(
+            name="Version",
+            value=f"{data['version']['name']} ({data['version']['protocol']})",
+            inline=True,
+        )
+        
+        # add the player count
+        embed.add_field(
+            name="Players",
+            value=f"{data['players']['online']}/{data['players']['max']}",
+            inline=True,
+        )
+        
+        # is cracked
+        embed.add_field(
+            name="Cracked",
+            value="Yes" if data["cracked"] else "No",
+            inline=True,
+        )
+        
+        # last online
+        embed.add_field(
+            name="Time since last scan",
+            value=self.text.timeAgo(data["last_online"]),
+            inline=False,
+        )
         
         return {
             "embed": embed,
