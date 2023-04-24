@@ -126,6 +126,7 @@ class Message:
         embed.set_footer(
             f"Showing {index + 1} of {totalServers} servers in: {pipeline[0]}",
         )
+        embed.timestamp = self.text.timeNow()
         
         # get the server icon
         if "favicon" in data and isOnline == "🟢":

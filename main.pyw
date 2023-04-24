@@ -59,6 +59,7 @@ utils = utils.utils(
 logger = utils.logger
 databaseLib = utils.database
 playerLib = utils.player
+messageLib = utils.message
 
 bot = interactions.Client(
     token=DISCORD_TOKEN,
@@ -214,8 +215,8 @@ async def find(
             title="Finding servers...",
             description="This may take a while",
             color=BLUE,
+            timestamp=timeNow(),
         ),
-        timestamp=timestamp.now(),
     )
 
     # default pipeline
@@ -262,14 +263,24 @@ async def find(
             title="Finding servers...",
             description=f"Found {databaseLib.countPipeline(pipeline)} servers",
             color=BLUE,
+            timestamp=timeNow(),
         ),
-        timestamp=timestamp.now(),
     )
     
-    serverList = databaseLib.aggregate(pipeline)
     index = 0
     
+    stuff = messageLib.embed(
+        pipeline=pipeline,
+        index=index,
+    )
     
+    embed = stuff["embed"]
+    comps = stuff["components"]
+
+    await msg.edit(
+        embed=embed,
+        components=comps,
+    )
     
     
 
