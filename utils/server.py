@@ -2,9 +2,10 @@
 """
 
 from typing import Optional
+from bson import DatetimeMS
 
 import mcstatus
-import pymongo
+import datetime
 from mcstatus.protocol.connection import Connection, TCPSocketConnection
 import traceback
 import socket
@@ -12,6 +13,7 @@ import threading
 
 from .logger import Logger
 from .database import Database
+from utils import database
 
 
 class Server:
@@ -77,6 +79,7 @@ class Server:
             },
             "favicon": "data:image/png;base64,<data>",
             "cracked": false,
+            "online": Date(12345),
             "enforcesSecureChat": true
         }
         """
@@ -109,6 +112,9 @@ class Server:
                 "ip": self.resolve(host),
                 "hostname": self.resHostname(host),
             }
+            status["online"] = DatetimeMS(
+                datetime.datetime.utcnow().timestamp() * 1000
+            )
             
             self.updateDB(status)
 

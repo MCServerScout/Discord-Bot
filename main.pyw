@@ -130,6 +130,7 @@ def timeNow():
     },
     "favicon": "data:image/png;base64,<data>",
     "cracked": false,
+    "oneline": Date(12345),
     "enforcesSecureChat": true
 }
 """
