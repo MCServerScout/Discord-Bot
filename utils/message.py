@@ -1,7 +1,5 @@
 """Useful functions for sending messages to the user."""
 
-from typing import Optional
-
 import base64
 import interactions
 import mcstatus

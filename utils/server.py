@@ -13,7 +13,6 @@ import threading
 
 from .logger import Logger
 from .database import Database
-from utils import database
 
 
 class Server:

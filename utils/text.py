@@ -1,7 +1,5 @@
 import datetime
 import re
-import socket
-import traceback
 import unicodedata
 
 

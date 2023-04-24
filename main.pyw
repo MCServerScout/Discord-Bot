@@ -4,21 +4,12 @@
 
 import asyncio
 import datetime
-import json
-import logging
-import random
 import sys
-import time
-import traceback
-from os import pipe
 
 import interactions
 import pymongo
 import requests
-from bson.errors import InvalidId
-from bson.objectid import ObjectId
 from interactions import slash_command
-from interactions.models.discord import timestamp
 
 import utils
 

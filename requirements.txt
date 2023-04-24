@@ -1,0 +1,4 @@
+mcstatus
+discord-py-interactions>=5
+pymongo
+requests

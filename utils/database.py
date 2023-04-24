@@ -1,5 +1,6 @@
-from typing import Dict, List, Optional
 import traceback
+from typing import List, Optional
+
 import pymongo
 
 from .logger import Logger

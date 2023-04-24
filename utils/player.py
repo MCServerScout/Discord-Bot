@@ -1,10 +1,6 @@
-import time
-import traceback
-from typing import Dict, List, Optional, Union
+from typing import Optional
 
 import interactions
-import mcstatus
-import pymongo
 import requests
 
 
