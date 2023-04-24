@@ -275,6 +275,30 @@ async def find(
     )
 
 
+# gener help
+@slash_command(
+    name="help",
+    description="Get help",
+)
+async def help(ctx: interactions.SlashContext):
+    await ctx.send(
+        embed=interactions.Embed(
+            title="Help",
+            description="Help",
+            color=BLUE,
+            timestamp=timeNow(),
+        ).add_field(
+            name="find",
+            value="Find a server by anything in the database",
+            inline=False,
+        ).add_field(
+            name="help",
+            value="Get help",
+            inline=False,
+        ),
+        ephemeral=True,
+    )
+
 # main
 if __name__ == "__main__":
     while True:
