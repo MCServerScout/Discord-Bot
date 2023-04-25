@@ -43,7 +43,7 @@ client = pymongo.MongoClient(MONGO_URL, server_api=pymongo.server_api.ServerApi(
 db = client["mc"]
 col = db["servers"]
 
-utils = utils.utils(
+utils = utils.Utils(
     col,
     debug=DEBUG,
 )
