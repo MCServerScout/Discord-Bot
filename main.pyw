@@ -59,7 +59,7 @@ bot = interactions.Client(
     | interactions.Intents.GUILD_INTEGRATIONS,
     status=interactions.Status.ONLINE,
     activity=interactions.Activity(
-        type=interactions.ActivityType.WATCHING, name="for servers"
+        type=interactions.ActivityType.GAME, name="Trolling the masses"
     ),
     logger=logger,
 )
