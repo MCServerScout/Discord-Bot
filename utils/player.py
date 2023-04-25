@@ -3,24 +3,33 @@ from typing import Optional
 import interactions
 import requests
 
+from .logger import Logger
+from .server import Server
+from .database import Database
+
 
 class Player:
-    """Class to hold all the player related functions"""
+    """Class to hold all the player-related functions"""
 
-    def __init__(self, logger):
+    def __init__(self, logger: "Logger", server: "Server", db: "Database"):
         """Initializes the Players class
 
         Args:
             logger (Logger): The logger class
+            server (Server): The server class
+            db (Database): The database class
         """
         self.logger = logger
+        self.server = server
+        self.db = db
 
     def crack_check_API(self, host: str, port: str = "25565") -> bool:
         """Checks if a server is cracked using the mcstatus.io API
 
         Args:
             host (str): the host of the server
-            port (str, optional): port of the server. Defaults to "25565".
+            port (str, optional): port of the server.
+            Default to "25565".
 
         Returns:
             bool: True if the server is cracked, False if not
@@ -69,3 +78,54 @@ class Player:
             return res.json()["id"]
         else:
             return "---n/a---"
+
+    def playerList(self, host: dict) -> Optional[list[dict]]:
+        """Gets a list of players on a server
+
+        Args:
+            host (dict): the host of the server {ip: str, hostname: str, port: str}
+
+        Returns:
+            str: list of players
+        """
+        data = self.db.find_one({"host": host})
+
+        if data is None:
+            return None
+
+        if "sample" not in data:
+            return None
+
+        db_names = []
+        for player in data["sample"]:
+            db_names.append(player["name"])
+
+        status = self.server.status(ip=host["ip"], port=host["port"])
+
+        if status is None or "sample" not in status:
+            return None
+
+        status_names = []
+        for player in status["sample"]:
+            status_names.append(player["name"])
+
+        players = []
+        for name in db_names:
+            player = {
+                "name": name,
+                "uuid": self.getUUID(name),
+                "online": name in status_names
+            }
+            players.append(player)
+
+        # double check to make sure that we aren't missing any players
+        for player in status_names:
+            if player not in db_names:
+                player = {
+                    "name": player,
+                    "uuid": self.getUUID(player),
+                    "online": True
+                }
+                players.append(player)
+
+        return players

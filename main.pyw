@@ -1,6 +1,5 @@
 """This is the discord bot for the mongoDB server list
 """
-# pyright: basic, reportGeneralTypeIssues=false, reportOptionalSubscript=false, reportOptionalMemberAccess=false
 
 import asyncio
 import datetime
@@ -259,6 +258,7 @@ async def find(
             description=f"Found {databaseLib.countPipeline(pipeline)} servers",
             color=BLUE,
         ),
+        components=messageLib.buttons(True, True, True),
     )
 
     index = 0
@@ -278,22 +278,39 @@ async def find(
 
 
 # command to get the next page of servers
-@interactions.component_callback(
-    "next",
-)
+@interactions.component_callback("next")
 async def next_page(ctx: interactions.ComponentContext):
     try:
+        org = ctx.message
         await ctx.defer(edit_origin=True)
 
         logger.print(f"[main.next_page] next page called by {ctx.author}")
 
+        msg = await ctx.edit_origin(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description="Loading the next server",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(True, True, True),
+        )
+
         # get the pipeline and index from the message
-        pipeline = ctx.message.embeds[0].footer.text.split(" servers in: ")[1]
+        pipeline = org.embeds[0].footer.text.split(" servers in: ")[1]
         pipeline = json.loads(pipeline)
 
-        index = int(ctx.message.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
+        index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
 
         total = databaseLib.count(pipeline)
+
+        msg = await msg.edit(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description=f"Loading server {org.embeds[0].title[2:]} of {total}",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(True, True, True),
+        )
 
         if index + 1 < total:
             index += 1
@@ -308,7 +325,7 @@ async def next_page(ctx: interactions.ComponentContext):
         embed = stuff["embed"]
         comps = stuff["components"]
 
-        await ctx.edit_origin(
+        await msg.edit(
             embed=embed,
             components=comps,
         )
@@ -321,6 +338,124 @@ async def next_page(ctx: interactions.ComponentContext):
                 description="An error occurred while trying to get the next page of servers",
                 color=RED,
             )
+        )
+
+
+# command to get the previous page of servers
+@interactions.component_callback("previous")
+async def previous_page(ctx: interactions.ComponentContext):
+    try:
+        org = ctx.message
+        await ctx.defer(edit_origin=True)
+
+        logger.print(f"[main.previous_page] previous page called by {ctx.author}")
+
+        msg = await ctx.edit_origin(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description="Loading the previous server",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(True, True, True),
+        )
+
+        # get the pipeline and index from the message
+        pipeline = org.embeds[0].footer.text.split(" servers in: ")[1]
+        pipeline = json.loads(pipeline)
+
+        index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
+
+        total = databaseLib.count(pipeline)
+
+        msg = await msg.edit(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description=f"Loading server {org.embeds[0].title[2:]} of {total}",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(True, True, True),
+        )
+
+        if index - 1 >= 0:
+            index -= 1
+        else:
+            index = total - 1
+
+        stuff = messageLib.embed(
+            pipeline=pipeline,
+            index=index,
+        )
+
+        embed = stuff["embed"]
+        comps = stuff["components"]
+
+        await msg.edit(
+            embed=embed,
+            components=comps,
+        )
+    except Exception:
+        logger.error(f"[main.previous_page] {traceback.format_exc()}")
+
+        await ctx.edit_origin(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to get the previous page of servers",
+                color=RED,
+            )
+        )
+
+
+# command to send the players that are online
+@interactions.component_callback("players")
+async def players(ctx: interactions.ComponentContext):
+    try:
+        await ctx.defer(ephemeral=True)
+
+        logger.print(f"[main.players] players called by {ctx.author}")
+
+        org = ctx.message
+
+        # get the host dict from the db
+        pipeline = json.loads(org.embeds[0].footer.text.split(" servers in: ")[1])
+        index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
+
+        host = databaseLib.get_doc_at_index(pipeline, index)["host"]
+
+        player_list = await playerLib.playerList(host)
+
+        if player_list is None:
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="An error occurred while trying to get the players",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        embed = messageLib.standardEmbed(
+            title=f"Players on {host}",
+            description=f"Found {len(player_list)} players",
+            color=BLUE,
+        )
+        for player in player_list:
+            online = "🟢" if player["online"] else "🔴"
+            embed.add_field(
+                name=f'{online} `{player["name"]}`',
+                value=f'`{player["id"]}`',
+                inline=False,
+            )
+    except Exception:
+        logger.error(f"[main.players] {traceback.format_exc()}")
+
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to get the players",
+                color=RED,
+            ),
+            ephemeral=True,
         )
 
 

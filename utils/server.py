@@ -19,10 +19,10 @@ class Server:
     """Class for server connection and communication."""
 
     class ServerType:
-        def __init__(self, ip, version, type):
+        def __init__(self, ip, version, joinability):
             self.ip: str = ip
             self.version: int = version
-            self.type: str = type
+            self.type: str = joinability
 
         def __str__(self):
             return f"ServerType(ip={self.ip}, version={self.version}, type={self.type})"
@@ -86,7 +86,7 @@ class Server:
         try:
             # check if the server is online
             try:
-                status = mcstatus.JavaServer.lookup(host).status()
+                mcstatus.JavaServer.lookup(host).ping()
             except socket.gaierror:
                 return None
 
@@ -110,17 +110,20 @@ class Server:
             status["host"] = {
                 "ip": self.resolve(host),
                 "hostname": self.resHostname(host),
+                "port": status["host"]["port"],
             }
-            status["online"] = DatetimeMS(datetime.datetime.utcnow().timestamp() * 1000)
+            status["online"] = DatetimeMS(int(datetime.datetime.utcnow().timestamp() * 1000))
 
             # if the server is in the db, then get the db doc
             if self.db.col.find_one({"host.ip": status["host"]["ip"]}) is not None:
+                dbVal = self.db.col.find_one({"host.ip": status["host"]["ip"]})
                 status["cracked"] = (
                     status["cracked"]
-                    or self.db.col.find_one({"host.ip": status["host"]["ip"]})[
+                    or dbVal[
                         "cracked"
                     ]
                 )
+                status["host"] = dbVal["host"]  # keep the old host info
                 self.updateDB(status)
             else:
                 self.updateDB(status)
@@ -140,8 +143,10 @@ class Server:
 
         Args:
             ip (str): The host to connect to
-            port (int, optional): The port to connect to. Defaults to 25565.
-            version (int, optional): The protocol version to use. Defaults to -1.
+            port (int, optional): The port to connect to.
+            Default to 25565.
+            version (int, optional): The protocol version to use.
+            Default to -1.
         """
 
         # get info on the server
@@ -150,7 +155,7 @@ class Server:
 
         connection = TCPSocketConnection((ip, port))
 
-        # Send handshake packet: ID, protocol version, server address, server port, intention to login
+        # Send a handshake packet: ID, protocol version, server address, server port, intention to log in
         # This does not change between versions
         handshake = Connection()
 
@@ -172,7 +177,7 @@ class Server:
         # Read response
         try:
             response = connection.read_buffer()
-        except:
+        except socket.error:
             self.logger.error(f"[server.status] Connection error")
             return None
         resID = response.read_varint()
@@ -204,7 +209,7 @@ class Server:
 
             connection = TCPSocketConnection((ip, port))
 
-            # Send handshake packet: ID, protocol version, server address, server port, intention to login
+            # Send a handshake packet: ID, protocol version, server address, server port, intention to log in
             # This does not change between versions
             handshake = Connection()
 
@@ -229,16 +234,16 @@ class Server:
 
             # Read response
             response = connection.read_buffer()
-            id: int = response.read_varint()
-            if id == 2:
+            _id: int = response.read_varint()
+            if _id == 2:
                 self.logger.print("[server.join] Logged in successfully")
                 return self.ServerType(ip, version, "CRACKED")
-            elif id == 0:
+            elif _id == 0:
                 self.logger.error(
                     "[server.join] Failed to login: " + response.read_utf()
                 )
-                return self.ServerType(ip, version, "UNKNOW")
-            elif id == 3:
+                return self.ServerType(ip, version, "UNKNOWN")
+            elif _id == 3:
                 self.logger.print("[server.join] Setting compression")
                 compression_threshold = response.read_varint()
                 self.logger.print(
@@ -246,20 +251,20 @@ class Server:
                 )
 
                 response = connection.read_buffer()
-                id: int = response.read_varint()
-            if id == 1:
+                _id: int = response.read_varint()
+            if _id == 1:
                 self.logger.print("[server.join] Logged in successfully")
 
                 return self.ServerType(ip, version, "CRACKED")
             else:
-                self.logger.error("[server.join] Unknown response: " + str(id))
+                self.logger.error("[server.join] Unknown response: " + str(_id))
                 try:
                     reason = response.read_utf()
-                except:
+                except Exception:
                     reason = "Unknown"
 
                 self.logger.debug("[server.join] Reason: " + reason)
-                return self.ServerType(ip, version, "UNKNOW")
+                return self.ServerType(ip, version, "UNKNOWN")
         except TimeoutError:
             self.logger.error("[server.join] Server timed out")
             return self.ServerType(ip, version, "OFFLINE")
@@ -267,7 +272,7 @@ class Server:
             self.logger.error(
                 "[server.join] Server did not respond:\n" + traceback.format_exc()
             )
-            return self.ServerType(ip, version, "UNKNOW")
+            return self.ServerType(ip, version, "UNKNOWN")
         except Exception:
             self.logger.error(f"[server.join] {traceback.format_exc()}")
             return self.ServerType(ip, version, "OFFLINE")

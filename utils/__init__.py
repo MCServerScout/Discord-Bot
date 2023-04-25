@@ -38,8 +38,8 @@ class Utils:
 
         self.database = Database(self.col, self.logger)
 
-        self.player = Player(logger=self.logger)
         self.text = Text(logger=self.logger)
 
         self.server = Server(db=self.database, logger=self.logger)
+        self.player = Player(logger=self.logger, server=self.server, db=self.database)
         self.message = Message(logger=self.logger, db=self.database, text=self.text)
