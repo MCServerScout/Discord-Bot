@@ -1,6 +1,7 @@
 """Install requirements.txt and create privVars.py"""
 
 import asyncio
+import os
 import sys
 
 
@@ -26,8 +27,12 @@ DISCORD_TOKEN = ""
 DISCORD_WEBHOOK = ""
 MONGO_URL = ""
 """
-    with open("privVars.py", "w") as f:
-        f.write(text)
+    if not os.path.exists("privVars.py"):
+        with open("privVars.py", "w") as f:
+            f.write(text)
+            print("Created privVars.py")
+    else:
+        print("privVars.py already exists")
 
 
 async def main():

@@ -26,16 +26,13 @@ except ImportError:
 
 if MONGO_URL == "":
     print("Please add your mongo url to 'privVars.py'")
-    input()
-    sys.exit()
+    sys.exit("Config error in privVars.py, please fix before rerunning")
 if DISCORD_TOKEN == "":
     print("Please add your bot token to 'privVars.py'")
-    input()
-    sys.exit()
+    sys.exit("Config error in privVars.py, please fix before rerunning")
 if DISCORD_WEBHOOK == "":
     print("Please add your discord webhook to 'privVars.py'")
-    input()
-    sys.exit()
+    sys.exit("Config error in privVars.py, please fix before rerunning")
 
 # Setup
 # ---------------------------------------------
@@ -485,6 +482,18 @@ async def help_command(ctx: interactions.SlashContext):
         ephemeral=True,
     )
 
+
+# -----------------------------------------------------------------------------
+# bot events
+
+@interactions.listen()
+async def on_ready():
+    user = await bot.fetch_user(bot.user.id)
+    logger.print(f"[main.on_ready] Logged in as {user.name}#{user.discriminator}")
+
+
+# -----------------------------------------------------------------------------
+# bot loop
 
 # main
 if __name__ == "__main__":
