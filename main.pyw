@@ -55,8 +55,8 @@ messageLib = utils.message
 bot = interactions.Client(
     token=DISCORD_TOKEN,
     intents=interactions.Intents.GUILD_MESSAGES
-    | interactions.Intents.GUILDS
-    | interactions.Intents.GUILD_INTEGRATIONS,
+            | interactions.Intents.GUILDS
+            | interactions.Intents.GUILD_INTEGRATIONS,
     status=interactions.Status.ONLINE,
     activity=interactions.Activity(
         type=interactions.ActivityType.GAME, name="Trolling the masses"
@@ -75,7 +75,7 @@ def print(*args, **kwargs):
     logger.print(" ".join(map(str, args)), **kwargs)
 
 
-def time_now() -> str:
+def time_now() -> "Timestamp":  # type: ignore
     # return local time
     return datetime.datetime.now(
         datetime.timezone(
@@ -171,13 +171,13 @@ def time_now() -> str:
     ],
 )
 async def find(
-    ctx: interactions.SlashContext,
-    version: str = None,
-    max_players: int = None,
-    player: str = None,
-    sign: str = None,
-    description: str = None,
-    cracked: bool = None,
+        ctx: interactions.SlashContext,
+        version: str = None,
+        max_players: int = None,
+        player: str = None,
+        sign: str = None,
+        description: str = None,
+        cracked: bool = None,
 ):
     await ctx.defer()
 
