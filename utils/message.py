@@ -90,7 +90,7 @@ class Message:
             }
         """
 
-        total_servers = self.db.countPipeline(pipeline)
+        total_servers = self.db.count(pipeline)
 
         if total_servers == 0:
             return
@@ -115,7 +115,7 @@ class Message:
             mcstatus.JavaServer(data["host"]["ip"], data["host"]["port"]).ping()
             isOnline = "🟢"
             self.logger.debug("[message.embed] Server is online")
-        except:
+        except Exception:
             pass
 
         embed = self.standardEmbed(
@@ -208,4 +208,5 @@ class Message:
             title=title,
             description=description,
             color=color,
+            timestamp=self.text.timeNow(),
         )

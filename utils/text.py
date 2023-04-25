@@ -69,7 +69,8 @@ class Text:
 
         return text
 
-    def colorAnsi(self, text: str) -> str:
+    @staticmethod
+    def colorAnsi(text: str) -> str:
         """Changes color tags to those that work with ansi code blocks
 
         Args:​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
@@ -119,7 +120,8 @@ class Text:
 
         return text
 
-    def colorMine(self, color: str) -> str:
+    @staticmethod
+    def colorMine(color: str) -> str:
         # given a color like 'yellow' return the color code like '§e'
         color = color.lower()
 
@@ -142,17 +144,19 @@ class Text:
         else:
             return ""
 
-    def timeNow(self):
+    @staticmethod
+    def timeNow():
         # return local time
         return datetime.datetime.now(
             datetime.timezone(
                 datetime.timedelta(
                     hours=0
-                )  # no clue why this is needed but it works now?
+                )  # no clue why this is needed, but it works now?
             )
         ).strftime("%Y-%m-%d %H:%M:%S")
 
-    def timeAgo(self, date: datetime.datetime) -> str:
+    @staticmethod
+    def timeAgo(date: datetime.datetime) -> str:
         """Returns a string of how long ago a date was
 
         Args:

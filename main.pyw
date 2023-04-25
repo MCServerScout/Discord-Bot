@@ -4,11 +4,13 @@
 
 import asyncio
 import datetime
+import json
 import sys
+import time
+import traceback
 
 import interactions
 import pymongo
-import requests
 from interactions import slash_command
 
 import utils
@@ -46,6 +48,7 @@ col = db["servers"]
 utils = utils.Utils(
     col,
     debug=DEBUG,
+    discord_webhook=DISCORD_WEBHOOK,
 )
 logger = utils.logger
 databaseLib = utils.database
@@ -251,11 +254,10 @@ async def find(
 
     # check how many servers match
     msg = await msg.edit(
-        embed=interactions.Embed(
+        embed=messageLib.standardEmbed(
             title="Finding servers...",
             description=f"Found {databaseLib.countPipeline(pipeline)} servers",
             color=BLUE,
-            timestamp=time_now(),
         ),
     )
 
@@ -275,7 +277,54 @@ async def find(
     )
 
 
-# gener help
+# command to get the next page of servers
+@interactions.component_callback(
+    "next",
+)
+async def next_page(ctx: interactions.ComponentContext):
+    try:
+        await ctx.defer(edit_origin=True)
+
+        logger.print(f"[main.next_page] next page called by {ctx.author}")
+
+        # get the pipeline and index from the message
+        pipeline = ctx.message.embeds[0].footer.text.split(" servers in: ")[1]
+        pipeline = json.loads(pipeline)
+
+        index = int(ctx.message.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
+
+        total = databaseLib.count(pipeline)
+
+        if index + 1 < total:
+            index += 1
+        else:
+            index = 0
+
+        stuff = messageLib.embed(
+            pipeline=pipeline,
+            index=index,
+        )
+
+        embed = stuff["embed"]
+        comps = stuff["components"]
+
+        await ctx.edit_origin(
+            embed=embed,
+            components=comps,
+        )
+    except Exception:
+        logger.error(f"[main.next_page] {traceback.format_exc()}")
+
+        await ctx.edit_origin(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to get the next page of servers",
+                color=RED,
+            )
+        )
+
+
+# general help
 @slash_command(
     name="help",
     description="Get help",
@@ -314,13 +363,5 @@ if __name__ == "__main__":
             break
         except Exception as e:
             # log the error
-            print(f"Error: {e}")
-            logger.print(f"[main] Error: {e}")
-
-            requests.post(
-                DISCORD_WEBHOOK,
-                json={
-                    "content": f"Error: {e}",
-                    "username": "Minecraft Server Finder",
-                },
-            )
+            logger.critical(f"[main] Error: {e}")
+            time.sleep(5)

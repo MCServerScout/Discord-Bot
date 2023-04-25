@@ -1,5 +1,7 @@
 import logging
 import sys
+
+import requests
 import unicodedata
 
 norm = sys.stdout
@@ -55,7 +57,7 @@ def clear():
 
 
 class Logger:
-    def __init__(self, debug=False, level: int = logging.INFO):
+    def __init__(self, debug=False, level: int = logging.INFO, discord_webhook: str = None):
         """Initializes the logger class
 
         Args:
@@ -63,6 +65,7 @@ class Logger:
         """
         self.DEBUG = debug
         self.logger = logging
+        self.webhook = discord_webhook
 
         logging.basicConfig(
             level=level,
@@ -87,11 +90,17 @@ class Logger:
         sys.stdout = self.out  # output to log.log
         self.logger.error(message)
 
+        if self.webhook is not None:
+            requests.post(self.webhook, json={"content": message})
+
     def critical(self, message):
         sys.stdout = norm
         print(message)
         sys.stdout = self.out
         self.logger.critical(message)
+
+        if self.webhook is not None:
+            requests.post(self.webhook, json={"content": message})
 
     def debug(self, *args, **kwargs):
         self.logger.debug(" ".join([str(arg) for arg in args]))
@@ -135,3 +144,8 @@ class Logger:
 
     def __str__(self):
         return self.read()
+
+    @staticmethod
+    def clear():
+        with open("log.log", "w") as f:
+            f.write("")

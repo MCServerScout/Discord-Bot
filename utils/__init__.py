@@ -14,6 +14,7 @@ class Utils:
     def __init__(
         self,
         col: pymongo.collection.Collection,
+        discord_webhook: str,
         log: Logger = None,
         debug=True,
         level: int = 20,
@@ -28,7 +29,11 @@ class Utils:
         """
         self.col = col
         self.logLevel = level
-        self.logger = log if log else Logger(debug, level=self.logLevel)
+        if log is None:
+            self.logger = Logger(debug=debug, level=self.logLevel, discord_webhook=discord_webhook)
+        else:
+            self.logger = log
+
         self.logger.clear()
 
         self.database = Database(self.col, self.logger)

@@ -2,4 +2,3 @@ privVars.py
 .venv/*
 __pycache__/*
 utils/__pycache__/*
-testing.pyw
