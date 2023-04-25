@@ -24,15 +24,15 @@ except ImportError:
     TOKEN = "..."
 
 if MONGO_URL == "":
-    print("Please add your mongo url to privVars.py")
+    print("Please add your mongo url to 'privVars.py'")
     input()
     sys.exit()
 if DISCORD_TOKEN == "":
-    print("Please add your bot token to privVars.py")
+    print("Please add your bot token to 'privVars.py'")
     input()
     sys.exit()
 if DISCORD_WEBHOOK == "":
-    print("Please add your discord webhook to privVars.py")
+    print("Please add your discord webhook to 'privVars.py'")
     input()
     sys.exit()
 
@@ -75,11 +75,11 @@ def print(*args, **kwargs):
     logger.print(" ".join(map(str, args)), **kwargs)
 
 
-def timeNow():
+def time_now() -> str:
     # return local time
     return datetime.datetime.now(
         datetime.timezone(
-            datetime.timedelta(hours=0)  # no clue why this is needed but it works now?
+            datetime.timedelta(hours=0)  # no clue why this is needed, but it works now?
         )
     ).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -181,7 +181,7 @@ async def find(
 ):
     await ctx.defer()
 
-    # print out the paramters that were passed
+    # print out the parameters that were passed
     print(
         f"find command called by {ctx.author} with parameters:",
         "version={version},",
@@ -207,7 +207,7 @@ async def find(
             title="Finding servers...",
             description="This may take a while",
             color=BLUE,
-            timestamp=timeNow(),
+            timestamp=time_now(),
         ),
     )
 
@@ -255,7 +255,7 @@ async def find(
             title="Finding servers...",
             description=f"Found {databaseLib.countPipeline(pipeline)} servers",
             color=BLUE,
-            timestamp=timeNow(),
+            timestamp=time_now(),
         ),
     )
 
@@ -280,13 +280,13 @@ async def find(
     name="help",
     description="Get help",
 )
-async def help(ctx: interactions.SlashContext):
+async def help_command(ctx: interactions.SlashContext):
     await ctx.send(
         embed=interactions.Embed(
             title="Help",
             description="Help",
             color=BLUE,
-            timestamp=timeNow(),
+            timestamp=time_now(),
         )
         .add_field(
             name="find",
