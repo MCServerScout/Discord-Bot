@@ -13,7 +13,7 @@ class StreamToLogger(object):
     def __init__(self, logger, level: int = logging.INFO):
         self.logger = logger
         self.level = level
-        self.linebuf = ""
+        self.line_buffer = ""
 
     def write(self, buf):
         for line in buf.rstrip().splitlines():
@@ -30,33 +30,38 @@ class StreamToLogger(object):
         try:
             with open("out.log", "r") as f:
                 text2 = f.read()
-        except:
+        except FileNotFoundError:
             self.write("out.log does not exist")
 
         return text1 + "\n" + text2
 
 
-class emailFileHandler(logging.FileHandler):
+class EmailFileHandler(logging.FileHandler):
     def emit(self, record):
         if (
-            "To sign in, use a web browser to open the page" in record.getMessage()
-            or "email_modal" in record.getMessage()
-            or "heartbeat" in record.getMessage().lower()
-            or "Added " in record.getMessage()
-            or "Sending data to websocket: {" in record.getMessage()
+                "To sign in, use a web browser to open the page" in record.getMessage()
+                or "email_modal" in record.getMessage()
+                or "heartbeat" in record.getMessage().lower()
+                or "Added " in record.getMessage()
+                or "Sending data to websocket: {" in record.getMessage()
         ):
             return
         super().emit(record)
 
 
+def clear():
+    with open("log.log", "w") as f:
+        f.write("")
+
+
 class Logger:
-    def __init__(self, DEBUG=False, level: int = logging.INFO, allowJoin=False):
+    def __init__(self, debug=False, level: int = logging.INFO):
         """Initializes the logger class
 
         Args:
-            DEBUG (bool, optional): Show debugging. Defaults to False.
+            debug (bool, optional): Show debugging. Defaults to False.
         """
-        self.DEBUG = DEBUG
+        self.DEBUG = debug
         self.logger = logging
 
         logging.basicConfig(
@@ -64,7 +69,7 @@ class Logger:
             format="%(asctime)s:%(levelname)s:%(name)s:%(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                emailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
             ],
         )
 
@@ -96,9 +101,6 @@ class Logger:
     def warning(self, message):
         self.logger.warning(message)
 
-    def critical(self, message):
-        self.logger.critical(message)
-
     def exception(self, message):
         self.logger.exception(message)
 
@@ -116,7 +118,7 @@ class Logger:
                     if unicodedata.category(ch)[0] != "C" or ch in "\t" or ch in "\n"
                 )
                 text2 = text2.replace("\n\n", "\n")
-        except:
+        except FileNotFoundError:
             self.error("out.log does not exist")
 
         return text1 + "\n" + text2
@@ -127,10 +129,6 @@ class Logger:
         print(msg, **kwargs)
         sys.stdout = self.out  # output to log.log
         self.info(msg)
-
-    def clear(self):
-        with open("log.log", "w") as f:
-            f.write("")
 
     def __repr__(self):
         return self.read()

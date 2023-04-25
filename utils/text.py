@@ -12,7 +12,8 @@ class Text:
         """
         self.logger = logger
 
-    def cFilter(self, text: str, trim: bool = True) -> str:
+    @staticmethod
+    def cFilter(text: str, trim: bool = True) -> str:
         """Removes all color bits from a string
 
         Args:

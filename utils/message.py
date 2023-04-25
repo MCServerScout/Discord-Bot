@@ -1,8 +1,11 @@
 """Useful functions for sending messages to the user."""
 
 import base64
+from typing import List, Optional
+
 import interactions
 import mcstatus
+from interactions import ActionRow
 
 from .database import Database
 from .logger import Logger
@@ -26,7 +29,8 @@ class Message:
         self.BLUE = 0x0000FF  # info
         self.PINK = 0xFFC0CB  # offline
 
-    def buttons(self, *args) -> interactions.ActionRow:
+    @staticmethod
+    def buttons(*args) -> list[ActionRow]:
         """Return disabled buttons
 
         Args:
@@ -40,7 +44,7 @@ class Message:
         """
         disabled = list(*args) if len(args) == 3 else [False, False, False]
 
-        # buttone: Next, Previous, Show Players
+        # button: Next, Previous, Show Players
         rows = [
             interactions.ActionRow(
                 interactions.Button(
@@ -72,7 +76,7 @@ class Message:
         self,
         pipeline: list,
         index: int,
-    ) -> dict:
+    ) -> Optional[dict]:
         """Return an embed
 
         Args:
@@ -86,12 +90,12 @@ class Message:
             }
         """
 
-        totalServers = self.db.countPipeline(pipeline)
+        total_servers = self.db.countPipeline(pipeline)
 
-        if totalServers == 0:
-            return None
+        if total_servers == 0:
+            return
 
-        if index >= totalServers:
+        if index >= total_servers:
             index = 0
 
         data = self.db.get_doc_at_index(pipeline, index)
@@ -122,7 +126,7 @@ class Message:
 
         # set the footer to say the index, pipeline, and total servers
         embed.set_footer(
-            f"Showing {index + 1} of {totalServers} servers in: {pipeline[0]}",
+            f"Showing {index + 1} of {total_servers} servers in: {pipeline[0]}",
         )
         embed.timestamp = self.text.timeNow()
 
@@ -172,7 +176,7 @@ class Message:
         return {
             "embed": embed,
             "components": self.buttons(
-                totalServers > 1,
+                total_servers > 1,
                 index > 0,
                 "sample" in data,
             ),

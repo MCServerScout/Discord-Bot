@@ -2,6 +2,7 @@ import traceback
 from typing import List, Optional
 
 import pymongo
+from pymongo.results import UpdateResult
 
 from .logger import Logger
 
@@ -19,30 +20,29 @@ class Database:
 
     def get_doc_at_index(
         self,
-        col: pymongo.collection.Collection,
         pipeline: list,
         index: int = 0,
     ) -> Optional[dict]:
         try:
-            newPipeline = pipeline.copy()
+            new_pipeline = pipeline.copy()
 
-            if type(newPipeline) is dict:
-                newPipeline = [newPipeline]
+            if type(new_pipeline) is dict:
+                new_pipeline = [new_pipeline]
 
-            newPipeline.append({"$skip": index})
-            newPipeline.append({"$limit": 1})
-            newPipeline.append({"$project": {"_id": 1}})
-            newPipeline.append({"$limit": 1})
-            newPipeline.append({"$addFields": {"doc": "$$ROOT"}})
-            newPipeline.append({"$project": {"_id": 0, "doc": 1}})
+            new_pipeline.append({"$skip": index})
+            new_pipeline.append({"$limit": 1})
+            new_pipeline.append({"$project": {"_id": 1}})
+            new_pipeline.append({"$limit": 1})
+            new_pipeline.append({"$addFields": {"doc": "$$ROOT"}})
+            new_pipeline.append({"$project": {"_id": 0, "doc": 1}})
 
-            result = col.aggregate(newPipeline, allowDiskUse=True)
+            result = self.col.aggregate(new_pipeline, allowDiskUse=True)
             try:
-                return col.find_one(next(result)["doc"])
+                return self.col.find_one(next(result)["doc"])
             except StopIteration:
                 self.logger.error("[database.get_doc_at_index] Index out of range")
                 return None
-        except:
+        except StopIteration:
             self.logger.error("[database.get_doc_at_index] " + traceback.format_exc())
             self.logger.error(
                 "[database.get_doc_at_index] Error getting document at index: {}".format(
@@ -58,7 +58,7 @@ class Database:
     ) -> Optional[List[dict]]:
         try:
             return list(self.col.aggregate(pipeline, allowDiskUse=allowDiskUse))
-        except:
+        except StopIteration:
             self.logger.error("[database.aggregate] " + traceback.format_exc())
             self.logger.error(
                 "[database.aggregate] Error aggregating: {}".format(pipeline)
@@ -71,7 +71,7 @@ class Database:
     ) -> Optional[dict]:
         try:
             return self.col.find_one(query)
-        except:
+        except StopIteration:
             self.logger.error("[database.find_one] " + traceback.format_exc())
             self.logger.error("[database.find_one] Error finding one: {}".format(query))
             return None
@@ -82,7 +82,7 @@ class Database:
     ) -> Optional[List[dict]]:
         try:
             return list(self.col.find(query))
-        except:
+        except StopIteration:
             self.logger.error("[database.find] " + traceback.format_exc())
             self.logger.error("[database.find] Error finding: {}".format(query))
             return None
@@ -92,10 +92,10 @@ class Database:
         query: dict,
         update: dict,
         **kwargs,
-    ) -> Optional[dict]:
+    ) -> Optional[UpdateResult]:
         try:
             return self.col.update_one(query, update, **kwargs)
-        except:
+        except StopIteration:
             self.logger.error("[database.update_one] " + traceback.format_exc())
             self.logger.error(
                 "[database.update_one] Error updating one: {}".format(query)
@@ -106,34 +106,35 @@ class Database:
         self,
         query: dict,
         update: dict,
-    ) -> Optional[dict]:
+    ) -> Optional[UpdateResult]:
         try:
             return self.col.update_many(query, update)
-        except:
+        except StopIteration:
             self.logger.error("[database.update_many] " + traceback.format_exc())
             self.logger.error(
                 "[database.update_many] Error updating many: {}".format(query)
             )
             return None
 
-    def countPipeline(
+    def count(
         self,
         pipeline: list,
     ):
+        """Counts the number of documents in a pipeline"""
         try:
-            newPipeline = pipeline.copy()
+            new_pipeline = pipeline.copy()
 
-            if type(newPipeline) is dict:
-                newPipeline = [newPipeline]
+            if type(new_pipeline) is dict:
+                new_pipeline = [new_pipeline]
 
-            newPipeline.append({"$count": "count"})
+            new_pipeline.append({"$count": "count"})
 
-            result = self.col.aggregate(newPipeline, allowDiskUse=True)
+            result = self.col.aggregate(new_pipeline, allowDiskUse=True)
             try:
                 return next(result)["count"]
             except StopIteration:
                 return 0
-        except:
+        except StopIteration:
             self.logger.error("[database.countPipeline] " + traceback.format_exc())
             self.logger.error(
                 "[database.countPipeline] Error counting pipeline: {}".format(pipeline)

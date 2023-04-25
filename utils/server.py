@@ -1,6 +1,6 @@
 """Class for server connection and communication.
 """
-
+import json
 from typing import Optional
 from bson import DatetimeMS
 
@@ -87,7 +87,7 @@ class Server:
             # check if the server is online
             try:
                 status = mcstatus.JavaServer.lookup(host).status()
-            except:
+            except socket.gaierror:
                 return None
 
             # get the status response
@@ -96,13 +96,13 @@ class Server:
             if status is None:
                 return None
 
-            type = (
+            server_type = (
                 self.join(host, status["version"]["protocol"])
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
 
-            if type.getType() == "CRACKED":
+            if server_type.getType() == "CRACKED":
                 status["cracked"] = True
             else:
                 status["cracked"] = False
@@ -126,7 +126,7 @@ class Server:
                 self.updateDB(status)
 
             return status
-        except:
+        except Exception:
             self.logger.print(f"[server.update] {traceback.format_exc()}")
             return None
 
@@ -135,11 +135,13 @@ class Server:
         ip: str,
         port: int = 25565,
         version: int = -1,
-    ):
+    ) -> Optional[dict]:
         """Returns a status response dict
 
         Args:
             ip (str): The host to connect to
+            port (int, optional): The port to connect to. Defaults to 25565.
+            version (int, optional): The protocol version to use. Defaults to -1.
         """
 
         # get info on the server
@@ -173,24 +175,26 @@ class Server:
         except:
             self.logger.error(f"[server.status] Connection error")
             return None
-        id = response.read_varint()
+        resID = response.read_varint()
 
-        if id == -1:
+        if resID == -1:
             self.logger.error(f"[server.status] Connection error")
             return None
-        elif id != 0:
-            self.logger.error("[server.status] Invalid packet ID received: " + str(id))
+        elif resID != 0:
+            self.logger.error("[server.status] Invalid packet ID received: " + str(resID))
             return None
-        elif id == 0:
+        elif resID == 0:
             length = response.read_varint()
             data = response.read(length)
+
+            data = json.loads(data.decode("utf8"))
             return data
 
     def join(
         self,
         ip: str,
         port: int,
-        version: int,
+        version: int = -1,
         player_username: str = "Pilot1782",
     ) -> ServerType:
         try:
@@ -248,13 +252,13 @@ class Server:
 
                 return self.ServerType(ip, version, "CRACKED")
             else:
-                self.error("[server.join] Unknown response: " + str(id))
+                self.logger.error("[server.join] Unknown response: " + str(id))
                 try:
                     reason = response.read_utf()
                 except:
                     reason = "Unknown"
 
-                self.dprint("[server.join] Reason: " + reason)
+                self.logger.debug("[server.join] Reason: " + reason)
                 return self.ServerType(ip, version, "UNKNOW")
         except TimeoutError:
             self.logger.error("[server.join] Server timed out")
@@ -268,7 +272,8 @@ class Server:
             self.logger.error(f"[server.join] {traceback.format_exc()}")
             return self.ServerType(ip, version, "OFFLINE")
 
-    def resolve(self, host: str) -> str:
+    @staticmethod
+    def resolve(host: str) -> str:
         """Resolves a hostname to an IP address
 
         Args:
@@ -282,7 +287,8 @@ class Server:
 
         return socket.gethostbyname(host)
 
-    def resHostname(self, ip: str) -> str:
+    @staticmethod
+    def resHostname(ip: str) -> str:
         """Resolves an IP address to a hostname
 
         Args:

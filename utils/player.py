@@ -15,7 +15,7 @@ class Player:
         """
         self.logger = logger
 
-    def crackCheckAPI(self, host: str, port: str = "25565") -> bool:
+    def crack_check_API(self, host: str, port: str = "25565") -> bool:
         """Checks if a server is cracked using the mcstatus.io API
 
         Args:
@@ -53,7 +53,8 @@ class Player:
             file=open("playerhead.png", "rb"),
         )
 
-    def getUUID(self, name: str) -> str:
+    @staticmethod
+    def getUUID(name: str) -> str:
         """Get the UUID of a player
 
         Args:
