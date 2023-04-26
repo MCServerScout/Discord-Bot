@@ -10,7 +10,7 @@ import traceback
 
 import interactions
 import pymongo
-from interactions import slash_command
+from interactions import slash_command, SlashCommandOption
 
 import utils
 
@@ -131,37 +131,37 @@ def time_now() -> "Timestamp":  # type: ignore
     name="find",
     description="Find a server by anything in the database",
     options=[
-        interactions.Option(
+        SlashCommandOption(
             name="version",
             description="The version of the server",
             type=interactions.OptionType.STRING,
             required=False,
         ),
-        interactions.Option(
+        SlashCommandOption(
             name="max_players",
             description="The max players of the server",
             type=interactions.OptionType.INTEGER,
             required=False,
         ),
-        interactions.Option(
+        SlashCommandOption(
             name="player",
             description="The player on the server",
             type=interactions.OptionType.STRING,
             required=False,
         ),
-        interactions.Option(
+        SlashCommandOption(
             name="sign",
             description="The text of a sign on the server",
             type=interactions.OptionType.STRING,
             required=False,
         ),
-        interactions.Option(
+        SlashCommandOption(
             name="description",
             description="The description of the server",
             type=interactions.OptionType.STRING,
             required=False,
         ),
-        interactions.Option(
+        SlashCommandOption(
             name="cracked",
             description="If the server is cracked",
             type=interactions.OptionType.BOOLEAN,
@@ -248,14 +248,27 @@ async def find(
     if cracked is not None:
         pipeline[0]["$match"]["$and"].append({"cracked": cracked})
 
+    total = databaseLib.count(pipeline)
+
+    if total == 0:
+        await msg.edit(
+            embed=messageLib.standardEmbed(
+                title="No servers found",
+                description="Try again with different parameters",
+                color=RED,
+            ),
+            components=messageLib.buttons(True, True, True, True),
+        )
+        return
+
     # check how many servers match
     msg = await msg.edit(
         embed=messageLib.standardEmbed(
             title="Finding servers...",
-            description=f"Found {databaseLib.countPipeline(pipeline)} servers",
+            description=f"Found {total} servers",
             color=BLUE,
         ),
-        components=messageLib.buttons(True, True, True),
+        components=messageLib.buttons(True, True, True, True),
     )
 
     index = 0
@@ -456,6 +469,99 @@ async def players(ctx: interactions.ComponentContext):
         )
 
 
+# command to jump to a specific index
+@interactions.component_callback("jump")
+async def jump(ctx: interactions.ComponentContext):
+    # when pressed should spawn a modal with a text input and then edit the message with the new index
+    try:
+        original = ctx.message
+
+        await ctx.defer(ephemeral=True)
+
+        logger.print(f"[main.jump] jump called by {ctx.author}")
+
+        org = ctx.message
+
+        # get the pipeline and index from the message
+        pipeline = json.loads(org.embeds[0].footer.text.split(" servers in: ")[1])
+        index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
+
+        # get the total number of servers
+        total = databaseLib.count(pipeline)
+
+        # create the text input
+        text_input = interactions.ShortText(
+            label="Jump to index",
+            placeholder=f"Enter a number between 1 and {total}",
+            min_length=1,
+            max_length=len(str(total)),
+            custom_id="jump",
+            required=True,
+        )
+
+        # create a modal
+        modal = interactions.Modal(
+            text_input,
+            title="Jump",
+        )
+
+        # send the modal
+        await ctx.send_modal(modal)
+
+        try:
+            # wait for the response
+            modal_ctx = await ctx.bot.wait_for_modal(modal=modal, timeout=60)
+
+            # get the response
+            index = int(modal_ctx.responses["jump"])
+
+            # check if the index is valid
+            if index < 1 or index > total:
+                await ctx.send(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description=f"Invalid index, must be between 1 and {total}",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            # get the original pipeline
+            pipeline = json.loads(original.embeds[0].footer.text.split(" servers in: ")[1])
+
+            # get the new embed
+            stuff = messageLib.embed(
+                pipeline=pipeline,
+                index=index - 1,
+            )
+
+            # edit the message
+            await original.edit(
+                embed=stuff["embed"],
+                components=stuff["components"],
+            )
+        except asyncio.TimeoutError:
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="Timed out",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+    except Exception:
+        logger.error(f"[main.jump] {traceback.format_exc()}")
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to jump to a specific index",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+
+
 # general help
 @slash_command(
     name="help",
@@ -489,7 +595,7 @@ async def help_command(ctx: interactions.SlashContext):
 @interactions.listen()
 async def on_ready():
     user = await bot.fetch_user(bot.user.id)
-    logger.print(f"[main.on_ready] Logged in as {user.name}#{user.discriminator}")
+    logger.print(f"[main.on_ready] Logged in as {user.username}#{user.discriminator}")
 
 
 # -----------------------------------------------------------------------------
@@ -500,7 +606,7 @@ if __name__ == "__main__":
     while True:
         try:
             # start the bot
-            bot.run()
+            bot.start()
         except KeyboardInterrupt:
             # stop the bot
             asyncio.run(bot.close())

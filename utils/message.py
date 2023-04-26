@@ -30,19 +30,19 @@ class Message:
         self.PINK = 0xFFC0CB  # offline
 
     @staticmethod
-    def buttons(*args) -> list[ActionRow]:
-        """Return disabled buttons
+    def buttons(*args: bool) -> List[ActionRow]:
+        """Return disabled buttons (True = disabled)
 
         Args:
-            *args (bool): The buttons to disable, len must be 3
+            *args (bool): The buttons to disable
 
         Returns:
             [
-                interactions.ActionRow(): Next, Previous
+                interactions.ActionRow(): Next, Previous, Jump to
                 interactions.ActionRow(): Show Players
             ]
         """
-        disabled = list(*args) if len(args) == 3 else [False, False, False]
+        disabled = list(args) if len(args) == 4 else [False, False, False, False]
 
         # button: Next, Previous, Show Players
         rows = [
@@ -59,13 +59,19 @@ class Message:
                     custom_id="previous",
                     disabled=disabled[1],
                 ),
+                interactions.Button(
+                    label="Jump to",
+                    style=interactions.ButtonStyle.PRIMARY,
+                    custom_id="jump",
+                    disabled=disabled[2],
+                )
             ),
             interactions.ActionRow(
                 interactions.Button(
                     label="Show Players",
                     style=interactions.ButtonStyle.PRIMARY,
                     custom_id="players",
-                    disabled=disabled[2],
+                    disabled=disabled[3],
                 ),
             ),
         ]
@@ -107,7 +113,7 @@ class Message:
                     description="No server found",
                     color=self.YELLOW,
                 ),
-                "components": self.buttons(True, True, True),
+                "components": self.buttons(True, True, True, True),
             }
 
         isOnline = "🔴"
@@ -137,6 +143,7 @@ class Message:
                 f.write(base64.b64decode(bits))
             _file = interactions.File(
                 file_name="favicon.png",
+                file="favicon.png",
             )
         else:
             _file = None
@@ -178,6 +185,7 @@ class Message:
             "components": self.buttons(
                 total_servers > 1,
                 index > 0,
+                total_servers > 1,
                 "sample" in data,
             ),
         }
@@ -193,7 +201,7 @@ class Message:
         Args:
             title (str): The title of the embed
             description (str): The description of the embed
-            color (int): The color of the embed (
+            color (int): The color of the embed(
                 RED: error
                 GREEN: success
                 YELLOW: warning
