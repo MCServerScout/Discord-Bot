@@ -26,7 +26,7 @@ class StreamToLogger(object):
 
     def read(self):
         text1, text2 = "", ""
-        with open("../log.log", "r") as f:
+        with open("log.log", "r") as f:
             text1 = f.read()
 
         try:
@@ -52,7 +52,7 @@ class EmailFileHandler(logging.FileHandler):
 
 
 def clear():
-    with open("../log.log", "w") as f:
+    with open("log.log", "w") as f:
         f.write("")
 
 
@@ -72,7 +72,7 @@ class Logger:
             format="%(asctime)s:%(levelname)s:%(name)s:%(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("../log.log", mode="a", encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
             ],
         )
 
@@ -115,7 +115,7 @@ class Logger:
 
     def read(self):
         text1, text2 = "", ""
-        with open("../log.log", "r") as f:
+        with open("log.log", "r") as f:
             text1 = f.read()
 
         try:
@@ -147,5 +147,5 @@ class Logger:
 
     @staticmethod
     def clear():
-        with open("../log.log", "w") as f:
+        with open("log.log", "w") as f:
             f.write("")

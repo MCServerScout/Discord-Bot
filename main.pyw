@@ -484,7 +484,6 @@ async def jump(ctx: interactions.ComponentContext):
 
         # get the pipeline and index from the message
         pipeline = json.loads(org.embeds[0].footer.text.split(" servers in: ")[1])
-        index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
 
         # get the total number of servers
         total = databaseLib.count(pipeline)
