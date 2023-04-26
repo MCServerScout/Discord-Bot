@@ -40,9 +40,10 @@ class Message:
             [
                 interactions.ActionRow(): Next, Previous, Jump to
                 interactions.ActionRow(): Show Players
+                interactions.StringSelectMenu(): Sort
             ]
         """
-        disabled = list(args) if len(args) == 4 else [False, False, False, False]
+        disabled = list(args) if len(args) == 5 else [False, False, False, False, False]
 
         # button: Next, Previous, Show Players
         rows = [
@@ -73,6 +74,12 @@ class Message:
                     custom_id="players",
                     disabled=disabled[3],
                 ),
+                interactions.Button(
+                    label="Change Sort",
+                    style=interactions.ButtonStyle.PRIMARY,
+                    custom_id="sort",
+                    disabled=disabled[4],
+                )
             ),
         ]
 
@@ -113,7 +120,7 @@ class Message:
                     description="No server found",
                     color=self.YELLOW,
                 ),
-                "components": self.buttons(True, True, True, True),
+                "components": self.buttons(True, True, True, True, True),
             }
 
         isOnline = "🔴"
@@ -187,6 +194,7 @@ class Message:
                 index > 0,
                 total_servers > 1,
                 "sample" in data,
+                total_servers > 1,
             ),
         }
 

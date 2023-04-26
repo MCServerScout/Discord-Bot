@@ -2,7 +2,6 @@
 """
 
 import asyncio
-import datetime
 import json
 import sys
 import time
@@ -39,7 +38,7 @@ if DISCORD_WEBHOOK == "":
 
 client = pymongo.MongoClient(MONGO_URL, server_api=pymongo.server_api.ServerApi("1"))  # type: ignore
 db = client["mc"]
-col = db["servers"]
+col = db["serverList"]
 
 utils = utils.Utils(
     col,
@@ -72,15 +71,6 @@ PINK = 0xFFC0CB  # offline
 
 def print(*args, **kwargs):
     logger.print(" ".join(map(str, args)), **kwargs)
-
-
-def time_now() -> "Timestamp":  # type: ignore
-    # return local time
-    return datetime.datetime.now(
-        datetime.timezone(
-            datetime.timedelta(hours=0)  # no clue why this is needed, but it works now?
-        )
-    ).strftime("%Y-%m-%d %H:%M:%S")
 
 
 # Commands
@@ -202,11 +192,10 @@ async def find(
     )
 
     msg = await ctx.send(
-        embed=interactions.Embed(
+        embed=messageLib.standardEmbed(
             title="Finding servers...",
             description="This may take a while",
             color=BLUE,
-            timestamp=time_now(),
         ),
     )
 
@@ -257,7 +246,7 @@ async def find(
                 description="Try again with different parameters",
                 color=RED,
             ),
-            components=messageLib.buttons(True, True, True, True),
+            components=messageLib.buttons(True, True, True, True, True),
         )
         return
 
@@ -561,6 +550,120 @@ async def jump(ctx: interactions.ComponentContext):
         )
 
 
+# command to change the sort method
+@interactions.component_callback("sort")
+async def sort(ctx: interactions.ComponentContext):
+    try:
+        org = ctx.message
+        await ctx.defer(ephemeral=True)
+
+        logger.print(f"[main.sort] sort called by {ctx.author}")
+
+        # get the pipeline
+        pipeline = json.loads(org.embeds[0].footer.text.split(" servers in: ")[1])
+
+        # send a message with a string menu that express after 60s
+        stringMenu = interactions.StringSelectMenu(
+            interactions.StringSelectOption(
+                label="Player Count",
+                value="players",
+            ),
+            interactions.StringSelectOption(
+                label="Player Limit",
+                value="limit",
+            ),
+            interactions.StringSelectOption(
+                label="Server Version ID",
+                value="version",
+            ),
+            interactions.StringSelectOption(
+                label="Random",
+                value="random",
+            ),
+            placeholder="Sort the servers by...",
+            custom_id="sort",
+            min_values=1,
+            max_values=1,
+            disabled=False,
+        )
+
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Sort",
+                description="Sort the servers by...",
+                color=BLUE,
+            ),
+            components=[
+                interactions.ActionRow(
+                    stringMenu,
+                ),
+            ],
+            ephemeral=True,
+        )
+
+        try:
+            def check(component: interactions.StringSelectMenu):
+                return component.options[0].value in ["players", "limit", "version", "random"]
+
+            # wait for the response
+            menu = await ctx.bot.wait_for_component(timeout=60, components=stringMenu)
+        except asyncio.TimeoutError:
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="Timed out",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+        else:
+            # get the value
+            value = menu.ctx.values[0]
+            logger.print(f"[main.sort] sort method: {value}")
+
+            match value:
+                case "players":
+                    pipeline["sort"] = "players"
+                case "limit":
+                    pipeline["sort"] = "limit"
+                case "version":
+                    pipeline["sort"] = "version"
+                case "random":
+                    pipeline["sample"] = 1
+                case _:
+                    await ctx.send(
+                        embed=messageLib.standardEmbed(
+                            title="Error",
+                            description="Invalid sort method",
+                            color=RED,
+                        ),
+                        ephemeral=True,
+                    )
+
+            # get the new embed
+            stuff = messageLib.embed(
+                pipeline=pipeline,
+                index=0,
+            )
+
+            # edit the message
+            await org.edit(
+                embed=stuff["embed"],
+                components=stuff["components"],
+            )
+    except Exception:
+        logger.error(f"[main.sort] {traceback.format_exc()}")
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to sort the servers",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+
+
 # general help
 @slash_command(
     name="help",
@@ -568,11 +671,10 @@ async def jump(ctx: interactions.ComponentContext):
 )
 async def help_command(ctx: interactions.SlashContext):
     await ctx.send(
-        embed=interactions.Embed(
+        embed=messageLib.standardEmbed(
             title="Help",
             description="Help",
             color=BLUE,
-            timestamp=time_now(),
         )
         .add_field(
             name="find",

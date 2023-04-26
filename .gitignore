@@ -5,3 +5,4 @@ utils/__pycache__/*
 .idea/*
 log.log
 /out.log
+/testing.py

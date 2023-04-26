@@ -1,11 +1,17 @@
 # Dollar Tree Copenheimer (Discord Bot)
 
-This is a Discord bot that I made for my friends and I to use in our Discord server. It is a work in progress, and I will be adding more features as time goes on.
+This is a Discord bot that I made for my friends and I to use in our Discord server. It is a work in progress, and I
+will be adding more features as time goes on.
+
+## TODO
 
 - [ ] Access a database of the servers
 - [X] Have filters to sort through
 - [ ] Sort through the servers
-  - By players online, max players, version id or random
+  - [ ] players online
+  - [ ] max players
+  - [ ] version id
+  - [ ] random
 - [X] Get info about a selected server
 - [X] Get a player list
 
