@@ -56,16 +56,16 @@ class Message:
         rows = [
             interactions.ActionRow(
                 interactions.Button(
-                    label="Next",
-                    style=interactions.ButtonStyle.PRIMARY,
-                    custom_id="next",
-                    disabled=disabled[0],
-                ),
-                interactions.Button(
                     label="Previous",
                     style=interactions.ButtonStyle.PRIMARY,
                     custom_id="previous",
                     disabled=disabled[1],
+                ),
+                interactions.Button(
+                    label="Next",
+                    style=interactions.ButtonStyle.PRIMARY,
+                    custom_id="next",
+                    disabled=disabled[0],
                 ),
                 interactions.Button(
                     label="Jump to",

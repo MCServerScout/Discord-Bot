@@ -148,67 +148,70 @@ class Server:
         Returns:
             Optional[dict]: The status response dict
         """
-
-        # get info on the server
-        server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
         try:
-            version = server.status().version.protocol if version == -1 else version
+            # get info on the server
+            server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
+            try:
+                version = server.status().version.protocol if version == -1 else version
+            except TimeoutError:
+                self.logger.error(f"[server.status] Connection error (timeout)")
+                return None
+            except ConnectionRefusedError:
+                self.logger.error(f"[server.status] Connection error (refused)")
+                return None
+            except Exception as err:
+                if "An existing connection was forcibly closed by the remote host" in str(err):
+                    self.logger.error(f"[server.status] Connection error")
+                    return None
+                else:
+                    self.logger.error(f"[server.status] {err}")
+                    self.logger.print(f"[server.status] {traceback.format_exc()}")
+                    return None
+
+            connection = TCPSocketConnection((ip, port))
+
+            # Send a handshake packet: ID, protocol version, server address, server port, intention to log in
+            # This does not change between versions
+            handshake = Connection()
+
+            handshake.write_varint(0)  # Packet ID
+            handshake.write_varint(version)  # Protocol version
+            handshake.write_utf(ip)  # Server address
+            handshake.write_ushort(int(port))  # Server port
+            handshake.write_varint(1)  # Intention to get status
+
+            connection.write_buffer(handshake)
+
+            # Send status request packet
+            # This does not change between versions
+            request = Connection()
+
+            request.write_varint(0)  # Packet ID
+            connection.write_buffer(request)
+
+            # Read response
+            try:
+                response = connection.read_buffer()
+            except socket.error:
+                self.logger.error(f"[server.status] Connection error")
+                return None
+            resID = response.read_varint()
+
+            if resID == -1:
+                self.logger.error(f"[server.status] Connection error")
+                return None
+            elif resID != 0:
+                self.logger.error("[server.status] Invalid packet ID received: " + str(resID))
+                return None
+            elif resID == 0:
+                length = response.read_varint()
+                data = response.read(length)
+
+                data = json.loads(data.decode("utf8"))
+                return data
         except TimeoutError:
             self.logger.error(f"[server.status] Connection error (timeout)")
             return None
-        except ConnectionRefusedError:
-            self.logger.error(f"[server.status] Connection error (refused)")
-            return None
-        except Exception as err:
-            if "An existing connection was forcibly closed by the remote host" in str(err):
-                self.logger.error(f"[server.status] Connection error")
-                return None
-            else:
-                self.logger.error(f"[server.status] {err}")
-                self.logger.print(f"[server.status] {traceback.format_exc()}")
-                return None
-
-        connection = TCPSocketConnection((ip, port))
-
-        # Send a handshake packet: ID, protocol version, server address, server port, intention to log in
-        # This does not change between versions
-        handshake = Connection()
-
-        handshake.write_varint(0)  # Packet ID
-        handshake.write_varint(version)  # Protocol version
-        handshake.write_utf(ip)  # Server address
-        handshake.write_ushort(int(port))  # Server port
-        handshake.write_varint(1)  # Intention to get status
-
-        connection.write_buffer(handshake)
-
-        # Send status request packet
-        # This does not change between versions
-        request = Connection()
-
-        request.write_varint(0)  # Packet ID
-        connection.write_buffer(request)
-
-        # Read response
-        try:
-            response = connection.read_buffer()
-        except socket.error:
-            self.logger.error(f"[server.status] Connection error")
-            return None
-        resID = response.read_varint()
-
-        if resID == -1:
-            self.logger.error(f"[server.status] Connection error")
-            return None
-        elif resID != 0:
-            self.logger.error("[server.status] Invalid packet ID received: " + str(resID))
-            return None
-        elif resID == 0:
-            length = response.read_varint()
-            data = response.read(length)
-
-            data = json.loads(data.decode("utf8"))
-            return data
 
     def join(
         self,

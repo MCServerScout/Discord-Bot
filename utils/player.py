@@ -92,29 +92,29 @@ class Player:
         data = self.db.find_one({"ip": ip, "port": port})
 
         if data is None:
+            self.logger.print(f"[player.playerList] Server {ip}:{port} not found in database")
             return None
 
-        if "sample" not in data:
+        if "sample" not in data["players"]:
+            self.logger.print(f"[player.playerList] Server {ip}:{port} has no players")
             return None
 
         db_names = []
-        for player in data["sample"]:
+        for player in data["players"]["sample"]:
             db_names.append(player["name"])
 
         status = self.server.status(ip=ip, port=port)
 
-        if status is None or "sample" not in status:
-            return None
-
         status_names = []
-        for player in status["sample"]:
-            status_names.append(player["name"])
+        if status is not None and "sample" in status["players"]:
+            for player in status["players"]["sample"]:
+                status_names.append(player["name"])
 
         players = []
         for name in db_names:
             player = {
                 "name": name,
-                "uuid": self.getUUID(name),
+                "id": self.getUUID(name),
                 "online": name in status_names
             }
             players.append(player)
@@ -124,7 +124,7 @@ class Player:
             if player not in db_names:
                 player = {
                     "name": player,
-                    "uuid": self.getUUID(player),
+                    "id": self.getUUID(player),
                     "online": True
                 }
                 players.append(player)

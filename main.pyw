@@ -227,6 +227,7 @@ async def find(
                 {"world.signs": {"$elemMatch": {"text": {"$regex": f".*{sign}.*"}}}}
             )
         if description is not None:
+            description = description.replace("'", ".")
             # case-insensitive regex, search through desc.text and through desc.extra.text
             pipeline[0]["$match"]["$and"].append(
                 {
@@ -466,33 +467,35 @@ async def previous_page(ctx: interactions.ComponentContext):
 @interactions.component_callback("players")
 async def players(ctx: interactions.ComponentContext):
     try:
+        org = ctx.message
+        orgFoot = org.embeds[0].footer.text
         await ctx.defer(ephemeral=True)
 
         logger.print(f"[main.players] players called")
 
-        org = ctx.message
-
         # get the host dict from the db
-        pipeline = json.loads(org.embeds[0].footer.text.split(" servers in: ")[1])
-        index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
+        pipeline = json.loads(orgFoot.split(" servers in: ")[1].replace("'", '"'))
+        index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
 
         host = databaseLib.get_doc_at_index(pipeline, index)
 
-        player_list = await playerLib.playerList(host["ip"], host["port"])
+        player_list = playerLib.playerList(host["ip"], host["port"])
 
         if player_list is None:
             await ctx.send(
                 embed=messageLib.standardEmbed(
                     title="Error",
-                    description="An error occurred while trying to get the players",
+                    description="An error occurred while trying to get the players (server offline?)",
                     color=RED,
                 ),
                 ephemeral=True,
             )
             return
 
+        logger.print(f"[main.players] Found {len(player_list)} players")
+
         embed = messageLib.standardEmbed(
-            title=f"Players on {host}",
+            title=f"Players on {host['ip']}",
             description=f"Found {len(player_list)} players",
             color=BLUE,
         )
@@ -503,8 +506,14 @@ async def players(ctx: interactions.ComponentContext):
                 value=f'`{player["id"]}`',
                 inline=False,
             )
-    except Exception:
-        logger.error(f"[main.players] {traceback.format_exc()}")
+
+        await ctx.send(
+            embed=embed,
+            ephemeral=True,
+        )
+    except Exception as err:
+        logger.error(f"[main.players] {err}")
+        logger.print(f"[main.players] Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
             embed=messageLib.standardEmbed(
@@ -807,7 +816,6 @@ async def stats(ctx: interactions.SlashContext):
             {"$limit": 5},
         ]
         topFiveVersions = list(databaseLib.aggregate(pipeline))
-        logger.print(f"[main.stats] topFiveVersions: {topFiveVersions}")
 
         mainEmbed.add_field(
             name="Top Five Versions",
