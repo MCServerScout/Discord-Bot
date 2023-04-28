@@ -1,5 +1,6 @@
 import datetime
 import re
+
 import unicodedata
 
 
@@ -150,7 +151,7 @@ class Text:
         return datetime.datetime.now(
             datetime.timezone(
                 datetime.timedelta(
-                    hours=0
+                    hours=-6
                 )  # no clue why this is needed, but it works now?
             )
         ).strftime("%Y-%m-%d %H:%M:%S")

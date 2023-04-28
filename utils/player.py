@@ -3,9 +3,9 @@ from typing import Optional
 import interactions
 import requests
 
+from .database import Database
 from .logger import Logger
 from .server import Server
-from .database import Database
 
 
 class Player:
@@ -79,16 +79,17 @@ class Player:
         else:
             return "---n/a---"
 
-    def playerList(self, host: dict) -> Optional[list[dict]]:
+    def playerList(self, ip: str, port: int = 25565) -> Optional[list[dict]]:
         """Gets a list of players on a server
 
         Args:
-            host (dict): the host of the server {ip: str, hostname: str, port: str}
+            ip (str): server ip
+            port (int, optional): server port. Defaults to 25565.
 
         Returns:
             str: list of players
         """
-        data = self.db.find_one({"host": host})
+        data = self.db.find_one({"ip": ip, "port": port})
 
         if data is None:
             return None
@@ -100,7 +101,7 @@ class Player:
         for player in data["sample"]:
             db_names.append(player["name"])
 
-        status = self.server.status(ip=host["ip"], port=host["port"])
+        status = self.server.status(ip=ip, port=port)
 
         if status is None or "sample" not in status:
             return None

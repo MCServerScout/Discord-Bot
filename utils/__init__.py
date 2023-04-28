@@ -2,9 +2,9 @@ import pymongo
 
 from .database import Database
 from .logger import Logger
+from .message import Message
 from .player import Player
 from .server import Server
-from .message import Message
 from .text import Text
 
 
@@ -41,5 +41,6 @@ class Utils:
         self.text = Text(logger=self.logger)
 
         self.server = Server(db=self.database, logger=self.logger)
+
         self.player = Player(logger=self.logger, server=self.server, db=self.database)
-        self.message = Message(logger=self.logger, db=self.database, text=self.text)
+        self.message = Message(logger=self.logger, db=self.database, text=self.text, server=self.server)

@@ -1,18 +1,18 @@
 """Class for server connection and communication.
 """
-import json
-from typing import Optional
-from bson import DatetimeMS
-
-import mcstatus
 import datetime
-from mcstatus.protocol.connection import Connection, TCPSocketConnection
-import traceback
+import json
 import socket
 import threading
+import traceback
+from typing import Optional
 
-from .logger import Logger
+import mcstatus
+from bson import DatetimeMS
+from mcstatus.protocol.connection import Connection, TCPSocketConnection
+
 from .database import Database
+from .logger import Logger
 
 
 class Server:
@@ -39,9 +39,10 @@ class Server:
         self.logger = logger
 
     def update(
-        self,
-        host: str,
-        fast: bool = False,
+            self,
+            host: str,
+            fast: bool = False,
+            port: int = 25565,
     ) -> Optional[dict]:
         """
         Update a server and return a doc similar to:
@@ -107,23 +108,19 @@ class Server:
             else:
                 status["cracked"] = False
 
-            status["host"] = {
-                "ip": self.resolve(host),
-                "hostname": self.resHostname(host),
-                "port": status["host"]["port"],
-            }
+            status["ip"] = host
+            status["port"] = port
             status["online"] = DatetimeMS(int(datetime.datetime.utcnow().timestamp() * 1000))
 
             # if the server is in the db, then get the db doc
-            if self.db.col.find_one({"host.ip": status["host"]["ip"]}) is not None:
-                dbVal = self.db.col.find_one({"host.ip": status["host"]["ip"]})
+            if self.db.col.find_one({"ip": status["ip"]}) is not None:
+                dbVal = self.db.col.find_one({"ip": status["ip"]})
                 status["cracked"] = (
-                    status["cracked"]
-                    or dbVal[
-                        "cracked"
-                    ]
+                        status["cracked"]
+                        or dbVal[
+                            "cracked"
+                        ]
                 )
-                status["host"] = dbVal["host"]  # keep the old host info
                 self.updateDB(status)
             else:
                 self.updateDB(status)
@@ -147,11 +144,29 @@ class Server:
             Default to 25565.
             version (int, optional): The protocol version to use.
             Default to -1.
+
+        Returns:
+            Optional[dict]: The status response dict
         """
 
         # get info on the server
         server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
-        version = server.status().version.protocol if version == -1 else version
+        try:
+            version = server.status().version.protocol if version == -1 else version
+        except TimeoutError:
+            self.logger.error(f"[server.status] Connection error (timeout)")
+            return None
+        except ConnectionRefusedError:
+            self.logger.error(f"[server.status] Connection error (refused)")
+            return None
+        except Exception as err:
+            if "An existing connection was forcibly closed by the remote host" in str(err):
+                self.logger.error(f"[server.status] Connection error")
+                return None
+            else:
+                self.logger.error(f"[server.status] {err}")
+                self.logger.print(f"[server.status] {traceback.format_exc()}")
+                return None
 
         connection = TCPSocketConnection((ip, port))
 
@@ -205,7 +220,22 @@ class Server:
         try:
             # get info on the server
             server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
-            version = server.status().version.protocol if version == -1 else version
+            try:
+                version = server.status().version.protocol if version == -1 else version
+            except TimeoutError:
+                self.logger.error(f"[server.join] Connection error (timeout)")
+                return self.ServerType(ip, -1, "UNKNOWN")
+            except ConnectionRefusedError:
+                self.logger.error(f"[server.join] Connection error (refused)")
+                return self.ServerType(ip, -1, "UNKNOWN")
+            except Exception as err:
+                if "An existing connection was forcibly closed by the remote host" in str(err):
+                    self.logger.error(f"[server.join] Connection error")
+                    return self.ServerType(ip, -1, "UNKNOWN")
+                else:
+                    self.logger.error(f"[server.join] {err}")
+                    self.logger.print(f"[server.join] {traceback.format_exc()}")
+                    return self.ServerType(ip, -1, "UNKNOWN")
 
             connection = TCPSocketConnection((ip, port))
 
@@ -239,10 +269,13 @@ class Server:
                 self.logger.print("[server.join] Logged in successfully")
                 return self.ServerType(ip, version, "CRACKED")
             elif _id == 0:
-                self.logger.error(
-                    "[server.join] Failed to login: " + response.read_utf()
-                )
-                return self.ServerType(ip, version, "UNKNOWN")
+                reason = response.read_utf()
+                modded = "Forge" in reason
+                if modded:
+                    self.logger.print("[server.join] Modded server")
+                else:
+                    self.logger.print("[server.join] Vanilla server")
+                return self.ServerType(ip, version, "VANILLA" if not modded else "MODDED")
             elif _id == 3:
                 self.logger.print("[server.join] Setting compression")
                 compression_threshold = response.read_varint()
@@ -266,15 +299,19 @@ class Server:
                 self.logger.debug("[server.join] Reason: " + reason)
                 return self.ServerType(ip, version, "UNKNOWN")
         except TimeoutError:
-            self.logger.error("[server.join] Server timed out")
+            self.logger.print("[server.join] Server timed out")
             return self.ServerType(ip, version, "OFFLINE")
         except OSError:
             self.logger.error(
                 "[server.join] Server did not respond:\n" + traceback.format_exc()
             )
             return self.ServerType(ip, version, "UNKNOWN")
-        except Exception:
-            self.logger.error(f"[server.join] {traceback.format_exc()}")
+        except ConnectionRefusedError:
+            self.logger.error("[server.join] Connection refused")
+            return self.ServerType(ip, version, "OFFLINE")
+        except Exception as err:
+            self.logger.error(f"[server.join] {err}")
+            self.logger.print(f"[server.join] {traceback.format_exc()}")
             return self.ServerType(ip, version, "OFFLINE")
 
     @staticmethod

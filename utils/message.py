@@ -1,27 +1,31 @@
 """Useful functions for sending messages to the user."""
 
 import base64
+import datetime
+import traceback
 from typing import List, Optional
 
 import interactions
-import mcstatus
 from interactions import ActionRow
 
 from .database import Database
 from .logger import Logger
+from .server import Server
 from .text import Text
 
 
 class Message:
     def __init__(
-        self,
-        logger: "Logger",
-        db: "Database",
-        text: "Text",
+            self,
+            logger: "Logger",
+            db: "Database",
+            text: "Text",
+            server: "Server",
     ):
         self.logger = logger
         self.db = db
         self.text = text
+        self.server = server
 
         self.RED = 0xFF0000  # error
         self.GREEN = 0x00FF00  # success
@@ -29,8 +33,7 @@ class Message:
         self.BLUE = 0x0000FF  # info
         self.PINK = 0xFFC0CB  # offline
 
-    @staticmethod
-    def buttons(*args: bool) -> List[ActionRow]:
+    def buttons(self, *args: bool) -> List[ActionRow]:
         """Return disabled buttons (True = disabled)
 
         Args:
@@ -43,7 +46,11 @@ class Message:
                 interactions.StringSelectMenu(): Sort
             ]
         """
-        disabled = list(args) if len(args) == 5 else [False, False, False, False, False]
+        if len(args) != 5:
+            self.logger.error("Invalid number of arguments")
+            disabled = [True, True, True, True, True]
+        else:
+            disabled = list(args)
 
         # button: Next, Previous, Show Players
         rows = [
@@ -86,9 +93,9 @@ class Message:
         return rows
 
     def embed(
-        self,
-        pipeline: list,
-        index: int,
+            self,
+            pipeline: list,
+            index: int,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -102,107 +109,157 @@ class Message:
                 "components": [interactions.ActionRow], # The buttons
             }
         """
-
-        total_servers = self.db.count(pipeline)
-
-        if total_servers == 0:
-            return
-
-        if index >= total_servers:
-            index = 0
-
-        data = self.db.get_doc_at_index(pipeline, index)
-
-        if data is None:
-            return {
-                "embed": self.standardEmbed(
-                    title="Error",
-                    description="No server found",
-                    color=self.YELLOW,
-                ),
-                "components": self.buttons(True, True, True, True, True),
-            }
-
-        isOnline = "🔴"
         try:
-            mcstatus.JavaServer(data["host"]["ip"], data["host"]["port"]).ping()
-            isOnline = "🟢"
-            self.logger.debug("[message.embed] Server is online")
-        except Exception:
-            pass
+            total_servers = self.db.count(pipeline)
 
-        embed = self.standardEmbed(
-            title=f"{isOnline} {data['host']['hostname']}",
-            description=self.text.colorAnsi(data["description"]["text"]),
-            color=self.GREEN if isOnline == "🟢" else self.RED,
-        )
+            if total_servers == 0:
+                return {
+                    "embed": self.standardEmbed(
+                        title="Error",
+                        description="No servers found",
+                        color=self.YELLOW,
+                    ),
+                    "components": self.buttons(True, True, True, True, True),
+                }
 
-        # set the footer to say the index, pipeline, and total servers
-        embed.set_footer(
-            f"Showing {index + 1} of {total_servers} servers in: {pipeline[0]}",
-        )
-        embed.timestamp = self.text.timeNow()
+            if index >= total_servers:
+                index = 0
 
-        # get the server icon
-        if "favicon" in data and isOnline == "🟢":
-            bits = data["favicon"].split(",")[1]
-            with open("favicon.png", "wb") as f:
-                f.write(base64.b64decode(bits))
-            _file = interactions.File(
-                file_name="favicon.png",
-                file="favicon.png",
+            data = self.db.get_doc_at_index(pipeline, index)
+
+            if data is None:
+                return {
+                    "embed": self.standardEmbed(
+                        title="Error",
+                        description="No server found",
+                        color=self.YELLOW,
+                    ),
+                    "components": self.buttons(True, True, True, True, True),
+                }
+
+            # get the server status
+            isOnline = "🔴"
+            data["cracked"] = None
+            try:
+                status = self.server.status(ip=data["ip"], port=data["port"])
+                if status is not None:
+                    isOnline = "🟢"
+
+                    # update the data
+                    data["players"]["max"] = status["players"]["max"]
+                    data["players"]["online"] = status["players"]["online"]
+                    desc = status["description"]
+                    if "extra" in desc and "text" in desc:
+                        self.logger.print("[message.embed] Server has a color and text: " + desc["text"])
+                        desc = ""
+
+                        # example: {"extra": [{"color": "dark_purple", "text": "A Minecraft Server"}], "text": ""}
+                        for extra in status["description"]["extra"]:
+                            if "color" in extra and "text" in extra:
+                                desc += self.text.colorMine(extra["color"]) + extra["text"]
+                            elif "text" in extra:
+                                desc += extra["text"]
+                            else:
+                                desc += extra
+                    elif "text" in desc:
+                        data["description"]["text"] = desc["text"]
+                    else:
+                        data["description"]["text"] = desc
+
+                # detect if the server is cracked
+                joined = self.server.join(ip=data["ip"], port=data["port"])
+                data["cracked"] = joined.getType() == "CRACKED"
+                data["hasForgeData"] = joined.getType() == "MODDED"
+                self.logger.print("[message.embed] Server is online")
+            except Exception as e:
+                self.logger.error("[message.embed] Error: " + str(e))
+                self.logger.print(f"[message.embed] Full traceback: {traceback.format_exc()}")
+
+            # create the embed
+            embed = self.standardEmbed(
+                title=f"{isOnline} {data['ip']}",
+                description=f"```ansi\n{self.text.colorAnsi(data['description']['text'])}\n```",
+                color=self.GREEN if isOnline == "🟢" else self.PINK,
             )
-        else:
-            _file = None
 
-        if _file is not None:
-            embed.set_thumbnail(url="attachment://favicon.png")
-            self.logger.debug("[message.embed] Server has an icon")
+            # set the footer to say the index, pipeline, and total servers
+            embed.set_footer(
+                f"Showing {index + 1} of {total_servers} servers in: {pipeline}",
+            )
+            embed.timestamp = self.text.timeNow()
 
-        # add the version
-        embed.add_field(
-            name="Version",
-            value=f"{data['version']['name']} ({data['version']['protocol']})",
-            inline=True,
-        )
+            # get the server icon
+            if "favicon" in data and isOnline == "🟢":
+                bits = data["favicon"].split(",")[1]
+                with open("favicon.png", "wb") as f:
+                    f.write(base64.b64decode(bits))
+                _file = interactions.File(
+                    file_name="favicon.png",
+                    file="favicon.png",
+                )
+            else:
+                _file = None
 
-        # add the player count
-        embed.add_field(
-            name="Players",
-            value=f"{data['players']['online']}/{data['players']['max']}",
-            inline=True,
-        )
+            if _file is not None:
+                embed.set_thumbnail(url="attachment://favicon.png")
+                self.logger.debug("[message.embed] Server has an icon")
 
-        # is cracked
-        embed.add_field(
-            name="Cracked",
-            value="Yes" if data["cracked"] else "No",
-            inline=True,
-        )
+            # add the version
+            embed.add_field(
+                name="Version",
+                value=f"{data['version']['name']} ({data['version']['protocol']})",
+                inline=True,
+            )
 
-        # last online
-        embed.add_field(
-            name="Time since last scan",
-            value=self.text.timeAgo(data["last_online"]),
-            inline=False,
-        )
+            # add the player count
+            embed.add_field(
+                name="Players",
+                value=f"{data['players']['online']}/{data['players']['max']}",
+                inline=True,
+            )
 
-        return {
-            "embed": embed,
-            "components": self.buttons(
-                total_servers > 1,
-                index > 0,
-                total_servers > 1,
-                "sample" in data,
-                total_servers > 1,
-            ),
-        }
+            # is cracked
+            embed.add_field(
+                name="Cracked",
+                value="Yes" if data["cracked"] else "No",
+                inline=True,
+            )
+
+            # is modded
+            embed.add_field(
+                name="Modded",
+                value="Yes" if data["hasForgeData"] else "No",
+                inline=True,
+            )
+
+            # last online
+            stamp: datetime.datetime = datetime.datetime.utcfromtimestamp(data["lastSeen"])
+            embed.add_field(
+                name="Time since last scan",
+                value=self.text.timeAgo(stamp),
+                inline=True,
+            )
+
+            return {
+                "embed": embed,
+                "components": self.buttons(
+                    index + 1 >= total_servers,
+                    index <= 0,
+                    total_servers <= 0,
+                    "sample" not in data["players"],
+                    total_servers <= 0,
+                ),
+            }
+        except Exception as e:
+            self.logger.error(f"[message.embed] {e}")
+            self.logger.print(f"[message.embed] Full traceback: {traceback.format_exc()}")
+            return None
 
     def standardEmbed(
-        self,
-        title: str,
-        description: str,
-        color: int,
+            self,
+            title: str,
+            description: str,
+            color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 

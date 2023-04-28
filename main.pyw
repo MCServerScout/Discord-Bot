@@ -37,8 +37,8 @@ if DISCORD_WEBHOOK == "":
 # ---------------------------------------------
 
 client = pymongo.MongoClient(MONGO_URL, server_api=pymongo.server_api.ServerApi("1"))  # type: ignore
-db = client["mc"]
-col = db["serverList"]
+db = client["MCSS"]
+col = db["scannedServers"]
 
 utils = utils.Utils(
     col,
@@ -52,9 +52,6 @@ messageLib = utils.message
 
 bot = interactions.Client(
     token=DISCORD_TOKEN,
-    intents=interactions.Intents.GUILD_MESSAGES
-            | interactions.Intents.GUILDS
-            | interactions.Intents.GUILD_INTEGRATIONS,
     status=interactions.Status.ONLINE,
     activity=interactions.Activity(
         type=interactions.ActivityType.GAME, name="Trolling the masses"
@@ -78,11 +75,8 @@ def print(*args, **kwargs):
 
 """example document in the database
 {
-    "host": {
-        "ip": "127.0.0.1",
-        "hostname": "localhost",
-        "port": 25565,
-    }
+    "ip": "127.0.0.1",
+    "port": 25565,
     "version": {
         "name": "1.19.3",
         "protocol": 761
@@ -110,7 +104,7 @@ def print(*args, **kwargs):
     },
     "favicon": "data:image/png;base64,<data>",
     "cracked": false,
-    "oneline": Date(12345),
+    "online": Date(12345),
     "enforcesSecureChat": true
 }
 """
@@ -168,158 +162,129 @@ async def find(
         description: str = None,
         cracked: bool = None,
 ):
-    await ctx.defer()
-
-    # print out the parameters that were passed
-    print(
-        f"find command called by {ctx.author} with parameters:",
-        "version={version},",
-        "max_players={max_players},",
-        "player={player},",
-        "sign={sign},",
-        "description={description}",
-        "cracked={cracked}",
-    )
-
-    logger.print(
-        f"[main.find] find command called by {ctx.author} with parameters:",
-        f"version={version},",
-        f"max_players={max_players},",
-        f"player={player},",
-        f"sign={sign},",
-        f"description={description}",
-        f"cracked={cracked}",
-    )
-
-    msg = await ctx.send(
-        embed=messageLib.standardEmbed(
-            title="Finding servers...",
-            description="This may take a while",
-            color=BLUE,
-        ),
-    )
-
-    # default pipeline
-    pipeline = [{"$match": {"$and": []}}]
-
-    # filter out servers that have max players less than zero
-    pipeline[0]["$match"]["$and"].append({"players.max": {"$gt": 0}})
-    # filter out servers that have more than 150k players online
-    pipeline[0]["$match"]["$and"].append({"players.online": {"$lt": 150000}})
-
-    if player is not None:
-        # get the uuid of the player
-        uuid = playerLib.getUUID(player)
-
-        pipeline[0]["$match"]["$and"].append(
-            {"players.sample": {"$elemMatch": {"id": uuid}}}
-        )
-
-    if version is not None:
-        if version.replace(".", "").isnumeric():
-            pipeline[0]["$match"]["$and"].append(
-                {"version.protocol": {"$regex": f"^{version}"}}
-            )
-        else:
-            pipeline[0]["$match"]["$and"].append(
-                {"version.name": {"$regex": f"^.*{version}.*"}}
-            )
-    if max_players is not None:
-        pipeline[0]["$match"]["$and"].append({"players.max": max_players})
-    if sign is not None:
-        pipeline[0]["$match"]["$and"].append(
-            {"world.signs": {"$elemMatch": {"text": {"$regex": f".*{sign}.*"}}}}
-        )
-    if description is not None:
-        pipeline[0]["$match"]["$and"].append(
-            {"description.text": {"$regex": f".*{description}.*"}}
-        )
-    if cracked is not None:
-        pipeline[0]["$match"]["$and"].append({"cracked": cracked})
-
-    total = databaseLib.count(pipeline)
-
-    if total == 0:
-        await msg.edit(
-            embed=messageLib.standardEmbed(
-                title="No servers found",
-                description="Try again with different parameters",
-                color=RED,
-            ),
-            components=messageLib.buttons(True, True, True, True, True),
-        )
-        return
-
-    # check how many servers match
-    msg = await msg.edit(
-        embed=messageLib.standardEmbed(
-            title="Finding servers...",
-            description=f"Found {total} servers",
-            color=BLUE,
-        ),
-        components=messageLib.buttons(True, True, True, True),
-    )
-
-    index = 0
-
-    stuff = messageLib.embed(
-        pipeline=pipeline,
-        index=index,
-    )
-
-    embed = stuff["embed"]
-    comps = stuff["components"]
-
-    await msg.edit(
-        embed=embed,
-        components=comps,
-    )
-
-
-# command to get the next page of servers
-@interactions.component_callback("next")
-async def next_page(ctx: interactions.ComponentContext):
     try:
-        org = ctx.message
-        await ctx.defer(edit_origin=True)
+        await ctx.defer()
 
-        logger.print(f"[main.next_page] next page called by {ctx.author}")
+        # print out the parameters that were passed
+        print(
+            f"find command called with parameters:",
+            "version={version},",
+            "max_players={max_players},",
+            "player={player},",
+            "sign={sign},",
+            "description={description}",
+            "cracked={cracked}",
+        )
 
-        msg = await ctx.edit_origin(
+        logger.print(
+            f"[main.find] find command called with parameters:",
+            f"version={version},",
+            f"max_players={max_players},",
+            f"player={player},",
+            f"sign={sign},",
+            f"description={description}",
+            f"cracked={cracked}",
+        )
+
+        msg = await ctx.send(
             embed=messageLib.standardEmbed(
-                title="Loading...",
-                description="Loading the next server",
+                title="Finding servers...",
+                description="This may take a while",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True),
+            components=messageLib.buttons(True, True, True, True, True, )
         )
 
-        # get the pipeline and index from the message
-        pipeline = org.embeds[0].footer.text.split(" servers in: ")[1]
-        pipeline = json.loads(pipeline)
+        # default pipeline
+        pipeline = [{"$match": {"$and": []}}]
 
-        index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
+        # filter out servers that have max players less than zero
+        pipeline[0]["$match"]["$and"].append({"players.max": {"$gt": 0}})
+        # filter out servers that have more than 150k players online
+        pipeline[0]["$match"]["$and"].append({"players.online": {"$lt": 150000}})
+
+        if player is not None:
+            # get the uuid of the player
+            uuid = playerLib.getUUID(player)
+
+            pipeline[0]["$match"]["$and"].append(
+                {"players.sample": {"$elemMatch": {"id": uuid}}}
+            )
+
+        if version is not None:
+            if version.isnumeric():
+                pipeline[0]["$match"]["$and"].append(
+                    {"version.protocol": {"$regex": f"^{version}"}}
+                )
+            else:
+                pipeline[0]["$match"]["$and"].append(
+                    {"version.name": {"$regex": f".*{version}.*"}}
+                )
+        if max_players is not None:
+            pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+        if sign is not None:
+            pipeline[0]["$match"]["$and"].append(
+                {"world.signs": {"$elemMatch": {"text": {"$regex": f".*{sign}.*"}}}}
+            )
+        if description is not None:
+            # case-insensitive regex, search through desc.text and through desc.extra.text
+            pipeline[0]["$match"]["$and"].append(
+                {
+                    "$or": [
+                        {"description.text": {"$regex": f".*{description}.*", "$options": "i"}},
+                        {
+                            "description.extra.text": {
+                                "$regex": f".*{description}.*",
+                                "$options": "i",
+                            }
+                        },
+                    ]
+                }
+            )
+        if cracked is not None:
+            pipeline[0]["$match"]["$and"].append({"cracked": cracked})
 
         total = databaseLib.count(pipeline)
 
+        if total == 0:
+            await msg.edit(
+                embed=messageLib.standardEmbed(
+                    title="No servers found",
+                    description="Try again with different parameters",
+                    color=RED,
+                ),
+                components=messageLib.buttons(True, True, True, True, True),
+            )
+            return
+
+        # check how many servers match
         msg = await msg.edit(
             embed=messageLib.standardEmbed(
-                title="Loading...",
-                description=f"Loading server {org.embeds[0].title[2:]} of {total}",
+                title="Finding servers...",
+                description=f"Found {total} servers",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True),
+            components=messageLib.buttons(True, True, True, True, True),
         )
 
-        if index + 1 < total:
-            index += 1
-        else:
-            index = 0
+        index = 0
 
         stuff = messageLib.embed(
             pipeline=pipeline,
             index=index,
         )
+
+        if stuff is None:
+            logger.error("Stuff is None")
+            await msg.edit(
+                embed=messageLib.standardEmbed(
+                    title="No servers found",
+                    description="Try again with different parameters",
+                    color=RED,
+                ),
+                components=messageLib.buttons(True, True, True, True, True),
+            )
+            return
 
         embed = stuff["embed"]
         comps = stuff["components"]
@@ -328,15 +293,93 @@ async def next_page(ctx: interactions.ComponentContext):
             embed=embed,
             components=comps,
         )
-    except Exception:
-        logger.error(f"[main.next_page] {traceback.format_exc()}")
+    except Exception as err:
+        logger.error(f"[main.find] {err}")
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="An error occurred",
+                description="Please try again later",
+                color=RED,
+            ),
+        )
 
-        await ctx.edit_origin(
+
+# command to get the next page of servers
+@interactions.component_callback("next")
+async def next_page(ctx: interactions.ComponentContext):
+    try:
+        org = ctx.message
+        orgFoot = org.embeds[0].footer.text
+        await ctx.defer(edit_origin=True)
+
+        logger.print(f"[main.next_page] next page called")
+
+        msg = await ctx.edit_origin(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description="Loading...",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(True, True, True, True, True),
+        )
+
+        # get the pipeline and index from the message
+        pipeline = orgFoot.split(" servers in: ")[1]
+        pipeline = json.loads(pipeline.replace("'", '"'))
+
+        index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
+
+        total = databaseLib.count(pipeline)
+
+        if index + 1 < total:
+            index += 1
+        else:
+            index = 0
+
+        logger.print(f"[main.next_page] index: {index} total: {total} pipeline: {pipeline}")
+
+        msg = await msg.edit(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description=f"Loading server {index + 1} of {total}",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(True, True, True, True, True),
+        )
+
+        stuff = messageLib.embed(
+            pipeline=pipeline,
+            index=index,
+        )
+
+        if stuff is None:
+            await msg.edit(
+                embed=messageLib.standardEmbed(
+                    title="No servers found",
+                    description="Try again with different parameters",
+                    color=RED,
+                ),
+                components=messageLib.buttons(True, True, True, True, True),
+            )
+
+        embed = stuff["embed"]
+        comps = stuff["components"]
+
+        await msg.edit(
+            embed=embed,
+            components=comps,
+        )
+    except Exception as err:
+        logger.error(f"[main.next_page] {err}")
+        logger.print(f"[main.next_page] Full traceback: {traceback.format_exc()}")
+
+        await ctx.send(
             embed=messageLib.standardEmbed(
                 title="Error",
                 description="An error occurred while trying to get the next page of servers",
                 color=RED,
-            )
+            ),
+            ephemeral=True,
         )
 
 
@@ -345,45 +388,58 @@ async def next_page(ctx: interactions.ComponentContext):
 async def previous_page(ctx: interactions.ComponentContext):
     try:
         org = ctx.message
+        orgFoot = org.embeds[0].footer.text
         await ctx.defer(edit_origin=True)
 
-        logger.print(f"[main.previous_page] previous page called by {ctx.author}")
+        logger.print(f"[main.previous_page] previous page called")
 
         msg = await ctx.edit_origin(
             embed=messageLib.standardEmbed(
                 title="Loading...",
-                description="Loading the previous server",
+                description="Loading...",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True),
+            components=messageLib.buttons(True, True, True, True, True),
         )
 
         # get the pipeline and index from the message
-        pipeline = org.embeds[0].footer.text.split(" servers in: ")[1]
-        pipeline = json.loads(pipeline)
+        pipeline = orgFoot.split(" servers in: ")[1]
+        pipeline = json.loads(pipeline.replace("'", '"'))
 
-        index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
+        index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
 
         total = databaseLib.count(pipeline)
-
-        msg = await msg.edit(
-            embed=messageLib.standardEmbed(
-                title="Loading...",
-                description=f"Loading server {org.embeds[0].title[2:]} of {total}",
-                color=BLUE,
-            ),
-            components=messageLib.buttons(True, True, True),
-        )
 
         if index - 1 >= 0:
             index -= 1
         else:
             index = total - 1
 
+        logger.print(f"[main.previous_page] index: {index} total: {total} pipeline: {pipeline}")
+
+        msg = await msg.edit(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description=f"Loading server {index + 1} of {total}",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(True, True, True, True, True),
+        )
+
         stuff = messageLib.embed(
             pipeline=pipeline,
             index=index,
         )
+
+        if stuff is None:
+            await msg.edit(
+                embed=messageLib.standardEmbed(
+                    title="No servers found",
+                    description="Try again with different parameters",
+                    color=RED,
+                ),
+                components=messageLib.buttons(True, True, True, True, True),
+            )
 
         embed = stuff["embed"]
         comps = stuff["components"]
@@ -392,15 +448,17 @@ async def previous_page(ctx: interactions.ComponentContext):
             embed=embed,
             components=comps,
         )
-    except Exception:
-        logger.error(f"[main.previous_page] {traceback.format_exc()}")
+    except Exception as err:
+        logger.error(f"[main.previous_page] {err}")
+        logger.print(f"[main.previous_page] Full traceback: {traceback.format_exc()}")
 
-        await ctx.edit_origin(
+        await ctx.send(
             embed=messageLib.standardEmbed(
                 title="Error",
                 description="An error occurred while trying to get the previous page of servers",
                 color=RED,
-            )
+            ),
+            ephemeral=True,
         )
 
 
@@ -410,7 +468,7 @@ async def players(ctx: interactions.ComponentContext):
     try:
         await ctx.defer(ephemeral=True)
 
-        logger.print(f"[main.players] players called by {ctx.author}")
+        logger.print(f"[main.players] players called")
 
         org = ctx.message
 
@@ -418,9 +476,9 @@ async def players(ctx: interactions.ComponentContext):
         pipeline = json.loads(org.embeds[0].footer.text.split(" servers in: ")[1])
         index = int(org.embeds[0].footer.text.split(" servers in: ")[0].split(" ")[-1])
 
-        host = databaseLib.get_doc_at_index(pipeline, index)["host"]
+        host = databaseLib.get_doc_at_index(pipeline, index)
 
-        player_list = await playerLib.playerList(host)
+        player_list = await playerLib.playerList(host["ip"], host["port"])
 
         if player_list is None:
             await ctx.send(
@@ -465,14 +523,10 @@ async def jump(ctx: interactions.ComponentContext):
     try:
         original = ctx.message
 
-        await ctx.defer(ephemeral=True)
-
-        logger.print(f"[main.jump] jump called by {ctx.author}")
-
-        org = ctx.message
+        logger.print(f"[main.jump] jump called")
 
         # get the pipeline and index from the message
-        pipeline = json.loads(org.embeds[0].footer.text.split(" servers in: ")[1])
+        pipeline = json.loads(original.embeds[0].footer.text.split(" servers in: ")[1].replace("'", '"'))
 
         # get the total number of servers
         total = databaseLib.count(pipeline)
@@ -514,9 +568,15 @@ async def jump(ctx: interactions.ComponentContext):
                     ephemeral=True,
                 )
                 return
-
-            # get the original pipeline
-            pipeline = json.loads(original.embeds[0].footer.text.split(" servers in: ")[1])
+            else:
+                await modal_ctx.send(
+                    embed=messageLib.standardEmbed(
+                        title="Success",
+                        description=f"Jumping to index {index}",
+                        color=GREEN,
+                    ),
+                    ephemeral=True,
+                )
 
             # get the new embed
             stuff = messageLib.embed(
@@ -538,8 +598,9 @@ async def jump(ctx: interactions.ComponentContext):
                 ),
                 ephemeral=True,
             )
-    except Exception:
-        logger.error(f"[main.jump] {traceback.format_exc()}")
+    except Exception as err:
+        logger.error(f"[main.jump] {err}")
+        logger.print(f"[main.jump] Full traceback: {traceback.format_exc()}")
         await ctx.send(
             embed=messageLib.standardEmbed(
                 title="Error",
@@ -555,12 +616,15 @@ async def jump(ctx: interactions.ComponentContext):
 async def sort(ctx: interactions.ComponentContext):
     try:
         org = ctx.message
+        orgFooter = org.embeds[0].footer
         await ctx.defer(ephemeral=True)
 
-        logger.print(f"[main.sort] sort called by {ctx.author}")
+        logger.print(f"[main.sort] sort called")
 
         # get the pipeline
-        pipeline = json.loads(org.embeds[0].footer.text.split(" servers in: ")[1])
+        pipelineCP = json.loads(orgFooter.text.split(" servers in: ")[1].replace("'", '"'))
+        logger.print(f"[main.sort] pipeline: {pipelineCP}")
+        pipeline = pipelineCP.copy()
 
         # send a message with a string menu that express after 60s
         stringMenu = interactions.StringSelectMenu(
@@ -602,9 +666,6 @@ async def sort(ctx: interactions.ComponentContext):
         )
 
         try:
-            def check(component: interactions.StringSelectMenu):
-                return component.options[0].value in ["players", "limit", "version", "random"]
-
             # wait for the response
             menu = await ctx.bot.wait_for_component(timeout=60, components=stringMenu)
         except asyncio.TimeoutError:
@@ -621,16 +682,17 @@ async def sort(ctx: interactions.ComponentContext):
             # get the value
             value = menu.ctx.values[0]
             logger.print(f"[main.sort] sort method: {value}")
+            sortMethod = {}
 
             match value:
                 case "players":
-                    pipeline["sort"] = "players"
+                    sortMethod = {"$sort": {"players.online": -1}}
                 case "limit":
-                    pipeline["sort"] = "limit"
+                    sortMethod = {"$sort": {"players.max": -1}}
                 case "version":
-                    pipeline["sort"] = "version"
+                    sortMethod = {"$sort": {"version": -1}}
                 case "random":
-                    pipeline["sample"] = 1
+                    sortMethod = {"$sample": {"size": 1}}
                 case _:
                     await ctx.send(
                         embed=messageLib.standardEmbed(
@@ -640,6 +702,17 @@ async def sort(ctx: interactions.ComponentContext):
                         ),
                         ephemeral=True,
                     )
+
+            # loop through the pipeline and replace the sort method
+            for i in range(len(pipeline)):
+                if "$sort" in pipeline[i] or "$sample" in pipeline[i]:
+                    pipeline[i] = sortMethod
+                    break
+            else:
+                pipeline.append(sortMethod)
+
+            # limit to 1k servers
+            pipeline.append({"$limit": 1000})
 
             # get the new embed
             stuff = messageLib.embed(
@@ -652,8 +725,11 @@ async def sort(ctx: interactions.ComponentContext):
                 embed=stuff["embed"],
                 components=stuff["components"],
             )
-    except Exception:
-        logger.error(f"[main.sort] {traceback.format_exc()}")
+    except AttributeError:
+        logger.print(f"[main.sort] AttributeError")
+    except Exception as err:
+        logger.error(f"[main.sort] {err}")
+        logger.print(f"[main.sort] Full traceback: {traceback.format_exc()}")
         await ctx.send(
             embed=messageLib.standardEmbed(
                 title="Error",
@@ -704,15 +780,13 @@ async def on_ready():
 
 # main
 if __name__ == "__main__":
-    while True:
-        try:
-            # start the bot
-            bot.start()
-        except KeyboardInterrupt:
-            # stop the bot
-            asyncio.run(bot.close())
-            break
-        except Exception as e:
-            # log the error
-            logger.critical(f"[main] Error: {e}")
-            time.sleep(5)
+    try:
+        # start the bot
+        bot.start()
+    except KeyboardInterrupt:
+        # stop the bot
+        asyncio.run(bot.close())
+    except Exception as e:
+        # log the error
+        logger.critical(f"[main] Error: {e}")
+        time.sleep(5)
