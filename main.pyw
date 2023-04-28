@@ -151,6 +151,12 @@ def print(*args, **kwargs):
             type=interactions.OptionType.BOOLEAN,
             required=False,
         ),
+        SlashCommandOption(
+            name="has_favicon",
+            description="If the server has a favicon",
+            type=interactions.OptionType.BOOLEAN,
+            required=False,
+        )
     ],
 )
 async def find(
@@ -161,6 +167,7 @@ async def find(
         sign: str = None,
         description: str = None,
         cracked: bool = None,
+        has_favicon: bool = None,
 ):
     try:
         await ctx.defer()
@@ -244,6 +251,11 @@ async def find(
             )
         if cracked is not None:
             pipeline[0]["$match"]["$and"].append({"cracked": cracked})
+        if has_favicon is not None:
+            # check that favicon is not null and that its string length is greater than 0
+            pipeline[0]["$match"]["$and"].append(
+                {"favicon": {"$exists": True, "$ne": None, "$gt": ""}}
+            )
 
         total = databaseLib.count(pipeline)
 

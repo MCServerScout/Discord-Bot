@@ -22,10 +22,11 @@ class Utils:
         """Initializes the utils class
 
         Args:
-            log (Logger): The logger class
-            col (pymongo.collection.Collection): The database collection
-            debug (bool, optional): Show debugging. Defaults to True.
-            level (int, optional): The logging level. Defaults to 20 (INFO).
+            col (pymongo.collection.Collection): The collection to use
+            discord_webhook (str): The discord webhook to use
+            log (Logger, optional): The logger to use. Defaults to None.
+            debug (bool, optional): Whether to use debug mode. Defaults to True.
+            level (int, optional): The logging level to use. Defaults to 20.
         """
         self.col = col
         self.logLevel = level
