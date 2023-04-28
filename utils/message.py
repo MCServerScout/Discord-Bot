@@ -156,11 +156,11 @@ class Message:
                         # example: {"extra": [{"color": "dark_purple", "text": "A Minecraft Server"}], "text": ""}
                         for extra in status["description"]["extra"]:
                             if "color" in extra and "text" in extra:
-                                desc += self.text.colorMine(extra["color"]) + extra["text"]
+                                desc += self.text.colorMine(extra["color"]) + self.text.cFilter(extra["text"])
                             elif "text" in extra:
-                                desc += extra["text"]
+                                desc += self.text.cFilter(extra["text"])
                             else:
-                                desc += extra
+                                desc += self.text.cFilter(extra)
                     elif "text" in desc:
                         data["description"]["text"] = desc["text"]
                     else:

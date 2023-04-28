@@ -30,6 +30,15 @@ class Text:
             text = text.strip()
 
         text = text.replace("@", "@ ")  # fix @ mentions
+
+        # escape all unicode chars
+        text = "".join(
+            char
+            if unicodedata.category(char) in ("Cc", "Cf", "Cn", "Co", "Cs")
+            else char
+            for char in text
+        )
+
         return text
 
     def ansiColor(self, text: str) -> str:

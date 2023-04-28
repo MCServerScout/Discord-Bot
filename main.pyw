@@ -740,6 +740,97 @@ async def sort(ctx: interactions.ComponentContext):
         )
 
 
+# other commands
+# -----------------------------------------------------------------------------
+
+
+# command to get stats about the server
+@slash_command(
+    name="stats",
+    description="Get stats about the server",
+)
+async def stats(ctx: interactions.SlashContext):
+    await ctx.defer()
+
+    try:
+        mainEmbed = messageLib.standardEmbed(
+            title="Stats",
+            description="General stats about the database",
+            color=BLUE,
+        )
+
+        msg = await ctx.send(embed=mainEmbed, )
+
+        # get the stats
+        totalServers = databaseLib.col.count_documents({})
+
+        mainEmbed.add_field(
+            name="Total Servers",
+            value=totalServers,
+            inline=True,
+        )
+        msg = await msg.edit(embed=mainEmbed, )
+
+        # get the total player count, ignoring servers with over 150k players and less than 1 player
+        pipeline = [
+            {"$match": {"players.online": {"$lt": 150000, "$gt": 0}}},
+            {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
+        ]
+        totalPlayers = databaseLib.aggregate(pipeline)[0]["total"]
+
+        mainEmbed.add_field(
+            name="Total Players",
+            value=totalPlayers,
+            inline=True,
+        )
+        msg = await msg.edit(embed=mainEmbed, )
+
+        # get the total number of players in players.sample
+        pipeline = [
+            {"$unwind": "$players.sample"},
+            {"$group": {"_id": None, "total": {"$sum": 1}}},
+        ]
+        totalSamplePlayers = databaseLib.aggregate(pipeline)[0]["total"]
+
+        mainEmbed.add_field(
+            name="Total Logged Players",
+            value=totalSamplePlayers,
+            inline=True,
+        )
+        msg = await msg.edit(embed=mainEmbed, )
+
+        # get the five most common server version names
+        pipeline = [
+            {"$match": {"version.name": {"$ne": None}}},
+            {"$group": {"_id": "$version.name", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 5},
+        ]
+        topFiveVersions = list(databaseLib.aggregate(pipeline))
+        logger.print(f"[main.stats] topFiveVersions: {topFiveVersions}")
+
+        mainEmbed.add_field(
+            name="Top Five Versions",
+            value="```css\n" + "\n".join([
+                f"{i['_id']}: {round(i['count'] / totalServers * 100, 2)}%"
+                for i in topFiveVersions
+            ]) + "\n```",
+            inline=True,
+        )
+        msg = await msg.edit(embed=mainEmbed, )
+    except Exception as err:
+        logger.error(f"[main.stats] {err}")
+        logger.print(f"[main.stats] Full traceback: {traceback.format_exc()}")
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to get stats",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+
+
 # general help
 @slash_command(
     name="help",
