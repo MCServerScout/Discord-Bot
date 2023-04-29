@@ -154,10 +154,10 @@ class Server:
             try:
                 version = server.status().version.protocol if version == -1 else version
             except TimeoutError:
-                self.logger.error(f"[server.status] Connection error (timeout)")
+                self.logger.print(f"[server.status] Connection error (timeout)")
                 return None
             except ConnectionRefusedError:
-                self.logger.error(f"[server.status] Connection error (refused)")
+                self.logger.print(f"[server.status] Connection error (refused)")
                 return None
             except Exception as err:
                 if "An existing connection was forcibly closed by the remote host" in str(err):
@@ -210,7 +210,7 @@ class Server:
                 data = json.loads(data.decode("utf8"))
                 return data
         except TimeoutError:
-            self.logger.error(f"[server.status] Connection error (timeout)")
+            self.logger.print(f"[server.status] Connection error (timeout)")
             return None
 
     def join(
@@ -226,14 +226,14 @@ class Server:
             try:
                 version = server.status().version.protocol if version == -1 else version
             except TimeoutError:
-                self.logger.error(f"[server.join] Connection error (timeout)")
+                self.logger.print(f"[server.join] Connection error (timeout)")
                 return self.ServerType(ip, -1, "UNKNOWN")
             except ConnectionRefusedError:
-                self.logger.error(f"[server.join] Connection error (refused)")
+                self.logger.print(f"[server.join] Connection error (refused)")
                 return self.ServerType(ip, -1, "UNKNOWN")
             except Exception as err:
                 if "An existing connection was forcibly closed by the remote host" in str(err):
-                    self.logger.error(f"[server.join] Connection error")
+                    self.logger.print(f"[server.join] Connection error")
                     return self.ServerType(ip, -1, "UNKNOWN")
                 else:
                     self.logger.error(f"[server.join] {err}")
@@ -292,8 +292,16 @@ class Server:
                 self.logger.print("[server.join] Logged in successfully")
 
                 return self.ServerType(ip, version, "CRACKED")
+            elif _id == 0:
+                reason = response.read_utf()
+                modded = "Forge" in reason
+                if modded:
+                    self.logger.print("[server.join] Modded server")
+                else:
+                    self.logger.print("[server.join] Vanilla server")
+                return self.ServerType(ip, version, "VANILLA" if not modded else "MODDED")
             else:
-                self.logger.error("[server.join] Unknown response: " + str(_id))
+                self.logger.warning("[server.join] Unknown response: " + str(_id))
                 try:
                     reason = response.read_utf()
                 except Exception:
@@ -310,7 +318,10 @@ class Server:
             )
             return self.ServerType(ip, version, "UNKNOWN")
         except ConnectionRefusedError:
-            self.logger.error("[server.join] Connection refused")
+            self.logger.print("[server.join] Connection refused")
+            return self.ServerType(ip, version, "OFFLINE")
+        except ConnectionResetError:
+            self.logger.print("[server.join] Connection reset")
             return self.ServerType(ip, version, "OFFLINE")
         except Exception as err:
             self.logger.error(f"[server.join] {err}")

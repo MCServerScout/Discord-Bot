@@ -143,8 +143,6 @@ class Message:
             try:
                 status = self.server.status(ip=data["ip"], port=data["port"])
                 if status is not None:
-                    isOnline = "🟢"
-
                     # update the data
                     data["players"]["max"] = status["players"]["max"]
                     data["players"]["online"] = status["players"]["online"]
@@ -170,7 +168,9 @@ class Message:
                 joined = self.server.join(ip=data["ip"], port=data["port"])
                 data["cracked"] = joined.getType() == "CRACKED"
                 data["hasForgeData"] = joined.getType() == "MODDED"
-                self.logger.print("[message.embed] Server is online")
+
+                isOnline = "🟢"
+                self.logger.print("[message.embed] Server is online: " + isOnline)
             except Exception as e:
                 self.logger.error("[message.embed] Error: " + str(e))
                 self.logger.print(f"[message.embed] Full traceback: {traceback.format_exc()}")
@@ -178,13 +178,13 @@ class Message:
             # create the embed
             embed = self.standardEmbed(
                 title=f"{isOnline} {data['ip']}",
-                description=f"```ansi\n{self.text.colorAnsi(data['description']['text'])}\n```",
+                description=f"```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
                 color=self.GREEN if isOnline == "🟢" else self.PINK,
             )
 
             # set the footer to say the index, pipeline, and total servers
             embed.set_footer(
-                f"Showing {index + 1} of {total_servers} servers in: {pipeline}",
+                f"Showing {index + 1} of {total_servers} servers in: {str(pipeline).replace('True', 'true').replace('False', 'false')}",
             )
             embed.timestamp = self.text.timeNow()
 
@@ -207,7 +207,7 @@ class Message:
             # add the version
             embed.add_field(
                 name="Version",
-                value=f"{data['version']['name']} ({data['version']['protocol']})",
+                value=f"{self.text.cFilter(data['version']['name'])} ({data['version']['protocol']})",
                 inline=True,
             )
 

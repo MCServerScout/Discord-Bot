@@ -104,7 +104,8 @@ def print(*args, **kwargs):
     },
     "favicon": "data:image/png;base64,<data>",
     "cracked": false,
-    "online": Date(12345),
+    "online": 12345,
+    "hasForgeData": true,
     "enforcesSecureChat": true
 }
 """
@@ -124,6 +125,12 @@ def print(*args, **kwargs):
         SlashCommandOption(
             name="max_players",
             description="The max players of the server",
+            type=interactions.OptionType.INTEGER,
+            required=False,
+        ),
+        SlashCommandOption(
+            name="online_players",
+            description="The online players of the server",
             type=interactions.OptionType.INTEGER,
             required=False,
         ),
@@ -163,6 +170,7 @@ async def find(
         ctx: interactions.SlashContext,
         version: str = None,
         max_players: int = None,
+        online_players: int = None,
         player: str = None,
         sign: str = None,
         description: str = None,
@@ -173,24 +181,16 @@ async def find(
         await ctx.defer()
 
         # print out the parameters that were passed
-        print(
-            f"find command called with parameters:",
-            "version={version},",
-            "max_players={max_players},",
-            "player={player},",
-            "sign={sign},",
-            "description={description}",
-            "cracked={cracked}",
-        )
-
         logger.print(
             f"[main.find] find command called with parameters:",
             f"version={version},",
             f"max_players={max_players},",
+            f"online_players={online_players},",
             f"player={player},",
             f"sign={sign},",
             f"description={description}",
             f"cracked={cracked}",
+            f"has_favicon={has_favicon}",
         )
 
         msg = await ctx.send(
@@ -214,12 +214,32 @@ async def find(
             # get the uuid of the player
             uuid = playerLib.getUUID(player)
 
+            if uuid == "---n/a---":
+                await msg.edit(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description=f"Player `{player}` not a valid player",
+                        color=RED,
+                    ),
+                    components=messageLib.buttons(True, True, True, True, True, )
+                )
+                return
+            else:
+                msg = await msg.edit(
+                    embed=messageLib.standardEmbed(
+                        title="Finding servers...",
+                        description="Looking for servers with " + player + " on them",
+                        color=BLUE,
+                    ),
+                    components=messageLib.buttons(True, True, True, True, True, )
+                )
+
             pipeline[0]["$match"]["$and"].append(
                 {"players.sample": {"$elemMatch": {"id": uuid}}}
             )
 
         if version is not None:
-            if version.isnumeric():
+            if version.isnumeric() and '.' not in version:
                 pipeline[0]["$match"]["$and"].append(
                     {"version.protocol": {"$regex": f"^{version}"}}
                 )
@@ -229,6 +249,8 @@ async def find(
                 )
         if max_players is not None:
             pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+        if online_players is not None:
+            pipeline[0]["$match"]["$and"].append({"players.online": online_players})
         if sign is not None:
             pipeline[0]["$match"]["$and"].append(
                 {"world.signs": {"$elemMatch": {"text": {"$regex": f".*{sign}.*"}}}}
@@ -252,10 +274,7 @@ async def find(
         if cracked is not None:
             pipeline[0]["$match"]["$and"].append({"cracked": cracked})
         if has_favicon is not None:
-            # check that favicon is not null and that its string length is greater than 0
-            pipeline[0]["$match"]["$and"].append(
-                {"favicon": {"$exists": True, "$ne": None, "$gt": ""}}
-            )
+            pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
 
         total = databaseLib.count(pipeline)
 
@@ -374,6 +393,7 @@ async def next_page(ctx: interactions.ComponentContext):
                 ),
                 components=messageLib.buttons(True, True, True, True, True),
             )
+            return
 
         embed = stuff["embed"]
         comps = stuff["components"]
@@ -453,6 +473,7 @@ async def previous_page(ctx: interactions.ComponentContext):
                 ),
                 components=messageLib.buttons(True, True, True, True, True),
             )
+            return
 
         embed = stuff["embed"]
         comps = stuff["components"]
@@ -745,6 +766,15 @@ async def sort(ctx: interactions.ComponentContext):
             await org.edit(
                 embed=stuff["embed"],
                 components=stuff["components"],
+            )
+
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Success",
+                    description="Sorted the servers",
+                    color=GREEN,
+                ),
+                ephemeral=True,
             )
     except AttributeError:
         logger.print(f"[main.sort] AttributeError")
