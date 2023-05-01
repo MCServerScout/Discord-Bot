@@ -333,14 +333,25 @@ async def find(
             components=comps,
         )
     except Exception as err:
-        logger.error(f"[main.find] {err}")
-        await ctx.send(
-            embed=messageLib.standardEmbed(
-                title="An error occurred",
-                description="Please try again later",
-                color=RED,
-            ),
-        )
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+        else:
+            logger.error(f"[main.find] {err}")
+            logger.print(f"[main.find] {traceback.format_exc()}")
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Please try again later",
+                    color=RED,
+                ),
+            )
 
 
 # command to get the next page of servers
@@ -864,6 +875,11 @@ async def streamers(ctx: interactions.SlashContext):
         else:
             clientId = modal_ctx.responses["clientId"]
             clientSecret = modal_ctx.responses["clientSecret"]
+
+            streamers = await twitchLib.getStreamers(
+                clientId=clientId,
+                clientSecret=clientSecret,
+            )
 
     except Exception as err:
         logger.error(f"[main.streamers] {err}")
