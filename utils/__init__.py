@@ -6,6 +6,7 @@ from .message import Message
 from .player import Player
 from .server import Server
 from .text import Text
+from .twitch import Twitch
 
 
 class Utils:
@@ -40,6 +41,7 @@ class Utils:
         self.database = Database(self.col, self.logger)
 
         self.text = Text(logger=self.logger)
+        self.twitch = Twitch(logger=self.logger)
 
         self.server = Server(db=self.database, logger=self.logger)
 

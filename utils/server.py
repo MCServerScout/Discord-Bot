@@ -31,9 +31,9 @@ class Server:
             return self.type
 
     def __init__(
-        self,
-        db: "Database",
-        logger: "Logger",
+            self,
+            db: "Database",
+            logger: "Logger",
     ):
         self.db = db
         self.logger = logger
@@ -131,10 +131,10 @@ class Server:
             return None
 
     def status(
-        self,
-        ip: str,
-        port: int = 25565,
-        version: int = -1,
+            self,
+            ip: str,
+            port: int = 25565,
+            version: int = -1,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -214,11 +214,11 @@ class Server:
             return None
 
     def join(
-        self,
-        ip: str,
-        port: int,
-        version: int = -1,
-        player_username: str = "Pilot1782",
+            self,
+            ip: str,
+            port: int,
+            version: int = -1,
+            player_username: str = "Pilot1782",
     ) -> ServerType:
         try:
             # get info on the server
@@ -313,9 +313,7 @@ class Server:
             self.logger.print("[server.join] Server timed out")
             return self.ServerType(ip, version, "OFFLINE")
         except OSError:
-            self.logger.error(
-                "[server.join] Server did not respond:\n" + traceback.format_exc()
-            )
+            self.logger.error("[server.join] Server did not respond")
             return self.ServerType(ip, version, "UNKNOWN")
         except ConnectionRefusedError:
             self.logger.print("[server.join] Connection refused")

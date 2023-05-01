@@ -160,9 +160,14 @@ class Message:
                             else:
                                 desc += self.text.cFilter(extra)
                     elif "text" in desc:
-                        data["description"]["text"] = desc["text"]
+                        desc = desc["text"]
                     else:
-                        data["description"]["text"] = desc
+                        desc = desc
+
+                    if "text" in data["description"]:
+                        data["description"]["text"] = self.text.cFilter(desc)
+                    else:
+                        data["description"] = {"text": self.text.cFilter(desc)}
 
                 # detect if the server is cracked
                 joined = self.server.join(ip=data["ip"], port=data["port"])
@@ -245,9 +250,9 @@ class Message:
                 "components": self.buttons(
                     index + 1 >= total_servers,
                     index <= 0,
-                    total_servers <= 0,
+                    total_servers <= 1,
                     "sample" not in data["players"],
-                    total_servers <= 0,
+                    total_servers <= 1,
                 ),
             }
         except Exception as e:

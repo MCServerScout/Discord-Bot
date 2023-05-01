@@ -49,6 +49,7 @@ logger = utils.logger
 databaseLib = utils.database
 playerLib = utils.player
 messageLib = utils.message
+twitchLib = utils.twitch
 
 bot = interactions.Client(
     token=DISCORD_TOKEN,
@@ -211,8 +212,11 @@ async def find(
         pipeline[0]["$match"]["$and"].append({"players.online": {"$lt": 150000}})
 
         if player is not None:
-            # get the uuid of the player
-            uuid = playerLib.getUUID(player)
+            if len(player) < 16:
+                # get the uuid of the player
+                uuid = playerLib.getUUID(player)
+            else:
+                uuid = player.replace("-", "")
 
             if uuid == "---n/a---":
                 await msg.edit(
@@ -233,6 +237,9 @@ async def find(
                     ),
                     components=messageLib.buttons(True, True, True, True, True, )
                 )
+
+            # insert dashes every 8 characters
+            uuid = uuid[0:8] + "-" + uuid[8:12] + "-" + uuid[12:16] + "-" + uuid[16:20] + "-" + uuid[20:32]
 
             pipeline[0]["$match"]["$and"].append(
                 {"players.sample": {"$elemMatch": {"id": uuid}}}
@@ -659,7 +666,6 @@ async def sort(ctx: interactions.ComponentContext):
     try:
         org = ctx.message
         orgFooter = org.embeds[0].footer
-        await ctx.defer(ephemeral=True)
 
         logger.print(f"[main.sort] sort called")
 
@@ -753,6 +759,12 @@ async def sort(ctx: interactions.ComponentContext):
             else:
                 pipeline.append(sortMethod)
 
+            # loop through the pipeline and remove the limit
+            for i in range(len(pipeline)):
+                if "$limit" in pipeline[i]:
+                    pipeline.pop(i)
+                    break
+
             # limit to 1k servers
             pipeline.append({"$limit": 1000})
 
@@ -793,6 +805,78 @@ async def sort(ctx: interactions.ComponentContext):
 
 # other commands
 # -----------------------------------------------------------------------------
+
+
+# command to get a list of streamers playing on a server in the database
+@slash_command(
+    name="streamers",
+    description="Get a list of servers with streams on them",
+)
+async def streamers(ctx: interactions.SlashContext):
+    # remove this when the command is implemented
+    await ctx.send(
+        embed=messageLib.standardEmbed(
+            title="Not implemented",
+            description="This command is not implemented yet",
+            color=RED,
+        ),
+        ephemeral=True,
+    )
+    return
+
+    try:
+        # spawn a modal asking for client id and secret
+        clientId = interactions.ShortText(
+            label="Client ID",
+            placeholder="Client ID",
+            custom_id="clientId",
+            min_length=1,
+            max_length=100,
+        )
+        clientSecret = interactions.ShortText(
+            label="Client Secret",
+            placeholder="Client Secret",
+            custom_id="clientSecret",
+            min_length=1,
+            max_length=100,
+        )
+
+        modal = interactions.Modal(
+            clientId, clientSecret,
+            title="Auth",
+        )
+
+        await ctx.send_modal(modal)
+
+        try:
+            modal_ctx = await ctx.bot.wait_for_modal(timeout=60, modal=modal)
+        except asyncio.TimeoutError:
+            logger.print(f"[main.streamers] Timed out")
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="Timed out",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+        else:
+            clientId = modal_ctx.responses["clientId"]
+            clientSecret = modal_ctx.responses["clientSecret"]
+
+    except Exception as err:
+        logger.error(f"[main.streamers] {err}")
+        logger.print(f"[main.streamers] Full traceback: {traceback.format_exc()}")
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to get the client id and secret",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+        return
 
 
 # command to get stats about the server
@@ -867,7 +951,7 @@ async def stats(ctx: interactions.SlashContext):
             ]) + "\n```",
             inline=True,
         )
-        msg = await msg.edit(embed=mainEmbed, )
+        await msg.edit(embed=mainEmbed, )
     except Exception as err:
         logger.error(f"[main.stats] {err}")
         logger.print(f"[main.stats] Full traceback: {traceback.format_exc()}")
@@ -896,6 +980,11 @@ async def help_command(ctx: interactions.SlashContext):
         .add_field(
             name="find",
             value="Find a server by anything in the database",
+            inline=False,
+        )
+        .add_field(
+            name="getStreamers",
+            value="Get a list of servers with streams on them",
             inline=False,
         )
         .add_field(
