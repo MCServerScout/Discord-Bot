@@ -50,6 +50,7 @@ databaseLib = utils.database
 playerLib = utils.player
 messageLib = utils.message
 twitchLib = utils.twitch
+textLib = utils.text
 
 bot = interactions.Client(
     token=DISCORD_TOKEN,
@@ -967,6 +968,25 @@ async def stats(ctx: interactions.SlashContext):
             ]) + "\n```",
             inline=True,
         )
+        msg = await msg.edit(embed=mainEmbed, )
+
+        # get the five most common server version ids
+        pipeline = [
+            {"$match": {"version.protocol": {"$ne": None}}},
+            {"$group": {"_id": "$version.protocol", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 5},
+        ]
+        topFiveVersionIds = list(databaseLib.aggregate(pipeline))
+
+        mainEmbed.add_field(
+            name="Top Five Version IDs",
+            value="```css\n" + "\n".join([
+                f"{textLib.protocolStr(i['_id'])}: {round(i['count'] / totalServers * 100, 2)}%"
+                for i in topFiveVersionIds
+            ]) + "\n```",
+            inline=True,
+        )
         await msg.edit(embed=mainEmbed, )
     except Exception as err:
         logger.error(f"[main.stats] {err}")
@@ -1036,3 +1056,5 @@ if __name__ == "__main__":
         # log the error
         logger.critical(f"[main] Error: {e}")
         time.sleep(5)
+
+# TODO: add a command to get a list of servers that have active streamers playing

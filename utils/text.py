@@ -201,3 +201,94 @@ class Text:
             out += f"{seconds} second{'s' if seconds > 1 else ''}"
 
         return out
+
+    @staticmethod
+    def protocolStr(protocol: int) -> str:
+        """Returns a string of the protocol version
+
+        Args:
+            protocol (int): The protocol version
+
+        Returns:
+            str: The string of the protocol version
+        """
+        out = "1."
+        match protocol:
+            case 3:
+                out += "7.1"
+            case 4:
+                out += "7.5"
+            case 5:
+                out += "7.10"
+            case 47:
+                out += "8.9"
+            case 107:
+                out += "9"
+            case 108:
+                out += "9.1"
+            case 109:
+                out += "9.2"
+            case 110:
+                out += "9.4"
+            case 210:
+                out += "10.2"
+            case 315:
+                out += "11"
+            case 316:
+                out += "11.2"
+            case 335:
+                out += "12"
+            case 338:
+                out += "12.1"
+            case 340:
+                out += "12.2"
+            case 393:
+                out += "13"
+            case 401:
+                out += "13.1"
+            case 404:
+                out += "13.2"
+            case 477:
+                out += "14"
+            case 480:
+                out += "14.1"
+            case 485:
+                out += "14.2"
+            case 490:
+                out += "14.3"
+            case 498:
+                out += "14.4"
+            case 573:
+                out += "15"
+            case 575:
+                out += "15.1"
+            case 578:
+                out += "15.2"
+            case 735:
+                out += "16"
+            case 736:
+                out += "16.1"
+            case 751:
+                out += "16.2"
+            case 753:
+                out += "16.3"
+            case 754:
+                out += "16.5"
+            case 755:
+                out += "17"
+            case 756:
+                out += "17.1"
+            case 757:
+                out += "18.1"
+            case 758:
+                out += "18.2"
+            case 759:
+                out += "19"
+            case 760:
+                out += "19.2"
+            case 761:
+                out += "19.3"
+            case 762:
+                out += "19.4"
+
+        return out
