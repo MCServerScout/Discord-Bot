@@ -5,13 +5,13 @@ will be adding more features as time goes on.
 
 ## TODO
 
-- [ ] Access a database of the servers
+- [X] Access a database of the servers
 - [X] Have filters to sort through
-- [ ] Sort through the servers
-  - [ ] players online
-  - [ ] max players
-  - [ ] version id
-  - [ ] random
+- [X] Sort through the servers
+  - [X] players online
+  - [X] max players
+  - [X] version id
+  - [X] random
 - [X] Get info about a selected server
 - [X] Get a player list
 
@@ -32,6 +32,18 @@ will be adding more features as time goes on.
 
 This command will find a server based on the filter and value you give it.
 You can use multiple filters at once, and the bot will find a server that matches all of them.
+
+### Stats
+
+`/stats`
+
+This command gives stats about the database
+
+### Streamers
+
+`/streamers`
+
+This command will show you a list of all the streamers that are currently streaming on a server in the database.
 
 ### Help
 
