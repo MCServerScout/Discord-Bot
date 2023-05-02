@@ -835,11 +835,12 @@ async def streamers(ctx: interactions.SlashContext):
 
         await ctx.send_modal(modal)
 
+        modal_ctx = ctx
         try:
             modal_ctx = await ctx.bot.wait_for_modal(timeout=60, modal=modal)
         except asyncio.TimeoutError:
             logger.print(f"[main.streamers] Timed out")
-            await ctx.send(
+            await modal_ctx.send(
                 embed=messageLib.standardEmbed(
                     title="Error",
                     description="Timed out",
@@ -852,9 +853,18 @@ async def streamers(ctx: interactions.SlashContext):
             clientId = modal_ctx.responses["clientId"]
             clientSecret = modal_ctx.responses["clientSecret"]
 
-            streams = await twitchLib.getStreamers(
-                clientId=clientId,
-                clientSecret=clientSecret,
+            await modal_ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Success",
+                    description="Got the client id and secret",
+                    color=GREEN,
+                ),
+                ephemeral=True,
+            )
+
+            streams = twitchLib.getStreamers(
+                client_id=clientId,
+                client_secret=clientSecret,
             )
 
             if streams is None or streams == []:

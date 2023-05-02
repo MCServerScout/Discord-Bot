@@ -29,7 +29,10 @@ class Twitch:
             response = requests.post(url, params=params)
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            self.logger.error(f"[twitch.getStreamers] {e}")
+            if str(e).startswith("400"):
+                self.logger.error("[twitch.getStreamers] Invalid client ID or client secret")
+            else:
+                self.logger.error(f"[twitch.getStreamers] {e}")
             return []
 
         access_token = response.json()["access_token"]
