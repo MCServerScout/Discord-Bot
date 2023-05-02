@@ -33,7 +33,8 @@ class Message:
         self.BLUE = 0x0000FF  # info
         self.PINK = 0xFFC0CB  # offline
 
-    def buttons(self, *args: bool | str) -> List[ActionRow]:
+    @staticmethod
+    def buttons(*args: bool | str) -> List[ActionRow]:
         """Return disabled buttons (True = disabled)
 
         Args:
@@ -47,7 +48,7 @@ class Message:
             ]
         """
         if len(args) != 6:
-            disabled = [True, True, True, True, True, None, ]
+            disabled = [True, True, True, True, True, "https://mcstatus.io", ]
         else:
             disabled = list(args)
 
@@ -89,8 +90,8 @@ class Message:
                 interactions.Button(
                     label="MCStatus.io",
                     style=interactions.ButtonStyle.LINK,
-                    url=disabled[5] if disabled[5] is not None else "https://mcstatus.io/",
-                    disabled=disabled[5] is None,
+                    url=disabled[5],
+                    disabled=disabled[5] == "https://mcstatus.io",
                 ),
             ),
         ]
@@ -148,6 +149,7 @@ class Message:
             try:
                 status = self.server.status(ip=data["ip"], port=data["port"])
                 if status is not None:
+                    isOnline = "🟢"
                     # update the data
                     data["players"]["max"] = status["players"]["max"]
                     data["players"]["online"] = status["players"]["online"]
@@ -173,14 +175,20 @@ class Message:
                         data["description"]["text"] = self.text.cFilter(desc)
                     else:
                         data["description"] = {"text": self.text.cFilter(desc)}
+                else:
+                    self.logger.print("[message.embed] Server is offline")
+                    data["players"]["online"] = 0
+                    data["players"]["max"] = 0
+                    data["description"]["text"] = data["description"]["text"] if "text" in data["description"] else \
+                    data["description"]["extra"]["text"]
+                    isOnline = "🔴"
 
                 # detect if the server is cracked
                 joined = self.server.join(ip=data["ip"], port=data["port"])
                 data["cracked"] = joined.getType() == "CRACKED"
                 data["hasForgeData"] = joined.getType() == "MODDED"
 
-                isOnline = "🟢"
-                self.logger.print("[message.embed] Server is online: " + isOnline)
+                self.logger.print("[message.embed] Server online: " + isOnline)
             except Exception as e:
                 self.logger.error("[message.embed] Error: " + str(e))
                 self.logger.print(f"[message.embed] Full traceback: {traceback.format_exc()}")
