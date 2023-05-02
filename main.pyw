@@ -54,7 +54,7 @@ textLib = utils.text
 
 bot = interactions.Client(
     token=DISCORD_TOKEN,
-    status=interactions.Status.ONLINE,
+    status=interactions.Status.IDLE,
     activity=interactions.Activity(
         type=interactions.ActivityType.GAME, name="Trolling the masses"
     ),
@@ -359,11 +359,10 @@ async def find(
 @interactions.component_callback("next")
 async def next_page(ctx: interactions.ComponentContext):
     try:
-        org = ctx.message
-        orgFoot = org.embeds[0].footer.text
+        orgFoot = ctx.message.embeds[0].footer.text
         await ctx.defer(edit_origin=True)
 
-        logger.print(f"[main.next_page] next page called")
+        logger.print(f"[main.previous_page] previous page called")
 
         msg = await ctx.edit_origin(
             embed=messageLib.standardEmbed(
@@ -375,19 +374,13 @@ async def next_page(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        pipeline = orgFoot.split(" servers in: ")[1]
-        pipeline = json.loads(pipeline.replace("'", '"'))
-
+        pipeline = json.loads(orgFoot.split(" servers in: ")[1].replace("'", '"'))
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
-
         total = databaseLib.count(pipeline)
-
-        if index + 1 < total:
-            index += 1
-        else:
+        if index + 1 >= total:
             index = 0
-
-        logger.print(f"[main.next_page] index: {index} total: {total} pipeline: {pipeline}")
+        else:
+            index += 1
 
         msg = await msg.edit(
             embed=messageLib.standardEmbed(
@@ -439,8 +432,7 @@ async def next_page(ctx: interactions.ComponentContext):
 @interactions.component_callback("previous")
 async def previous_page(ctx: interactions.ComponentContext):
     try:
-        org = ctx.message
-        orgFoot = org.embeds[0].footer.text
+        orgFoot = ctx.message.embeds[0].footer.text
         await ctx.defer(edit_origin=True)
 
         logger.print(f"[main.previous_page] previous page called")
@@ -455,19 +447,13 @@ async def previous_page(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        pipeline = orgFoot.split(" servers in: ")[1]
-        pipeline = json.loads(pipeline.replace("'", '"'))
-
+        pipeline = json.loads(orgFoot.split(" servers in: ")[1].replace("'", '"'))
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
-
         total = databaseLib.count(pipeline)
-
         if index - 1 >= 0:
             index -= 1
         else:
             index = total - 1
-
-        logger.print(f"[main.previous_page] index: {index} total: {total} pipeline: {pipeline}")
 
         msg = await msg.edit(
             embed=messageLib.standardEmbed(
@@ -825,17 +811,6 @@ async def sort(ctx: interactions.ComponentContext):
     description="Get a list of servers with streams on them",
 )
 async def streamers(ctx: interactions.SlashContext):
-    # remove this when the command is implemented
-    await ctx.send(
-        embed=messageLib.standardEmbed(
-            title="Not implemented",
-            description="This command is not implemented yet",
-            color=RED,
-        ),
-        ephemeral=True,
-    )
-    return
-
     try:
         # spawn a modal asking for client id and secret
         clientId = interactions.ShortText(
@@ -877,18 +852,55 @@ async def streamers(ctx: interactions.SlashContext):
             clientId = modal_ctx.responses["clientId"]
             clientSecret = modal_ctx.responses["clientSecret"]
 
-            streamers = await twitchLib.getStreamers(
+            streams = await twitchLib.getStreamers(
                 clientId=clientId,
                 clientSecret=clientSecret,
             )
 
+            if streams is None or streams == []:
+                await ctx.send(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description="No streamers found",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            # get the servers
+            pipeline = [
+                {"$match": {"players.sample": {"$elemMatch": {"name": {"$in": streams}}}}},
+                {"$project": {"_id": 0, "ip": 1, "port": 1, "players": 1}},
+            ]
+            stuff = messageLib.embed(
+                pipeline=pipeline,
+                index=0,
+            )
+
+            if stuff is None:
+                await ctx.send(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description="No servers found",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            # send the embed
+            await ctx.send(
+                embed=stuff["embed"],
+                components=stuff["components"],
+            )
     except Exception as err:
         logger.error(f"[main.streamers] {err}")
         logger.print(f"[main.streamers] Full traceback: {traceback.format_exc()}")
         await ctx.send(
             embed=messageLib.standardEmbed(
                 title="Error",
-                description="An error occurred while trying to get the client id and secret",
+                description="An error occurred while trying to get the streamers",
                 color=RED,
             ),
             ephemeral=True,
@@ -918,7 +930,7 @@ async def stats(ctx: interactions.SlashContext):
 
         mainEmbed.add_field(
             name="Total Servers",
-            value=totalServers,
+            value=f"{totalServers:,}",
             inline=True,
         )
         msg = await msg.edit(embed=mainEmbed, )
@@ -932,7 +944,7 @@ async def stats(ctx: interactions.SlashContext):
 
         mainEmbed.add_field(
             name="Total Players",
-            value=totalPlayers,
+            value=f"{totalPlayers:,}",
             inline=True,
         )
         msg = await msg.edit(embed=mainEmbed, )
@@ -946,7 +958,7 @@ async def stats(ctx: interactions.SlashContext):
 
         mainEmbed.add_field(
             name="Total Logged Players",
-            value=totalSamplePlayers,
+            value=f"{totalSamplePlayers:,}",
             inline=True,
         )
         msg = await msg.edit(embed=mainEmbed, )
@@ -1050,11 +1062,10 @@ if __name__ == "__main__":
         # start the bot
         bot.start()
     except KeyboardInterrupt:
+        logger.print("[main] Keyboard interrupt, stopping bot")
         # stop the bot
         asyncio.run(bot.close())
     except Exception as e:
         # log the error
         logger.critical(f"[main] Error: {e}")
         time.sleep(5)
-
-# TODO: add a command to get a list of servers that have active streamers playing

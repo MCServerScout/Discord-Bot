@@ -17,6 +17,7 @@ class Twitch:
         """
         import requests
 
+        # get access token
         url = "https://id.twitch.tv/oauth2/token"
         params = {
             "client_id": client_id,
@@ -38,18 +39,18 @@ class Twitch:
             "Authorization": f"Bearer {access_token}",
             "Client-Id": client_id,
         }
-        params = {
-            "user_login": "sodapoppin,asmongold,esfandtv,mizkif",
-        }
 
+        # get streamers
         try:
-            response = requests.get(url, headers=headers, params=params)
+            response = requests.get(url, headers=headers)
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
             self.logger.error(f"[twitch.getStreamers] {e}")
             return []
 
-        data = response.json()["data"]
-        streamers = [stream["user_name"] for stream in data]
+        streamers = []
+        for stream in response.json()["data"]:
+            if stream["game_id"] == "27471":
+                streamers.append(stream["user_name"])
 
         return streamers
