@@ -75,13 +75,13 @@ class Message:
             ),
             interactions.ActionRow(
                 interactions.Button(
-                    label="Show Players",
+                    label="Players",
                     style=interactions.ButtonStyle.SECONDARY,
                     custom_id="players",
                     disabled=disabled[3],
                 ),
                 interactions.Button(
-                    label="Change Sort",
+                    label="Sort",
                     style=interactions.ButtonStyle.SECONDARY,
                     custom_id="sort",
                     disabled=disabled[4],

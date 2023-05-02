@@ -415,6 +415,17 @@ async def next_page(ctx: interactions.ComponentContext):
             components=comps,
         )
     except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
         logger.error(f"[main.next_page] {err}")
         logger.print(f"[main.next_page] Full traceback: {traceback.format_exc()}")
 
@@ -488,6 +499,17 @@ async def previous_page(ctx: interactions.ComponentContext):
             components=comps,
         )
     except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
         logger.error(f"[main.previous_page] {err}")
         logger.print(f"[main.previous_page] Full traceback: {traceback.format_exc()}")
 
@@ -550,6 +572,17 @@ async def players(ctx: interactions.ComponentContext):
             ephemeral=True,
         )
     except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
         logger.error(f"[main.players] {err}")
         logger.print(f"[main.players] Full traceback: {traceback.format_exc()}")
 
@@ -646,6 +679,17 @@ async def jump(ctx: interactions.ComponentContext):
                 ephemeral=True,
             )
     except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
         logger.error(f"[main.jump] {err}")
         logger.print(f"[main.jump] Full traceback: {traceback.format_exc()}")
         await ctx.send(
@@ -789,6 +833,16 @@ async def sort(ctx: interactions.ComponentContext):
     except AttributeError:
         logger.print(f"[main.sort] AttributeError")
     except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
         logger.error(f"[main.sort] {err}")
         logger.print(f"[main.sort] Full traceback: {traceback.format_exc()}")
         await ctx.send(
@@ -905,6 +959,17 @@ async def streamers(ctx: interactions.SlashContext):
                 components=stuff["components"],
             )
     except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
         logger.error(f"[main.streamers] {err}")
         logger.print(f"[main.streamers] Full traceback: {traceback.format_exc()}")
         await ctx.send(
@@ -1011,6 +1076,17 @@ async def stats(ctx: interactions.SlashContext):
         )
         await msg.edit(embed=mainEmbed, )
     except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
         logger.error(f"[main.stats] {err}")
         logger.print(f"[main.stats] Full traceback: {traceback.format_exc()}")
         await ctx.send(
