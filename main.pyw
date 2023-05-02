@@ -201,7 +201,7 @@ async def find(
                 description="This may take a while",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True, True, True, )
+            components=messageLib.buttons()
         )
 
         # default pipeline
@@ -226,7 +226,7 @@ async def find(
                         description=f"Player `{player}` not a valid player",
                         color=RED,
                     ),
-                    components=messageLib.buttons(True, True, True, True, True, )
+                    components=messageLib.buttons()
                 )
                 return
             else:
@@ -236,7 +236,7 @@ async def find(
                         description="Looking for servers with " + player + " on them",
                         color=BLUE,
                     ),
-                    components=messageLib.buttons(True, True, True, True, True, )
+                    components=messageLib.buttons()
                 )
 
             # insert dashes every 8 characters
@@ -293,7 +293,7 @@ async def find(
                     description="Try again with different parameters",
                     color=RED,
                 ),
-                components=messageLib.buttons(True, True, True, True, True),
+                components=messageLib.buttons(),
             )
             return
 
@@ -304,7 +304,7 @@ async def find(
                 description=f"Found {total} servers",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True, True, True),
+            components=messageLib.buttons(),
         )
 
         index = 0
@@ -322,7 +322,7 @@ async def find(
                     description="Try again with different parameters",
                     color=RED,
                 ),
-                components=messageLib.buttons(True, True, True, True, True),
+                components=messageLib.buttons(),
             )
             return
 
@@ -370,7 +370,7 @@ async def next_page(ctx: interactions.ComponentContext):
                 description="Loading...",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True, True, True),
+            components=messageLib.buttons(),
         )
 
         # get the pipeline and index from the message
@@ -388,7 +388,7 @@ async def next_page(ctx: interactions.ComponentContext):
                 description=f"Loading server {index + 1} of {total}",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True, True, True),
+            components=messageLib.buttons(),
         )
 
         stuff = messageLib.embed(
@@ -403,7 +403,7 @@ async def next_page(ctx: interactions.ComponentContext):
                     description="Try again with different parameters",
                     color=RED,
                 ),
-                components=messageLib.buttons(True, True, True, True, True),
+                components=messageLib.buttons(),
             )
             return
 
@@ -443,7 +443,7 @@ async def previous_page(ctx: interactions.ComponentContext):
                 description="Loading...",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True, True, True),
+            components=messageLib.buttons(),
         )
 
         # get the pipeline and index from the message
@@ -461,7 +461,7 @@ async def previous_page(ctx: interactions.ComponentContext):
                 description=f"Loading server {index + 1} of {total}",
                 color=BLUE,
             ),
-            components=messageLib.buttons(True, True, True, True, True),
+            components=messageLib.buttons(),
         )
 
         stuff = messageLib.embed(
@@ -476,7 +476,7 @@ async def previous_page(ctx: interactions.ComponentContext):
                     description="Try again with different parameters",
                     color=RED,
                 ),
-                components=messageLib.buttons(True, True, True, True, True),
+                components=messageLib.buttons(),
             )
             return
 
@@ -1036,17 +1036,22 @@ async def help_command(ctx: interactions.SlashContext):
             color=BLUE,
         )
         .add_field(
-            name="find",
+            name="`/find`",
             value="Find a server by anything in the database",
             inline=False,
         )
         .add_field(
-            name="getStreamers",
+            name="`/streamers`",
             value="Get a list of servers with streams on them",
             inline=False,
         )
         .add_field(
-            name="help",
+            name="`/stats`",
+            value="Get stats about the database",
+            inline=False,
+        )
+        .add_field(
+            name="`/help`",
             value="Get help",
             inline=False,
         ),

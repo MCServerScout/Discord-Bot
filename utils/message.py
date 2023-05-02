@@ -33,11 +33,11 @@ class Message:
         self.BLUE = 0x0000FF  # info
         self.PINK = 0xFFC0CB  # offline
 
-    def buttons(self, *args: bool) -> List[ActionRow]:
+    def buttons(self, *args: bool | str) -> List[ActionRow]:
         """Return disabled buttons (True = disabled)
 
         Args:
-            *args (bool): The buttons to disable
+            *args (bool | str): The buttons to disable and the link to MCStatus.io
 
         Returns:
             [
@@ -46,9 +46,8 @@ class Message:
                 interactions.StringSelectMenu(): Sort
             ]
         """
-        if len(args) != 5:
-            self.logger.error("Invalid number of arguments")
-            disabled = [True, True, True, True, True]
+        if len(args) != 6:
+            disabled = [True, True, True, True, True, None, ]
         else:
             disabled = list(args)
 
@@ -69,7 +68,7 @@ class Message:
                 ),
                 interactions.Button(
                     label="Jump to",
-                    style=interactions.ButtonStyle.PRIMARY,
+                    style=interactions.ButtonStyle.SUCCESS,
                     custom_id="jump",
                     disabled=disabled[2],
                 )
@@ -77,16 +76,22 @@ class Message:
             interactions.ActionRow(
                 interactions.Button(
                     label="Show Players",
-                    style=interactions.ButtonStyle.PRIMARY,
+                    style=interactions.ButtonStyle.SECONDARY,
                     custom_id="players",
                     disabled=disabled[3],
                 ),
                 interactions.Button(
                     label="Change Sort",
-                    style=interactions.ButtonStyle.PRIMARY,
+                    style=interactions.ButtonStyle.SECONDARY,
                     custom_id="sort",
                     disabled=disabled[4],
-                )
+                ),
+                interactions.Button(
+                    label="MCStatus.io",
+                    style=interactions.ButtonStyle.LINK,
+                    url=disabled[5] if disabled[5] is not None else "https://mcstatus.io/",
+                    disabled=disabled[5] is None,
+                ),
             ),
         ]
 
@@ -119,7 +124,7 @@ class Message:
                         description="No servers found",
                         color=self.YELLOW,
                     ),
-                    "components": self.buttons(True, True, True, True, True),
+                    "components": self.buttons(),
                 }
 
             if index >= total_servers:
@@ -134,7 +139,7 @@ class Message:
                         description="No server found",
                         color=self.YELLOW,
                     ),
-                    "components": self.buttons(True, True, True, True, True),
+                    "components": self.buttons(),
                 }
 
             # get the server status
@@ -253,6 +258,7 @@ class Message:
                     total_servers <= 1,
                     "sample" not in data["players"],
                     total_servers <= 1,
+                    "https://mcstatus.io/status/java/" + str(data["ip"]) + ":" + str(data["port"]),
                 ),
             }
         except Exception as e:

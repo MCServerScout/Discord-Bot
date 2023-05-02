@@ -313,7 +313,7 @@ class Server:
             self.logger.print("[server.join] Server timed out")
             return self.ServerType(ip, version, "OFFLINE")
         except OSError:
-            self.logger.error("[server.join] Server did not respond")
+            self.logger.print("[server.join] Server did not respond")
             return self.ServerType(ip, version, "UNKNOWN")
         except ConnectionRefusedError:
             self.logger.print("[server.join] Connection refused")

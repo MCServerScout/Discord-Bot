@@ -46,6 +46,7 @@ class EmailFileHandler(logging.FileHandler):
                 or "heartbeat" in record.getMessage().lower()
                 or "Added " in record.getMessage()
                 or "Sending data to websocket: {" in record.getMessage()
+                or "event.ctx.responses" in record.getMessage()
         ):
             return
         super().emit(record)
