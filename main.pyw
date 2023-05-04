@@ -3,6 +3,7 @@
 
 import asyncio
 import json
+import re
 import sys
 import time
 import traceback
@@ -266,6 +267,21 @@ async def find(
             )
         if description is not None:
             description = description.replace("'", ".")
+
+            # validate that the description is a valid regex
+            try:
+                re.compile(description)
+            except re.error:
+                await msg.edit(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description=f"Description `{description}` not a valid regex",
+                        color=RED,
+                    ),
+                    components=messageLib.buttons()
+                )
+                return
+
             # case-insensitive regex, search through desc.text and through desc.extra.text
             pipeline[0]["$match"]["$and"].append(
                 {
@@ -642,7 +658,8 @@ async def jump(ctx: interactions.ComponentContext):
             index = int(modal_ctx.responses["jump"])
 
             # check if the index is valid
-            if index < 1 or index > total:
+            if index < 1 or index > total or not str(index).isnumeric():
+                logger.warning(f"[main.jump] Invalid index: {index}")
                 await ctx.send(
                     embed=messageLib.standardEmbed(
                         title="Error",

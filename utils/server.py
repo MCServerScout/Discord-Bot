@@ -112,18 +112,18 @@ class Server:
             status["port"] = port
             status["online"] = DatetimeMS(int(datetime.datetime.utcnow().timestamp() * 1000))
 
-            # if the server is in the db, then get the db doc
-            if self.db.col.find_one({"ip": status["ip"]}) is not None:
-                dbVal = self.db.col.find_one({"ip": status["ip"]})
-                status["cracked"] = (
-                        status["cracked"]
-                        or dbVal[
-                            "cracked"
-                        ]
-                )
-                self.updateDB(status)
-            else:
-                self.updateDB(status)
+            # # if the server is in the db, then get the db doc
+            # if self.db.col.find_one({"ip": status["ip"]}) is not None:
+            #     dbVal = self.db.col.find_one({"ip": status["ip"]})
+            #     status["cracked"] = (
+            #             status["cracked"]
+            #             or dbVal[
+            #                 "cracked"
+            #             ]
+            #     )
+            #     self.updateDB(status)
+            # else:
+            #     self.updateDB(status)
 
             return status
         except Exception:
@@ -310,7 +310,7 @@ class Server:
                 self.logger.debug("[server.join] Reason: " + reason)
                 return self.ServerType(ip, version, "UNKNOWN")
         except TimeoutError:
-            self.logger.print("[server.join] Server timed out")
+            self.logger.print("[server.join] Connection error (timeout)")
             return self.ServerType(ip, version, "OFFLINE")
         except OSError:
             self.logger.print("[server.join] Server did not respond")
