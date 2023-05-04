@@ -1325,6 +1325,11 @@ async def help_command(ctx: interactions.SlashContext):
             inline=False,
         )
         .add_field(
+            name="`/ping`",
+            value="Get info about a server",
+            inline=False,
+        )
+        .add_field(
             name="`/streamers`",
             value="Get a list of servers with streams on them",
             inline=False,
