@@ -14,6 +14,7 @@ will be adding more features as time goes on.
   - [X] random
 - [X] Get info about a selected server
 - [X] Get a player list
+- [ ] Make it work well
 
 - Filters
   - Version, name or id
@@ -23,6 +24,8 @@ will be adding more features as time goes on.
   - Sign text
   - Motd
   - Cracked
+
+----
 
 ## Commands
 
@@ -44,6 +47,12 @@ This command gives stats about the database
 `/streamers`
 
 This command will show you a list of all the streamers that are currently streaming on a server in the database.
+
+### Ping
+
+`/ping`
+
+This command will show you information about a provided server.
 
 ### Help
 
