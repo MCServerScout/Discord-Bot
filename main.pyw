@@ -51,6 +51,7 @@ playerLib = utils.player
 messageLib = utils.message
 twitchLib = utils.twitch
 textLib = utils.text
+serverLib = utils.server
 
 bot = interactions.Client(
     token=DISCORD_TOKEN,
@@ -332,6 +333,7 @@ async def find(
         await msg.edit(
             embed=embed,
             components=comps,
+            file=interactions.File(file="favicon.png", file_name="favicon.png"),
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
@@ -413,6 +415,7 @@ async def next_page(ctx: interactions.ComponentContext):
         await msg.edit(
             embed=embed,
             components=comps,
+            file=interactions.File(file="favicon.png", file_name="favicon.png"),
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
@@ -497,6 +500,7 @@ async def previous_page(ctx: interactions.ComponentContext):
         await msg.edit(
             embed=embed,
             components=comps,
+            file=interactions.File(file="favicon.png", file_name="favicon.png"),
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
@@ -668,6 +672,7 @@ async def jump(ctx: interactions.ComponentContext):
             await original.edit(
                 embed=stuff["embed"],
                 components=stuff["components"],
+                file=interactions.File(file="favicon.png", file_name="favicon.png"),
             )
         except asyncio.TimeoutError:
             await ctx.send(
@@ -782,7 +787,7 @@ async def sort(ctx: interactions.ComponentContext):
                 case "version":
                     sortMethod = {"$sort": {"version": -1}}
                 case "random":
-                    sortMethod = {"$sample": {"size": 1}}
+                    sortMethod = {"$sample": {"size": 1000}}
                 case _:
                     await ctx.send(
                         embed=messageLib.standardEmbed(
@@ -820,6 +825,7 @@ async def sort(ctx: interactions.ComponentContext):
             await org.edit(
                 embed=stuff["embed"],
                 components=stuff["components"],
+                file=interactions.File(file="favicon.png", file_name="favicon.png"),
             )
 
             await ctx.send(
@@ -855,8 +861,210 @@ async def sort(ctx: interactions.ComponentContext):
         )
 
 
+# button to update the message
+@interactions.component_callback("update")
+async def update(ctx: interactions.ComponentContext):
+    try:
+        orgFoot = ctx.message.embeds[0].footer.text
+        await ctx.defer(edit_origin=True)
+
+        logger.print(f"[main.update] update page called")
+
+        msg = await ctx.edit_origin(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description="Loading...",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(),
+        )
+
+        # get the pipeline and index from the message
+        pipeline = json.loads(orgFoot.split(" servers in: ")[1].replace("'", '"'))
+        index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
+        total = databaseLib.count(pipeline)
+
+        msg = await msg.edit(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description=f"Loading server {index + 1} of {total}",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(),
+        )
+
+        stuff = messageLib.embed(
+            pipeline=pipeline,
+            index=index,
+        )
+
+        if stuff is None:
+            await msg.edit(
+                embed=messageLib.standardEmbed(
+                    title="No servers found",
+                    description="Try again with different parameters",
+                    color=RED,
+                ),
+                components=messageLib.buttons(),
+            )
+            return
+
+        embed = stuff["embed"]
+        comps = stuff["components"]
+
+        await msg.edit(
+            embed=embed,
+            components=comps,
+            file=interactions.File(file="favicon.png", file_name="favicon.png"),
+        )
+    except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        logger.error(f"[main.update] {err}")
+        logger.print(f"[main.update] Full traceback: {traceback.format_exc()}")
+
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to update the message",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+
+
 # other commands
 # -----------------------------------------------------------------------------
+
+
+# command to ping a single server
+@slash_command(
+    name="ping",
+    description="Ping a single server",
+    options=[
+        SlashCommandOption(
+            name="ip",
+            description="The IPv4 address or hostname of the server",
+            type=interactions.OptionType.STRING,
+            required=True,
+        ),
+        SlashCommandOption(
+            name="port",
+            description="The port of the server",
+            type=interactions.OptionType.INTEGER,
+            required=False,
+            min_value=1,
+            max_value=65535,
+        ),
+    ],
+)
+async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
+    # authorName = ctx.author.username + "#" + str(ctx.author.discriminator)
+    # if authorName != "Pilot1782#6718":
+    #     logger.print(f"[main.ping] Pong!")
+    #     await ctx.send(
+    #         embed=messageLib.standardEmbed(
+    #             title="Ping",
+    #             description="Pong",
+    #             color=RED,
+    #         ),
+    #         ephemeral=True,
+    #     )
+    #     return
+    try:
+        await ctx.defer(ephemeral=True)
+
+        port = port if port is not None else 25565
+
+        # check if the server is in the database
+        pipeline = [
+            {
+                "$match": {
+                    "ip": ip,
+                    "port": port,
+                }
+            },
+            {"$limit": 1},
+        ]
+
+        count = databaseLib.count(pipeline)
+
+        if count == 0:
+            logger.print(f"[main.ping] Server not in database")
+            status = serverLib.status(ip, port)
+            if status is None:
+                logger.print(f"[main.ping] Server not found")
+                await ctx.send(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description="Server not found",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            status["cracked"] = serverLib.join(ip, port, ) == "CRACKED"
+
+            if "hasForgeData" not in status:
+                status["hasForgeData"] = False
+
+            status["ip"] = ip
+            status["port"] = port
+            status["lastSeen"] = int(time.time())
+
+            logger.print(f"[main.ping] Got info from server: {type(status)}")
+
+            pipeline = status
+
+        # get the server
+        stuff = messageLib.embed(
+            pipeline=pipeline,
+            index=0,
+        )
+
+        if stuff is None:
+            logger.print(f"[main.ping] Server not in database")
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="Server not in database",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        embed = stuff["embed"]
+        comps = stuff["components"]
+
+        await ctx.send(
+            embed=embed,
+            components=comps,
+            file=interactions.File(file="favicon.png", file_name="favicon.png"),
+            ephemeral=True,
+        )
+    except Exception as err:
+        logger.error(f"[main.ping] {err}")
+        logger.print(f"[main.ping] Full traceback: {traceback.format_exc()}")
+
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to ping the server",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
 
 
 # command to get a list of streamers playing on a server in the database

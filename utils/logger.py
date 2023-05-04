@@ -70,7 +70,7 @@ class Logger:
 
         logging.basicConfig(
             level=level,
-            format="%(asctime)s:%(levelname)s:%(name)s:%(message)s",
+            format="%(asctime)s %(levelname)s %(name)s:%(message)s: ",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
                 EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
@@ -139,6 +139,11 @@ class Logger:
         print(msg, **kwargs)
         sys.stdout = self.out  # output to log.log
         self.info(msg)
+
+    def hook(self, message: str):
+        if self.webhook is not None:
+            requests.post(self.webhook, json={"content": message})
+            self.print(f"Sent message to webhook: {message}")
 
     def __repr__(self):
         return self.read()

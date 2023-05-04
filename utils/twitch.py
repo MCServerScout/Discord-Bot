@@ -52,6 +52,7 @@ class Twitch:
             return []
 
         streamers = []
+        self.logger.debug(f"[twitch.getStreamers] {response.json()}")
         for stream in response.json()["data"]:
             if stream["game_id"] == "27471":
                 streamers.append(stream["user_name"])

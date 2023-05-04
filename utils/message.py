@@ -6,6 +6,7 @@ import traceback
 from typing import List, Optional
 
 import interactions
+import requests
 from interactions import ActionRow
 
 from .database import Database
@@ -39,16 +40,22 @@ class Message:
 
         Args:
             *args (bool | str): The buttons to disable and the link to MCStatus.io
+                order: next, previous, jump, update, players, sort, MCStatus.io
 
         Returns:
             [
-                interactions.ActionRow(): Next, Previous, Jump to
+                interactions.ActionRow(): Next, Previous, Jump to, Update
                 interactions.ActionRow(): Show Players
                 interactions.StringSelectMenu(): Sort
+                interactions.Button(): MCStatus.io
             ]
         """
-        if len(args) != 6:
-            disabled = [True, True, True, True, True, "https://mcstatus.io", ]
+        if len(args) != 7:
+            disabled = [True, True, True, True,
+                        True,
+                        True,
+                        "https://mcstatus.io",
+                        ]
         else:
             disabled = list(args)
 
@@ -72,26 +79,32 @@ class Message:
                     style=interactions.ButtonStyle.SUCCESS,
                     custom_id="jump",
                     disabled=disabled[2],
-                )
+                ),
+                interactions.Button(
+                    label="Update",
+                    style=interactions.ButtonStyle.SUCCESS,
+                    custom_id="update",
+                    disabled=disabled[3],
+                ),
             ),
             interactions.ActionRow(
                 interactions.Button(
                     label="Players",
                     style=interactions.ButtonStyle.SECONDARY,
                     custom_id="players",
-                    disabled=disabled[3],
+                    disabled=disabled[4],
                 ),
                 interactions.Button(
                     label="Sort",
                     style=interactions.ButtonStyle.SECONDARY,
                     custom_id="sort",
-                    disabled=disabled[4],
+                    disabled=disabled[5],
                 ),
                 interactions.Button(
                     label="MCStatus.io",
                     style=interactions.ButtonStyle.LINK,
-                    url=disabled[5],
-                    disabled=disabled[5] == "https://mcstatus.io",
+                    url=disabled[6],
+                    disabled=disabled[6] == "https://mcstatus.io",
                 ),
             ),
         ]
@@ -100,13 +113,13 @@ class Message:
 
     def embed(
             self,
-            pipeline: list,
+            pipeline: list | dict,
             index: int,
     ) -> Optional[dict]:
         """Return an embed
 
         Args:
-            pipeline (list): The pipeline to use
+            pipeline (list): The pipeline to use, or the server data
             index (int): The index of the embed
 
         Returns:
@@ -116,32 +129,59 @@ class Message:
             }
         """
         try:
-            total_servers = self.db.count(pipeline)
-
-            if total_servers == 0:
-                return {
-                    "embed": self.standardEmbed(
-                        title="Error",
-                        description="No servers found",
-                        color=self.YELLOW,
-                    ),
-                    "components": self.buttons(),
+            if type(pipeline) == dict:
+                self.logger.print("[message.embed] Server data provided")
+                # server is not in db, and we got the server data
+                data = pipeline
+                pipeline = {
+                    "your mother": "large",
                 }
+                total_servers = 1
 
-            if index >= total_servers:
-                index = 0
+                if data is None or data == {}:
+                    return {
+                        "embed": self.standardEmbed(
+                            title="Error",
+                            description="No server found",
+                            color=self.YELLOW,
+                        ),
+                        "components": self.buttons(),
+                    }
+            else:
+                # server is in db
+                total_servers = self.db.count(pipeline)
 
-            data = self.db.get_doc_at_index(pipeline, index)
+                if total_servers == 0:
+                    self.logger.print("[message.embed] No servers found")
+                    return {
+                        "embed": self.standardEmbed(
+                            title="Error",
+                            description="No servers found",
+                            color=self.YELLOW,
+                        ),
+                        "components": self.buttons(),
+                    }
 
-            if data is None:
-                return {
-                    "embed": self.standardEmbed(
-                        title="Error",
-                        description="No server found",
-                        color=self.YELLOW,
-                    ),
-                    "components": self.buttons(),
-                }
+                if index >= total_servers:
+                    index = 0
+
+                data = self.db.get_doc_at_index(pipeline, index)
+
+                if data is None:
+                    self.logger.print("[message.embed] No server found in db")
+                    return {
+                        "embed": self.standardEmbed(
+                            title="Error",
+                            description="No server found",
+                            color=self.YELLOW,
+                        ),
+                        "components": self.buttons(),
+                    }
+
+                if index >= total_servers:
+                    index = 0
+
+                data = self.db.get_doc_at_index(pipeline, index)
 
             # get the server status
             isOnline = "🔴"
@@ -153,15 +193,18 @@ class Message:
                     # update the data
                     data["players"]["max"] = status["players"]["max"]
                     data["players"]["online"] = status["players"]["online"]
+                    if "favicon" in status:
+                        data["favicon"] = status["favicon"]
                     desc = status["description"]
                     if "extra" in desc and "text" in desc:
                         self.logger.print("[message.embed] Server has a color and text: " + desc["text"])
                         desc = ""
 
-                        # example: {"extra": [{"color": "dark_purple", "text": "A Minecraft Server"}], "text": ""}
+                        # example: {"extra": [{"color": "red", "text": "Minecraft Server"}], "text": ""}
                         for extra in status["description"]["extra"]:
                             if "color" in extra and "text" in extra:
-                                desc += self.text.colorMine(extra["color"]) + self.text.cFilter(extra["text"])
+                                desc += self.text.colorMine(extra["color"]) \
+                                        + self.text.cFilter(extra["text"])
                             elif "text" in extra:
                                 desc += self.text.cFilter(extra["text"])
                             else:
@@ -179,8 +222,15 @@ class Message:
                     self.logger.print("[message.embed] Server is offline")
                     data["players"]["online"] = 0
                     data["players"]["max"] = 0
-                    data["description"]["text"] = data["description"]["text"] if "text" in data["description"] else \
-                    data["description"]["extra"]["text"]
+                    data["description"]["text"] = ""
+                    if "extra" in data["description"]:
+                        for extra in data["description"]["extra"]:
+                            if "text" in extra:
+                                data["description"]["text"] += extra["text"]
+                        data["description"]["text"] += data["description"]["extra"]["text"] \
+                            if "text" in data["description"]["extra"] else ""
+                    else:
+                        data["description"]["text"] = data["description"]["text"]
                     isOnline = "🔴"
 
                 # detect if the server is cracked
@@ -193,34 +243,30 @@ class Message:
                 self.logger.error("[message.embed] Error: " + str(e))
                 self.logger.print(f"[message.embed] Full traceback: {traceback.format_exc()}")
 
+            # get the server icon
+            if "favicon" in data and isOnline == "🟢":
+                bits = data["favicon"].split(",")[1] if "," in data["favicon"] else data["favicon"]
+                with open("favicon.png", "wb") as f:
+                    f.write(base64.b64decode(bits))
+                self.logger.print("[message.embed] Server has a favicon")
+            else:
+                url = "https://media.minecraftforum.net/attachments/300/619/636977108000120237.png"
+                with open("favicon.png", "wb") as f:
+                    f.write(requests.get(url).content)
+
             # create the embed
             embed = self.standardEmbed(
                 title=f"{isOnline} {data['ip']}",
                 description=f"```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
                 color=self.GREEN if isOnline == "🟢" else self.PINK,
-            )
+            ).set_image(url="attachment://favicon.png")
 
             # set the footer to say the index, pipeline, and total servers
             embed.set_footer(
-                f"Showing {index + 1} of {total_servers} servers in: {str(pipeline).replace('True', 'true').replace('False', 'false')}",
+                f"Showing {index + 1} of {total_servers} servers in: "
+                + f"{str(pipeline).replace('True', 'true').replace('False', 'false')}",
             )
             embed.timestamp = self.text.timeNow()
-
-            # get the server icon
-            if "favicon" in data and isOnline == "🟢":
-                bits = data["favicon"].split(",")[1]
-                with open("favicon.png", "wb") as f:
-                    f.write(base64.b64decode(bits))
-                _file = interactions.File(
-                    file_name="favicon.png",
-                    file="favicon.png",
-                )
-            else:
-                _file = None
-
-            if _file is not None:
-                embed.set_thumbnail(url="attachment://favicon.png")
-                self.logger.debug("[message.embed] Server has an icon")
 
             # add the version
             embed.add_field(
@@ -261,10 +307,8 @@ class Message:
             return {
                 "embed": embed,
                 "components": self.buttons(
-                    index + 1 >= total_servers,
-                    index <= 0,
-                    total_servers <= 1,
-                    "sample" not in data["players"],
+                    index + 1 >= total_servers, index <= 0, total_servers <= 1, type(pipeline) is dict,
+                    "sample" not in data["players"] or type(pipeline) is dict,
                     total_servers <= 1,
                     "https://mcstatus.io/status/java/" + str(data["ip"]) + ":" + str(data["port"]),
                 ),
@@ -296,9 +340,18 @@ class Message:
         Returns:
             interactions.Embed: The embed
         """
-        return interactions.Embed(
-            title=title,
-            description=description,
-            color=color,
-            timestamp=self.text.timeNow(),
-        )
+        try:
+            return interactions.Embed(
+                title=title,
+                description=description,
+                color=color,
+                timestamp=self.text.timeNow(),
+            )
+        except Exception as e:
+            self.logger.error(f"[message.standardEmbed] {e}")
+            self.logger.print(f"[message.standardEmbed] Full traceback: {traceback.format_exc()}")
+            return interactions.Embed(
+                title=title,
+                description=description,
+                timestamp=self.text.timeNow(),
+            )
