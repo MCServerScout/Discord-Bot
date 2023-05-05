@@ -42,19 +42,24 @@ class Twitch:
             "Authorization": f"Bearer {access_token}",
             "Client-Id": client_id,
         }
+        url += "?game_id=27471&first=100&type=live"
 
-        # get streamers
         try:
             response = requests.get(url, headers=headers)
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
             self.logger.error(f"[twitch.getStreamers] {e}")
             return []
+        else:
+            self.logger.info(f"[twitch.getStreamers] {len(response.json()['data'])} streamers are live")
 
         streamers = []
-        self.logger.debug(f"[twitch.getStreamers] {response.json()}")
         for stream in response.json()["data"]:
-            if stream["game_id"] == "27471":
-                streamers.append(stream["user_name"])
+            streamers.append({
+                "name": stream["user_name"],
+                "title": stream["title"],
+                "viewer_count": stream["viewer_count"],
+                "url": f"https://twitch.tv/{stream['user_name']}?tt_content=live_view_card",
+            })
 
         return streamers

@@ -1116,7 +1116,7 @@ async def streamers(ctx: interactions.SlashContext):
 
         modal_ctx = ctx
         try:
-            modal_ctx = await ctx.bot.wait_for_modal(timeout=60, modal=modal)
+            modal_ctx = await ctx.bot.wait_for_modal(timeout=90, modal=modal)
         except asyncio.TimeoutError:
             logger.print(f"[main.streamers] Timed out")
             await modal_ctx.send(
@@ -1157,11 +1157,43 @@ async def streamers(ctx: interactions.SlashContext):
                 )
                 return
 
+            # streams is a list of data in the format of {"name": "username", "title": "title", "viewers": 0, "url": "url"}
+
+            usrnames = []
+            for stream in streams:
+                usrnames.append(stream["name"])
+
             # get the servers
+            # by getting the servers with the streamers in sample
             pipeline = [
-                {"$match": {"players.sample": {"$elemMatch": {"name": {"$in": streams}}}}},
-                {"$project": {"_id": 0, "ip": 1, "port": 1, "players": 1}},
+                {
+                    "$match": {
+                        "players.sample": {
+                            "$elemMatch": {
+                                "name": {
+                                    "$in": usrnames,
+                                }
+                            }
+                        }
+                    }
+                },
+                {"$limit": 10},
             ]
+
+            total = databaseLib.count(pipeline)
+            logger.print(f"[main.streamers] Got {total} servers")
+
+            if total == 0:
+                await ctx.send(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description="No servers found",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
             stuff = messageLib.embed(
                 pipeline=pipeline,
                 index=0,
