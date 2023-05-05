@@ -77,7 +77,7 @@ class Player:
         if "error" not in res.text.lower():
             return res.json()["id"]
         else:
-            return "---n/a---"
+            return ""
 
     def playerList(self, ip: str, port: int = 25565) -> Optional[list[dict]]:
         """Gets a list of players on a server

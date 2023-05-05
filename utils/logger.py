@@ -91,8 +91,7 @@ class Logger:
         sys.stdout = self.out  # output to log.log
         self.logger.error(message)
 
-        if self.webhook is not None:
-            requests.post(self.webhook, json={"content": message})
+        self.hook(message)
 
     def critical(self, message):
         sys.stdout = norm
@@ -100,8 +99,7 @@ class Logger:
         sys.stdout = self.out
         self.logger.critical(message)
 
-        if self.webhook is not None:
-            requests.post(self.webhook, json={"content": message})
+        self.hook(message)
 
     def debug(self, *args, **kwargs):
         self.logger.debug(" ".join([str(arg) for arg in args]))
@@ -141,7 +139,7 @@ class Logger:
         self.info(msg)
 
     def hook(self, message: str):
-        if self.webhook is not None:
+        if self.webhook is not None and self.webhook != "":
             requests.post(self.webhook, json={"content": message})
             self.print(f"Sent message to webhook: {message}")
 

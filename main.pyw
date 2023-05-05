@@ -30,9 +30,6 @@ if MONGO_URL == "":
 if DISCORD_TOKEN == "":
     print("Please add your bot token to 'privVars.py'")
     sys.exit("Config error in privVars.py, please fix before rerunning")
-if DISCORD_WEBHOOK == "":
-    print("Please add your discord webhook to 'privVars.py'")
-    sys.exit("Config error in privVars.py, please fix before rerunning")
 
 # Setup
 # ---------------------------------------------
@@ -184,19 +181,6 @@ async def find(
     try:
         await ctx.defer()
 
-        # print out the parameters that were passed
-        logger.print(
-            f"[main.find] find command called with parameters:",
-            f"version={version},",
-            f"max_players={max_players},",
-            f"online_players={online_players},",
-            f"player={player},",
-            f"sign={sign},",
-            f"description={description}",
-            f"cracked={cracked}",
-            f"has_favicon={has_favicon}",
-        )
-
         msg = await ctx.send(
             embed=messageLib.standardEmbed(
                 title="Finding servers...",
@@ -221,7 +205,7 @@ async def find(
             else:
                 uuid = player.replace("-", "")
 
-            if uuid == "---n/a---":
+            if uuid == "":
                 await msg.edit(
                     embed=messageLib.standardEmbed(
                         title="Error",
@@ -296,8 +280,6 @@ async def find(
                     ]
                 }
             )
-        if cracked is not None:
-            pipeline[0]["$match"]["$and"].append({"cracked": cracked})
         if has_favicon is not None:
             pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
 
@@ -1157,11 +1139,18 @@ async def streamers(ctx: interactions.SlashContext):
                 )
                 return
 
-            # streams is a list of data in the format of {"name": "username", "title": "title", "viewers": 0, "url": "url"}
+            # streams is a list of data in the format of {"name": "username", "title": "title", "viewer_count": 0, "url": "url"}
 
-            usrnames = []
-            for stream in streams:
-                usrnames.append(stream["name"])
+            # sort streams by viewer_count
+            streams = sorted(streams, key=lambda k: k["viewer_count"], reverse=True)
+
+            uuids = []
+            for stream in streams[:100]:
+                uuid = playerLib.getUUID(stream["name"])
+                if len(uuid) > 0:
+                    # add dashes
+                    uuid = f"{uuid[0:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:32]}"
+                    uuids.append(uuid)
 
             # get the servers
             # by getting the servers with the streamers in sample
@@ -1170,8 +1159,8 @@ async def streamers(ctx: interactions.SlashContext):
                     "$match": {
                         "players.sample": {
                             "$elemMatch": {
-                                "name": {
-                                    "$in": usrnames,
+                                "id": {
+                                    "$in": uuids,
                                 }
                             }
                         }
@@ -1214,6 +1203,7 @@ async def streamers(ctx: interactions.SlashContext):
             await ctx.send(
                 embed=stuff["embed"],
                 components=stuff["components"],
+                file=interactions.File(file="favicon.png", file_name="favicon.png"),
             )
     except Exception as err:
         if "403|Forbidden" in str(err):

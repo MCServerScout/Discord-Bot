@@ -34,6 +34,8 @@ class Twitch:
             else:
                 self.logger.error(f"[twitch.getStreamers] {e}")
             return []
+        else:
+            self.logger.print("[twitch.getStreamers] Got access token")
 
         access_token = response.json()["access_token"]
 
@@ -51,7 +53,7 @@ class Twitch:
             self.logger.error(f"[twitch.getStreamers] {e}")
             return []
         else:
-            self.logger.info(f"[twitch.getStreamers] {len(response.json()['data'])} streamers are live")
+            self.logger.print(f"[twitch.getStreamers] {len(response.json()['data'])} streamers are live")
 
         streamers = []
         for stream in response.json()["data"]:
