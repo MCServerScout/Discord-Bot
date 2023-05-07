@@ -136,6 +136,12 @@ def print(*args, **kwargs):
             required=False,
         ),
         SlashCommandOption(
+            name="logged_players",
+            description="The logged players of the server",
+            type=interactions.OptionType.INTEGER,
+            required=False,
+        ),
+        SlashCommandOption(
             name="player",
             description="The player on the server",
             type=interactions.OptionType.STRING,
@@ -149,7 +155,7 @@ def print(*args, **kwargs):
         ),
         SlashCommandOption(
             name="description",
-            description="The description of the server",
+            description="The description of the server, via regex, the default is \".*<your search>.*\"",
             type=interactions.OptionType.STRING,
             required=False,
         ),
@@ -172,12 +178,14 @@ async def find(
         version: str = None,
         max_players: int = None,
         online_players: int = None,
+        logged_players: int = None,
         player: str = None,
         sign: str = None,
         description: str = None,
         cracked: bool = None,
         has_favicon: bool = None,
 ):
+    msg = None
     try:
         await ctx.defer()
 
@@ -282,6 +290,11 @@ async def find(
             )
         if has_favicon is not None:
             pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
+        if logged_players is not None:
+            # match to the length of players.sample
+            pipeline[0]["$match"]["$and"].append(
+                {"players.sample": {"$size": logged_players}}
+            )
 
         total = databaseLib.count(pipeline)
 
@@ -335,14 +348,10 @@ async def find(
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="An error occurred",
-                    description="Wrong channel for this bot",
-                    color=RED,
-                ),
-                ephemeral=True,
+            await ctx.delete(
+                message=msg
             )
+            return
         else:
             logger.error(f"[main.find] {err}")
             logger.print(f"[main.find] {traceback.format_exc()}")
@@ -358,6 +367,7 @@ async def find(
 # command to get the next page of servers
 @interactions.component_callback("next")
 async def next_page(ctx: interactions.ComponentContext):
+    msg = None
     try:
         orgFoot = ctx.message.embeds[0].footer.text
         await ctx.defer(edit_origin=True)
@@ -417,13 +427,8 @@ async def next_page(ctx: interactions.ComponentContext):
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="An error occurred",
-                    description="Wrong channel for this bot",
-                    color=RED,
-                ),
-                ephemeral=True,
+            await ctx.delete(
+                message=msg
             )
             return
 
@@ -443,6 +448,7 @@ async def next_page(ctx: interactions.ComponentContext):
 # command to get the previous page of servers
 @interactions.component_callback("previous")
 async def previous_page(ctx: interactions.ComponentContext):
+    msg = None
     try:
         orgFoot = ctx.message.embeds[0].footer.text
         await ctx.defer(edit_origin=True)
@@ -502,13 +508,8 @@ async def previous_page(ctx: interactions.ComponentContext):
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="An error occurred",
-                    description="Wrong channel for this bot",
-                    color=RED,
-                ),
-                ephemeral=True,
+            await ctx.delete(
+                message=msg
             )
             return
 
@@ -601,6 +602,7 @@ async def players(ctx: interactions.ComponentContext):
 # command to jump to a specific index
 @interactions.component_callback("jump")
 async def jump(ctx: interactions.ComponentContext):
+    original = None
     # when pressed should spawn a modal with a text input and then edit the message with the new index
     try:
         original = ctx.message
@@ -684,13 +686,8 @@ async def jump(ctx: interactions.ComponentContext):
             )
     except Exception as err:
         if "403|Forbidden" in str(err):
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="An error occurred",
-                    description="Wrong channel for this bot",
-                    color=RED,
-                ),
-                ephemeral=True,
+            await ctx.delete(
+                message=original,
             )
             return
 
@@ -967,20 +964,15 @@ async def update(ctx: interactions.ComponentContext):
     ],
 )
 async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
-    # authorName = ctx.author.username + "#" + str(ctx.author.discriminator)
-    # if authorName != "Pilot1782#6718":
-    #     logger.print(f"[main.ping] Pong!")
-    #     await ctx.send(
-    #         embed=messageLib.standardEmbed(
-    #             title="Ping",
-    #             description="Pong",
-    #             color=RED,
-    #         ),
-    #         ephemeral=True,
-    #     )
-    #     return
     try:
-        await ctx.defer(ephemeral=True)
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description="Loading...",
+                color=BLUE,
+            ),
+            ephemeral=True,
+        )
 
         port = port if port is not None else 25565
 
@@ -1053,6 +1045,16 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
             ephemeral=True,
         )
     except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
         logger.error(f"[main.ping] {err}")
         logger.print(f"[main.ping] Full traceback: {traceback.format_exc()}")
 
@@ -1073,6 +1075,15 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
 )
 async def streamers(ctx: interactions.SlashContext):
     try:
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description="Loading...",
+                color=BLUE,
+            ),
+            ephemeral=True,
+        )
+
         # spawn a modal asking for client id and secret
         clientId = interactions.ShortText(
             label="Client ID",
@@ -1236,6 +1247,7 @@ async def streamers(ctx: interactions.SlashContext):
     description="Get stats about the server",
 )
 async def stats(ctx: interactions.SlashContext):
+    msg = None
     await ctx.defer()
 
     try:
@@ -1324,13 +1336,8 @@ async def stats(ctx: interactions.SlashContext):
         await msg.edit(embed=mainEmbed, )
     except Exception as err:
         if "403|Forbidden" in str(err):
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="An error occurred",
-                    description="Wrong channel for this bot",
-                    color=RED,
-                ),
-                ephemeral=True,
+            await ctx.delete(
+                message=msg
             )
             return
 

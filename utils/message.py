@@ -63,26 +63,26 @@ class Message:
         rows = [
             interactions.ActionRow(
                 interactions.Button(
-                    label="Previous",
                     style=interactions.ButtonStyle.PRIMARY,
+                    emoji="⬅️",
                     custom_id="previous",
                     disabled=disabled[1],
                 ),
                 interactions.Button(
-                    label="Next",
                     style=interactions.ButtonStyle.PRIMARY,
+                    emoji="➡️",
                     custom_id="next",
                     disabled=disabled[0],
                 ),
                 interactions.Button(
-                    label="Jump to",
+                    label="Jump",
                     style=interactions.ButtonStyle.SUCCESS,
                     custom_id="jump",
                     disabled=disabled[2],
                 ),
                 interactions.Button(
-                    label="Update",
                     style=interactions.ButtonStyle.SUCCESS,
+                    emoji="🔄",
                     custom_id="update",
                     disabled=disabled[3],
                 ),
@@ -222,7 +222,7 @@ class Message:
                     self.logger.print("[message.embed] Server is offline")
                     data["players"]["online"] = 0
                     data["players"]["max"] = 0
-                    data["description"]["text"] = ""
+                    data["description"] = {"text": "..."}
                     if "extra" in data["description"]:
                         for extra in data["description"]["extra"]:
                             if "text" in extra:
