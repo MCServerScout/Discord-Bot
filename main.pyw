@@ -1416,13 +1416,17 @@ if __name__ == "__main__":
             logger.print("[main] Keyboard interrupt, stopping bot")
             # stop the bot
             asyncio.run(bot.close())
+            break
         except Exception as e:
             if "Error: The Websocket closed with code: 1000 - Normal Closure" in str(e):
                 logger.print("[main] Websocket closed, restarting bot")
+                time.sleep(5)
                 # stop the bot
                 asyncio.run(bot.close())
                 continue
-
-            # log the error
-            logger.critical(f"[main] Error: {e}")
-            time.sleep(5)
+            else:
+                logger.error(f"[main] {e}")
+                logger.print("[main] Stopping bot")
+                # stop the bot
+                asyncio.run(bot.close())
+                break
