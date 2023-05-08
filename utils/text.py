@@ -83,7 +83,7 @@ class Text:
     def colorAnsi(text: str) -> str:
         """Changes color tags to those that work with ansi code blocks
 
-        Args:​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​​
+        Args:
             text (str): text to change
 
         Returns:

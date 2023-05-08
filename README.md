@@ -19,11 +19,13 @@ will be adding more features as time goes on.
 - Filters
   - Version, name or id
   - Player count
+  - Logged players
   - Player limit
   - Player by name or uuid
   - Sign text
   - Motd
   - Cracked
+  - Has favicon
 
 ----
 

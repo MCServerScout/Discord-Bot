@@ -364,7 +364,7 @@ async def find(
             )
 
 
-# command to get the next page of servers
+# button to get the next page of servers
 @interactions.component_callback("next")
 async def next_page(ctx: interactions.ComponentContext):
     msg = None
@@ -445,7 +445,7 @@ async def next_page(ctx: interactions.ComponentContext):
         )
 
 
-# command to get the previous page of servers
+# button to get the previous page of servers
 @interactions.component_callback("previous")
 async def previous_page(ctx: interactions.ComponentContext):
     msg = None
@@ -526,7 +526,7 @@ async def previous_page(ctx: interactions.ComponentContext):
         )
 
 
-# command to send the players that are online
+# button to send the players that are online
 @interactions.component_callback("players")
 async def players(ctx: interactions.ComponentContext):
     try:
@@ -599,7 +599,7 @@ async def players(ctx: interactions.ComponentContext):
         )
 
 
-# command to jump to a specific index
+# button to jump to a specific index
 @interactions.component_callback("jump")
 async def jump(ctx: interactions.ComponentContext):
     original = None
@@ -703,7 +703,7 @@ async def jump(ctx: interactions.ComponentContext):
         )
 
 
-# command to change the sort method
+# button to change the sort method
 @interactions.component_callback("sort")
 async def sort(ctx: interactions.ComponentContext):
     try:

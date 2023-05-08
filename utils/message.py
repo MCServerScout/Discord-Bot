@@ -197,10 +197,10 @@ class Message:
                         data["favicon"] = status["favicon"]
                     desc = status["description"]
                     if "extra" in desc and "text" in desc:
-                        self.logger.print("[message.embed] Server has a color and text: " + desc["text"])
+                        self.logger.print("[message.embed] Server has extra: " + desc["text"])
                         desc = ""
 
-                        # example: {"extra": [{"color": "red", "text": "Minecraft Server"}], "text": ""}
+                        # {"extra": [{"color": "red", "text": "Minecraft Server"}], "text": ""}
                         for extra in status["description"]["extra"]:
                             if "color" in extra and "text" in extra:
                                 desc += self.text.colorMine(extra["color"]) \
@@ -307,10 +307,13 @@ class Message:
             return {
                 "embed": embed,
                 "components": self.buttons(
-                    index + 1 >= total_servers, index <= 0, total_servers <= 1, type(pipeline) is dict,
-                    "sample" not in data["players"] or type(pipeline) is dict,
-                    total_servers <= 1,
-                    "https://mcstatus.io/status/java/" + str(data["ip"]) + ":" + str(data["port"]),
+                    index + 1 >= total_servers,  # next
+                    index <= 0,  # previous
+                    total_servers <= 1,  # jump
+                    type(pipeline) is dict,  # update
+                    "sample" not in data["players"] or type(pipeline) is dict,  # players
+                    total_servers <= 1,  # sort
+                    "https://mcstatus.io/status/java/" + str(data["ip"]) + ":" + str(data["port"]),  # MCStatus
                 ),
             }
         except Exception as e:
