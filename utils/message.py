@@ -210,7 +210,7 @@ class Message:
                             else:
                                 desc += self.text.cFilter(extra)
                     elif "text" in desc:
-                        desc = desc["text"]
+                        desc = str(desc["text"])
                     else:
                         desc = desc
 

@@ -990,7 +990,6 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
         count = databaseLib.count(pipeline)
 
         if count == 0:
-            logger.print(f"[main.ping] Server not in database")
             status = serverLib.status(ip, port)
             if status is None:
                 logger.print(f"[main.ping] Server not found")
@@ -1406,27 +1405,28 @@ async def on_ready():
 # -----------------------------------------------------------------------------
 # bot loop
 
-# main
 if __name__ == "__main__":
+    """Main loop for the bot
+    
+    This is the main loop for the bot. It will restart the bot if the websocket closes.
+    """
+
     while True:
         try:
-            # start the bot
             bot.start()
         except KeyboardInterrupt:
             logger.print("[main] Keyboard interrupt, stopping bot")
-            # stop the bot
             asyncio.run(bot.close())
             break
         except Exception as e:
             if "Error: The Websocket closed with code: 1000 - Normal Closure" in str(e):
                 logger.print("[main] Websocket closed, restarting bot")
+
                 time.sleep(5)
-                # stop the bot
                 asyncio.run(bot.close())
                 continue
             else:
                 logger.error(f"[main] {e}")
                 logger.print("[main] Stopping bot")
-                # stop the bot
                 asyncio.run(bot.close())
                 break
