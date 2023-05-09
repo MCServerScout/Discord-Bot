@@ -114,5 +114,7 @@ The docs are in the following json format:
 ## Legal
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+
 [Terms of service](TOS)
+
 [Privacy Policy](PRIVACY)
