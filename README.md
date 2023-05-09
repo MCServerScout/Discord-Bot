@@ -113,7 +113,7 @@ The docs are in the following json format:
 
 ## Legal
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+This project is licensed under the GNU Affero General Public License v3.0. See the [LICENSE](LICENSE.md) file for more
 
 [Terms of service](TOS.md)
 
