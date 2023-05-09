@@ -1,5 +1,3 @@
-import asyncio
-
 import aiohttp
 
 from .logger import Logger
@@ -9,10 +7,7 @@ class Twitch:
     def __init__(self, logger: "Logger"):
         self.logger = logger
 
-    def getStreamers(self, client_id: str, client_secret: str) -> list:
-        return asyncio.run(self._getStreamers(client_id, client_secret))
-
-    async def _getStreamers(self, client_id: str, client_secret: str) -> list:
+    async def asyncGetStreamers(self, client_id: str, client_secret: str) -> list:
         """Return a list of streamers that are live playing Minecraft
 
         Args:
@@ -32,8 +27,9 @@ class Twitch:
         }
 
         try:
-            response = await aiohttp.ClientSession().post(url, params=params)
-            response.raise_for_status()
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, params=params) as response:
+                    response.raise_for_status()
         except aiohttp.ClientResponseError as e:
             if str(e).startswith("400"):
                 self.logger.error("[twitch.getStreamers] Invalid client ID or client secret")
@@ -53,8 +49,9 @@ class Twitch:
         url += "?game_id=27471&first=100&type=live"
 
         try:
-            response = await aiohttp.ClientSession().get(url, headers=headers)
-            response.raise_for_status()
+            async with aiohttp.ClientSession() as session:
+                async with session.get(url, headers=headers) as response:
+                    response.raise_for_status()
         except aiohttp.ClientResponseError as e:
             self.logger.error(f"[twitch.getStreamers] {e}")
             return []

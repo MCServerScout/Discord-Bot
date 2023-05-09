@@ -24,10 +24,7 @@ class Player:
         self.server = server
         self.db = db
 
-    def crack_check_API(self, host: str, port: str = "25565") -> bool:
-        return asyncio.run(self._crack_check_API(host, port))
-
-    async def _crack_check_API(self, host: str, port: str = "25565") -> bool:
+    async def asyncCrackCheckAPI(self, host: str, port: str = "25565") -> bool:
         """Checks if a server is cracked using the mcstatus.io API
 
         Args:
@@ -40,17 +37,15 @@ class Player:
         """
         url = "https://api.mcstatus.io/v2/status/java/" + host + ":" + str(port)
 
-        resp = await aiohttp.ClientSession().get(url)
-        if resp.status == 200:
-            self.logger.debug("[player.crackCheckAPI] Server is cracked")
-            return (await resp.json())["eula_blocked"]
-        else:
-            return False
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    self.logger.debug("[player.crackCheckAPI] Server is cracked")
+                    return (await resp.json())["eula_blocked"]
+                else:
+                    return False
 
-    def playerHead(self, name: str) -> Optional[interactions.File]:
-        return asyncio.run(self._playerHead(name))
-
-    async def _playerHead(self, name: str) -> Optional[interactions.File]:
+    async def asyncPlayerHead(self, name: str) -> Optional[interactions.File]:
         """Downloads a player head from minotar.net
 
         Args:
@@ -60,14 +55,18 @@ class Player:
             interactions.file | None: file object of the player head
         """
         url = "https://minotar.net/avatar/" + name
-        r = await aiohttp.ClientSession().get(url)
-        with open("playerhead.png", "wb") as f:
-            f.write(await r.read())
-        self.logger.debug("[player.playerHead] Player head downloaded")
-        return interactions.File(
-            file_name="playerhead.png",
-            file=open("playerhead.png", "rb"),
-        )
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as r:
+                if r.status != 200:
+                    self.logger.error("[player.playerHead] Player head not found")
+                    return None
+                with open("playerhead.png", "wb") as f:
+                    f.write(await r.read())
+                self.logger.debug("[player.playerHead] Player head downloaded")
+                return interactions.File(
+                    file_name="playerhead.png",
+                    file=open("playerhead.png", "rb"),
+                )
 
     def getUUID(self, name: str) -> str:
         return asyncio.run(self.asyncGetUUID(name))
@@ -83,16 +82,14 @@ class Player:
             str: player UUID
         """
         url = "https://api.mojang.com/users/profiles/minecraft/" + name
-        res = await aiohttp.ClientSession().get(url)
-        if "error" not in (await res.json()).keys():
-            return (await res.json())["id"]
-        else:
-            return ""
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    return (await resp.json())["id"]
+                else:
+                    return ""
 
-    def playerList(self, ip: str, port: int = 25565) -> Optional[list[dict]]:
-        return asyncio.run(self._playerList(ip, port))
-
-    async def _playerList(self, ip: str, port: int = 25565) -> Optional[list[dict]]:
+    async def asyncPlayerList(self, ip: str, port: int = 25565) -> Optional[list[dict]]:
         """Gets a list of players on a server
 
         Args:

@@ -4,7 +4,6 @@ import datetime
 import traceback
 from typing import List, Optional
 
-import aiohttp
 import interactions
 from interactions import ActionRow
 
@@ -114,12 +113,14 @@ class Message:
             self,
             pipeline: list | dict,
             index: int,
+            fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
         Args:
             pipeline (list): The pipeline to use, or the server data
             index (int): The index of the embed
+            fast (bool): Whether to return just the database values
 
         Returns:
             {
@@ -129,7 +130,7 @@ class Message:
         """
         try:
             if type(pipeline) == dict:
-                self.logger.print("[message.embed] Server data provided")
+                self.logger.print("[message.asyncEmbed] Server data provided")
                 # server is not in db, and we got the server data
                 data = pipeline
                 pipeline = {
@@ -151,7 +152,7 @@ class Message:
                 total_servers = self.db.count(pipeline)
 
                 if total_servers == 0:
-                    self.logger.print("[message.embed] No servers found")
+                    self.logger.print("[message.asyncEmbed] No servers found")
                     return {
                         "embed": self.standardEmbed(
                             title="Error",
@@ -167,7 +168,7 @@ class Message:
                 data = self.db.get_doc_at_index(pipeline, index)
 
                 if data is None:
-                    self.logger.print("[message.embed] No server found in db")
+                    self.logger.print("[message.asyncEmbed] No server found in db")
                     return {
                         "embed": self.standardEmbed(
                             title="Error",
@@ -185,80 +186,96 @@ class Message:
             # get the server status
             isOnline = "🔴"
             data["cracked"] = None
-            try:
-                status = self.server.status(ip=data["ip"], port=data["port"])
-                if status is not None:
-                    isOnline = "🟢"
-                    # update the data
-                    data["players"]["max"] = status["players"]["max"]
-                    data["players"]["online"] = status["players"]["online"]
-                    if "favicon" in status:
-                        data["favicon"] = status["favicon"]
-                    desc = status["description"]
-                    if "extra" in desc and "text" in desc:
-                        self.logger.print("[message.embed] Server has extra: " + desc["text"])
-                        desc = ""
+            if not fast:
+                try:
+                    status = self.server.status(ip=data["ip"], port=data["port"], version=data["version"]["protocol"])
+                    if status is not None:
+                        self.logger.info("[message.asyncEmbed] Server status: " + str(status))
+                        isOnline = "🟢"
+                        # update the data
+                        data["players"]["max"] = status["players"]["max"]
+                        data["players"]["online"] = status["players"]["online"]
+                        if "favicon" in status:
+                            data["favicon"] = status["favicon"]
 
-                        # {"extra": [{"color": "red", "text": "Minecraft Server"}], "text": ""}
-                        for extra in status["description"]["extra"]:
-                            if "color" in extra and "text" in extra:
-                                desc += self.text.colorMine(extra["color"]) \
-                                        + self.text.cFilter(extra["text"])
-                            elif "text" in extra:
-                                desc += self.text.cFilter(extra["text"])
-                            else:
-                                desc += self.text.cFilter(extra)
-                    elif "text" in desc:
-                        desc = str(desc["text"])
+                        data["description"] = status["description"]
+                        if "extra" in data["description"]:
+                            desc = ""
+                            for extra in data["description"]["extra"]:
+                                ext = ""
+                                if "color" in extra:
+                                    ext += self.text.colorMine(extra["color"])
+                                if "text" in extra:
+                                    ext += self.text.cFilter(extra["text"])
+                                desc += ext
+                            data["description"]["text"] = desc
+                        if "text" not in data["description"] and str(data["description"]).strip() == "":
+                            data["description"] = {"text": "..."}
+                        else:
+                            data["description"] = {"text": str(data["description"])}
                     else:
-                        desc = desc
+                        self.logger.print("[message.asyncEmbed] Server is offline")
+                        data["players"]["online"] = 0
+                        data["players"]["max"] = 0
+                        if "extra" in data["description"]:
+                            desc = ""
+                            for extra in data["description"]["extra"]:
+                                ext = ""
+                                if "color" in extra:
+                                    ext += self.text.colorMine(extra["color"])
+                                if "text" in extra:
+                                    ext += self.text.cFilter(extra["text"])
+                                desc += ext
+                            data["description"]["text"] = desc
+                        if "text" not in data["description"] and str(data["description"]).strip() == "":
+                            data["description"] = {"text": "..."}
+                        else:
+                            data["description"] = {"text": str(data["description"])}
+                        isOnline = "🔴"
 
-                    if "text" in data["description"]:
-                        data["description"]["text"] = self.text.cFilter(desc)
-                    else:
-                        data["description"] = {"text": self.text.cFilter(desc)}
-                else:
-                    self.logger.print("[message.embed] Server is offline")
-                    data["players"]["online"] = 0
-                    data["players"]["max"] = 0
+                    # detect if the server is cracked
+                    joined = self.server.join(ip=data["ip"], port=data["port"], version=data["version"]["protocol"])
+                    data["cracked"] = joined.getType() == "CRACKED"
+                    data["hasForgeData"] = joined.getType() == "MODDED"
+
+                    self.logger.print("[message.asyncEmbed] Server online: " + isOnline)
+                except Exception as e:
+                    self.logger.error("[message.asyncEmbed] Error: " + str(e))
+                    self.logger.print(f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}")
+            else:
+                # isonline is yellow
+                isOnline = "🟡"
+                if "extra" in data["description"]:
+                    desc = ""
+                    for extra in data["description"]["extra"]:
+                        ext = ""
+                        if "color" in extra:
+                            ext += self.text.colorMine(extra["color"])
+                        if "text" in extra:
+                            ext += self.text.cFilter(extra["text"])
+                        desc += ext
+                    data["description"]["text"] = desc
+                if "text" not in data["description"] and str(data["description"]).strip() == "":
                     data["description"] = {"text": "..."}
-                    if "extra" in data["description"]:
-                        for extra in data["description"]["extra"]:
-                            if "text" in extra:
-                                data["description"]["text"] += extra["text"]
-                        data["description"]["text"] += data["description"]["extra"]["text"] \
-                            if "text" in data["description"]["extra"] else ""
-                    else:
-                        data["description"]["text"] = data["description"]["text"]
-                    isOnline = "🔴"
-
-                # detect if the server is cracked
-                joined = self.server.join(ip=data["ip"], port=data["port"])
-                data["cracked"] = joined.getType() == "CRACKED"
-                data["hasForgeData"] = joined.getType() == "MODDED"
-
-                self.logger.print("[message.embed] Server online: " + isOnline)
-            except Exception as e:
-                self.logger.error("[message.embed] Error: " + str(e))
-                self.logger.print(f"[message.embed] Full traceback: {traceback.format_exc()}")
+                else:
+                    data["description"] = {"text": str(data["description"])}
 
             # get the server icon
             if "favicon" in data and isOnline == "🟢":
                 bits = data["favicon"].split(",")[1] if "," in data["favicon"] else data["favicon"]
-                with open("favicon.png", "wb") as f:
+                with open("assets/favicon.png", "wb") as f:
                     f.write(base64.b64decode(bits))
-                self.logger.print("[message.embed] Server has a favicon")
             else:
-                url = "https://media.minecraftforum.net/attachments/300/619/636977108000120237.png"
-                with open("favicon.png", "wb") as f:
-                    bits = await aiohttp.ClientSession().get(url)
-                    f.write(await bits.read())
+                # copy the bytes from 'DefFavicon.png' to 'favicon.png'
+                with open("assets/DefFavicon.png", "rb") as f:
+                    with open("assets/favicon.png", "wb") as f2:
+                        f2.write(f.read())
 
             # create the embed
             embed = self.standardEmbed(
                 title=f"{isOnline} {data['ip']}",
                 description=f"```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
-                color=self.GREEN if isOnline == "🟢" else self.PINK,
+                color=(self.GREEN if isOnline == "🟢" else self.PINK) if isOnline != "🟡" else None,
             ).set_image(url="attachment://favicon.png")
 
             # set the footer to say the index, pipeline, and total servers
@@ -317,8 +334,8 @@ class Message:
                 ),
             }
         except Exception as e:
-            self.logger.error(f"[message.embed] {e}")
-            self.logger.print(f"[message.embed] Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"[message.asyncEmbed] {e}")
+            self.logger.print(f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}")
             return None
 
     def standardEmbed(
@@ -358,3 +375,49 @@ class Message:
                 description=description,
                 timestamp=self.text.timeNow(),
             )
+
+    async def asyncLoadServer(
+            self,
+            index: int,
+            pipeline: dict | list,
+            msg: interactions.Message,
+    ) -> None:
+        # first call the asyncEmbed function with fast
+        stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=True)
+        if stuff is None:
+            await msg.edit(
+                embed=self.standardEmbed(
+                    title="Error",
+                    description="There was an error loading the server",
+                    color=self.RED,
+                ),
+                file=None,
+            )
+            return
+
+        # then send the embed
+        await msg.edit(
+            embed=stuff["embed"],
+            components=stuff["components"],
+            file=interactions.File("assets/favicon.png"),
+        )
+
+        # then call the asyncEmbed function again with slow
+        stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=False)
+        if stuff is None:
+            await msg.edit(
+                embed=self.standardEmbed(
+                    title="Error",
+                    description="There was an error loading the server",
+                    color=self.RED,
+                ),
+                file=None,
+            )
+            return
+
+        # then send the embed
+        await msg.edit(
+            embed=stuff["embed"],
+            components=stuff["components"],
+            file=interactions.File("assets/favicon.png"),
+        )

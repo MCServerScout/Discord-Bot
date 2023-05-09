@@ -321,30 +321,10 @@ async def find(
 
         index = 0
 
-        stuff = await messageLib.asyncEmbed(
-            pipeline=pipeline,
+        await messageLib.asyncLoadServer(
             index=index,
-        )
-
-        if stuff is None:
-            logger.error("Stuff is None")
-            await msg.edit(
-                embed=messageLib.standardEmbed(
-                    title="No servers found",
-                    description="Try again with different parameters",
-                    color=RED,
-                ),
-                components=messageLib.buttons(),
-            )
-            return
-
-        embed = stuff["embed"]
-        comps = stuff["components"]
-
-        await msg.edit(
-            embed=embed,
-            components=comps,
-            file=interactions.File(file="favicon.png", file_name="favicon.png"),
+            pipeline=pipeline,
+            msg=msg,
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
@@ -381,6 +361,7 @@ async def next_page(ctx: interactions.ComponentContext):
                 color=BLUE,
             ),
             components=messageLib.buttons(),
+            file=interactions.File(file="assets/loading.png", file_name="favicon.png"),
         )
 
         # get the pipeline and index from the message
@@ -399,31 +380,13 @@ async def next_page(ctx: interactions.ComponentContext):
                 color=BLUE,
             ),
             components=messageLib.buttons(),
+            file=None
         )
 
-        stuff = await messageLib.asyncEmbed(
-            pipeline=pipeline,
+        await messageLib.asyncLoadServer(
             index=index,
-        )
-
-        if stuff is None:
-            await msg.edit(
-                embed=messageLib.standardEmbed(
-                    title="No servers found",
-                    description="Try again with different parameters",
-                    color=RED,
-                ),
-                components=messageLib.buttons(),
-            )
-            return
-
-        embed = stuff["embed"]
-        comps = stuff["components"]
-
-        await msg.edit(
-            embed=embed,
-            components=comps,
-            file=interactions.File(file="favicon.png", file_name="favicon.png"),
+            pipeline=pipeline,
+            msg=msg,
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
@@ -462,6 +425,7 @@ async def previous_page(ctx: interactions.ComponentContext):
                 color=BLUE,
             ),
             components=messageLib.buttons(),
+            file=interactions.File(file="assets/loading.png", file_name="favicon.png"),
         )
 
         # get the pipeline and index from the message
@@ -480,31 +444,13 @@ async def previous_page(ctx: interactions.ComponentContext):
                 color=BLUE,
             ),
             components=messageLib.buttons(),
+            file=None
         )
 
-        stuff = await messageLib.asyncEmbed(
-            pipeline=pipeline,
+        await messageLib.asyncLoadServer(
             index=index,
-        )
-
-        if stuff is None:
-            await msg.edit(
-                embed=messageLib.standardEmbed(
-                    title="No servers found",
-                    description="Try again with different parameters",
-                    color=RED,
-                ),
-                components=messageLib.buttons(),
-            )
-            return
-
-        embed = stuff["embed"]
-        comps = stuff["components"]
-
-        await msg.edit(
-            embed=embed,
-            components=comps,
-            file=interactions.File(file="favicon.png", file_name="favicon.png"),
+            pipeline=pipeline,
+            msg=msg,
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
@@ -542,7 +488,7 @@ async def players(ctx: interactions.ComponentContext):
 
         host = databaseLib.get_doc_at_index(pipeline, index)
 
-        player_list = playerLib.playerList(host["ip"], host["port"])
+        player_list = await playerLib.asyncPlayerList(host["ip"], host["port"])
 
         if player_list is None:
             await ctx.send(
@@ -663,17 +609,11 @@ async def jump(ctx: interactions.ComponentContext):
                     ephemeral=True,
                 )
 
-            # get the new embed
-            stuff = await messageLib.asyncEmbed(
-                pipeline=pipeline,
-                index=index - 1,
-            )
-
             # edit the message
-            await original.edit(
-                embed=stuff["embed"],
-                components=stuff["components"],
-                file=interactions.File(file="favicon.png", file_name="favicon.png"),
+            await messageLib.asyncLoadServer(
+                index=index - 1,
+                pipeline=pipeline,
+                msg=original,
             )
         except asyncio.TimeoutError:
             await ctx.send(
@@ -811,26 +751,11 @@ async def sort(ctx: interactions.ComponentContext):
             # limit to 1k servers
             pipeline.append({"$limit": 1000})
 
-            # get the new embed
-            stuff = await messageLib.asyncEmbed(
-                pipeline=pipeline,
-                index=0,
-            )
-
             # edit the message
-            await org.edit(
-                embed=stuff["embed"],
-                components=stuff["components"],
-                file=interactions.File(file="favicon.png", file_name="favicon.png"),
-            )
-
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="Success",
-                    description="Sorted the servers",
-                    color=GREEN,
-                ),
-                ephemeral=True,
+            await messageLib.asyncLoadServer(
+                index=0,
+                pipeline=pipeline,
+                msg=org,
             )
     except AttributeError:
         logger.print(f"[main.sort] AttributeError")
@@ -889,29 +814,11 @@ async def update(ctx: interactions.ComponentContext):
             components=messageLib.buttons(),
         )
 
-        stuff = await messageLib.asyncEmbed(
-            pipeline=pipeline,
+        # load the server
+        await messageLib.asyncLoadServer(
             index=index,
-        )
-
-        if stuff is None:
-            await msg.edit(
-                embed=messageLib.standardEmbed(
-                    title="No servers found",
-                    description="Try again with different parameters",
-                    color=RED,
-                ),
-                components=messageLib.buttons(),
-            )
-            return
-
-        embed = stuff["embed"]
-        comps = stuff["components"]
-
-        await msg.edit(
-            embed=embed,
-            components=comps,
-            file=interactions.File(file="favicon.png", file_name="favicon.png"),
+            pipeline=pipeline,
+            msg=msg,
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
@@ -1040,7 +947,7 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
         await ctx.send(
             embed=embed,
             components=comps,
-            file=interactions.File(file="favicon.png", file_name="favicon.png"),
+            file=interactions.File(file="assets/favicon.png", file_name="assets/favicon.png"),
             ephemeral=True,
         )
     except Exception as err:
@@ -1133,7 +1040,7 @@ async def streamers(ctx: interactions.SlashContext):
                 ephemeral=True,
             )
 
-            streams = twitchLib.getStreamers(
+            streams = twitchLib.asyncGetStreamers(
                 client_id=clientId,
                 client_secret=clientSecret,
             )
@@ -1213,7 +1120,7 @@ async def streamers(ctx: interactions.SlashContext):
             await ctx.send(
                 embed=stuff["embed"],
                 components=stuff["components"],
-                file=interactions.File(file="favicon.png", file_name="favicon.png"),
+                file=interactions.File(file="assets/favicon.png", file_name="assets/favicon.png"),
             )
     except Exception as err:
         if "403|Forbidden" in str(err):

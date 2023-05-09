@@ -140,11 +140,19 @@ class Logger:
         self.info(msg)
 
     def hook(self, message: str):
-        asyncio.get_event_loop().create_task(self._hook(message))
+        asyncio.get_event_loop().create_task(self.asyncHook(message))
 
-    async def _hook(self, message: str):
+    async def asyncHook(self, message: str):
         if self.webhook is not None and self.webhook != "":
-            await aiohttp.ClientSession().post(url=self.webhook, json={"content": message})
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                        self.webhook,
+                        json={
+                            "content": message,
+                        },
+                ) as resp:
+                    if resp.status != 204:
+                        self.error(f"Failed to send message to webhook: {message}")
             self.print(f"Sent message to webhook: {message}")
 
     def __repr__(self):

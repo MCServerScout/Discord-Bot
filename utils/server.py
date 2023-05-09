@@ -149,24 +149,25 @@ class Server:
             Optional[dict]: The status response dict
         """
         try:
-            # get info on the server
-            server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
-            try:
-                version = server.status().version.protocol if version == -1 else version
-            except TimeoutError:
-                self.logger.print(f"[server.status] Connection error (timeout)")
-                return None
-            except ConnectionRefusedError:
-                self.logger.print(f"[server.status] Connection error (refused)")
-                return None
-            except Exception as err:
-                if "An existing connection was forcibly closed by the remote host" in str(err):
-                    self.logger.error(f"[server.status] Connection error")
+            if version == -1:
+                # get info on the server
+                server = mcstatus.JavaServer.lookup(ip + ":" + str(port), timeout=5)
+                try:
+                    version = server.status().version.protocol if version == -1 else version
+                except TimeoutError:
+                    self.logger.print(f"[server.status] Connection error (timeout)")
                     return None
-                else:
-                    self.logger.error(f"[server.status] {err}")
-                    self.logger.print(f"[server.status] {traceback.format_exc()}")
+                except ConnectionRefusedError:
+                    self.logger.print(f"[server.status] Connection error (refused)")
                     return None
+                except Exception as err:
+                    if "An existing connection was forcibly closed by the remote host" in str(err):
+                        self.logger.error(f"[server.status] Connection error")
+                        return None
+                    else:
+                        self.logger.error(f"[server.status] {err}")
+                        self.logger.print(f"[server.status] {traceback.format_exc()}")
+                        return None
 
             connection = TCPSocketConnection((ip, port))
 
