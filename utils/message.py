@@ -1,12 +1,11 @@
 """Useful functions for sending messages to the user."""
-
 import base64
 import datetime
 import traceback
 from typing import List, Optional
 
+import aiohttp
 import interactions
-import requests
 from interactions import ActionRow
 
 from .database import Database
@@ -111,7 +110,7 @@ class Message:
 
         return rows
 
-    def embed(
+    async def asyncEmbed(
             self,
             pipeline: list | dict,
             index: int,
@@ -252,7 +251,8 @@ class Message:
             else:
                 url = "https://media.minecraftforum.net/attachments/300/619/636977108000120237.png"
                 with open("favicon.png", "wb") as f:
-                    f.write(requests.get(url).content)
+                    bits = await aiohttp.ClientSession().get(url)
+                    f.write(await bits.read())
 
             # create the embed
             embed = self.standardEmbed(

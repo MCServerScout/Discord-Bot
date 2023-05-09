@@ -1,7 +1,8 @@
+import asyncio
 import logging
 import sys
 
-import requests
+import aiohttp
 import unicodedata
 
 norm = sys.stdout
@@ -139,8 +140,11 @@ class Logger:
         self.info(msg)
 
     def hook(self, message: str):
+        asyncio.get_event_loop().create_task(self._hook(message))
+
+    async def _hook(self, message: str):
         if self.webhook is not None and self.webhook != "":
-            requests.post(self.webhook, json={"content": message})
+            await aiohttp.ClientSession().post(url=self.webhook, json={"content": message})
             self.print(f"Sent message to webhook: {message}")
 
     def __repr__(self):

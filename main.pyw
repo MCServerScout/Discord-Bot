@@ -209,7 +209,7 @@ async def find(
         if player is not None:
             if len(player) < 16:
                 # get the uuid of the player
-                uuid = playerLib.getUUID(player)
+                uuid = await playerLib.asyncGetUUID(player)
             else:
                 uuid = player.replace("-", "")
 
@@ -321,7 +321,7 @@ async def find(
 
         index = 0
 
-        stuff = messageLib.embed(
+        stuff = await messageLib.asyncEmbed(
             pipeline=pipeline,
             index=index,
         )
@@ -401,7 +401,7 @@ async def next_page(ctx: interactions.ComponentContext):
             components=messageLib.buttons(),
         )
 
-        stuff = messageLib.embed(
+        stuff = await messageLib.asyncEmbed(
             pipeline=pipeline,
             index=index,
         )
@@ -482,7 +482,7 @@ async def previous_page(ctx: interactions.ComponentContext):
             components=messageLib.buttons(),
         )
 
-        stuff = messageLib.embed(
+        stuff = await messageLib.asyncEmbed(
             pipeline=pipeline,
             index=index,
         )
@@ -664,7 +664,7 @@ async def jump(ctx: interactions.ComponentContext):
                 )
 
             # get the new embed
-            stuff = messageLib.embed(
+            stuff = await messageLib.asyncEmbed(
                 pipeline=pipeline,
                 index=index - 1,
             )
@@ -812,7 +812,7 @@ async def sort(ctx: interactions.ComponentContext):
             pipeline.append({"$limit": 1000})
 
             # get the new embed
-            stuff = messageLib.embed(
+            stuff = await messageLib.asyncEmbed(
                 pipeline=pipeline,
                 index=0,
             )
@@ -889,7 +889,7 @@ async def update(ctx: interactions.ComponentContext):
             components=messageLib.buttons(),
         )
 
-        stuff = messageLib.embed(
+        stuff = await messageLib.asyncEmbed(
             pipeline=pipeline,
             index=index,
         )
@@ -1017,7 +1017,7 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
             pipeline = status
 
         # get the server
-        stuff = messageLib.embed(
+        stuff = await messageLib.asyncEmbed(
             pipeline=pipeline,
             index=0,
         )
@@ -1156,7 +1156,7 @@ async def streamers(ctx: interactions.SlashContext):
 
             uuids = []
             for stream in streams[:100]:
-                uuid = playerLib.getUUID(stream["name"])
+                uuid = await playerLib.asyncGetUUID(stream["name"])
                 if len(uuid) > 0:
                     # add dashes
                     uuid = f"{uuid[0:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:32]}"
@@ -1193,7 +1193,7 @@ async def streamers(ctx: interactions.SlashContext):
                 )
                 return
 
-            stuff = messageLib.embed(
+            stuff = await messageLib.asyncEmbed(
                 pipeline=pipeline,
                 index=0,
             )
