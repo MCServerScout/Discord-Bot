@@ -3,7 +3,6 @@
 This is a Discord bot that I made for my friends and I to use in our Discord server. It is a work in progress, and I
 will be adding more features as time goes on.
 
-----
 
 ## TODO
 
@@ -18,7 +17,6 @@ will be adding more features as time goes on.
 - [X] Get a player list
 - [ ] Make it work well
 
-----
 
 ## Commands
 
@@ -53,7 +51,6 @@ This command will show you information about a provided server.
 
 This command will show you a list of all the commands and how to use them.
 
-----
 
 ## Filters
 
@@ -67,7 +64,6 @@ This command will show you a list of all the commands and how to use them.
 * `cracked` - Whether the server is cracked
 * `has_favicon` - Whether the server has a favicon
 
-----
 
 ## Documents
 
