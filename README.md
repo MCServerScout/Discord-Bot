@@ -79,7 +79,13 @@ The docs are in the following json format:
     "$oid": "1534978d9f542e403cfa5026"
   },
   "description": {
-    "text": "A Minecraft Server"
+    "extra": [
+      {
+        "color": "white",
+        "text": "A Minecraft Server"
+      }
+    ],
+    "text": ""
   },
   "enforcesSecureChat": null,
   "hasFavicon": false,
