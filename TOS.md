@@ -15,7 +15,7 @@ Welcome to the Minecraft Server Scanner Bot! By using this bot, you agree to be 
 1. The Minecraft Server Scanner Bot will collect and store information about the servers it scans, including but not limited to server IP address and status.
 2. This information will be used solely for the purpose of providing the Minecraft Server Scanner Bot service.
 3. The Minecraft Server Scanner Bot creators will not sell or distribute any collected data to third parties.
-4. By using the Minecraft Server Scanner Bot, you agree to our [Privacy Policy](https://github.com/Pilot1782/bad_copenheimer/wiki/Privacy-Policy).
+4. By using the Minecraft Server Scanner Bot, you agree to our [Privacy Policy](PRIVACY.md).
 
 ## Enforcement
 
