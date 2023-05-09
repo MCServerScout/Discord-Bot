@@ -60,7 +60,7 @@ This command will show you a list of all the commands and how to use them.
 * `logged_players` - The number of players that have logged into the server
 * `player` - The name or uuid of a player that has logged into the server either as an uuid or name
 * `sign` - The text on a sign
-* `description` - The text in the description of the server
+* `description` - The text in the description of the server matched via RegEx
 * `cracked` - Whether the server is cracked
 * `has_favicon` - Whether the server has a favicon
 
@@ -106,3 +106,13 @@ The docs are in the following json format:
   }
 }
 ```
+
+## Credits
+
+* Pilot1782 - Creator
+
+## Legal
+
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
+[Terms of service](TOS)
+[Privacy Policy](PRIVACY)
