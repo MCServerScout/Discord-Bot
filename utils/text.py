@@ -292,3 +292,33 @@ class Text:
                 out += "19.4"
 
         return out
+
+    def motdParse(self, motd: dict) -> dict:
+        """Parses a motd dict to remove color codes
+
+        Args:
+            motd (dict): The motd dict
+
+        Returns:
+            dict: The parsed motd dict
+        """
+        text = ""
+        if "extra" in motd:
+            for ext in motd["extra"]:
+                if "color" in ext:
+                    text += self.colorMine(color=ext["color"]) + ext["text"]
+                else:
+                    text += ext["text"]
+
+        if "text" in motd:
+            text += motd["text"]
+
+        if type(motd) == str:
+            text = motd
+
+        if text == "":
+            text = "Unknown"
+
+        return {
+            "text": text,
+        }

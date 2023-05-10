@@ -8,11 +8,11 @@ import traceback
 from typing import Optional
 
 import mcstatus
-from bson import DatetimeMS
 from mcstatus.protocol.connection import Connection, TCPSocketConnection
 
 from .database import Database
 from .logger import Logger
+from .text import Text
 
 
 class Server:
@@ -34,9 +34,11 @@ class Server:
             self,
             db: "Database",
             logger: "Logger",
+            text: "Text",
     ):
         self.db = db
         self.logger = logger
+        self.text = text
 
     def update(
             self,
@@ -85,48 +87,55 @@ class Server:
         """
 
         try:
-            # check if the server is online
-            try:
-                mcstatus.JavaServer.lookup(host).ping()
-            except socket.gaierror:
-                return None
-
             # get the status response
             status = self.status(host)
 
             if status is None:
+                self.logger.warning(f"Failed to get status for {host}")
                 return None
 
             server_type = (
-                self.join(host, status["version"]["protocol"])
+                self.join(ip=host, port=port, version=status["version"]["protocol"])
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
 
-            if server_type.getType() == "CRACKED":
-                status["cracked"] = True
-            else:
-                status["cracked"] = False
+            status["cracked"] = server_type == "CRACKED"
 
             status["ip"] = host
             status["port"] = port
-            status["online"] = DatetimeMS(int(datetime.datetime.utcnow().timestamp() * 1000))
+            status["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
+            status["hasFavicon"] = "favicon" in status
+            status["hasForgeData"] = server_type == "MODDED"
+            status["description"] = self.text.motdParse(status["description"])
 
-            # # if the server is in the db, then get the db doc
-            # if self.db.col.find_one({"ip": status["ip"]}) is not None:
-            #     dbVal = self.db.col.find_one({"ip": status["ip"]})
-            #     status["cracked"] = (
-            #             status["cracked"]
-            #             or dbVal[
-            #                 "cracked"
-            #             ]
-            #     )
-            #     self.updateDB(status)
-            # else:
-            #     self.updateDB(status)
+            # if the server is in the db, then get the db doc
+            if self.db.col.find_one({"ip": status["ip"], "port": status["port"]}) is not None:
+                dbVal = self.db.col.find_one({"ip": status["ip"], "port": status["port"]})
+                if dbVal is not None:
+                    if "cracked" in dbVal:
+                        status["cracked"] = (
+                                status["cracked"]
+                                or dbVal[
+                                    "cracked"
+                                ]
+                        )
+
+                    # append the dbVal sample to the status sample
+                    if "sample" in dbVal["players"]:
+                        for player in dbVal["players"]["sample"]:
+                            if player not in status["players"]["sample"]:
+                                status["players"]["sample"].append(player)
+                else:
+                    self.logger.warning(f"Failed to get dbVal for {host}, making new entry")
+                self.updateDB(status)
+            else:
+                self.logger.warning(f"Failed to get dbVal for {host}, making new entry")
+                self.updateDB(status)
 
             return status
-        except Exception:
+        except Exception as err:
+            self.logger.warning(f"[server.update] {err}")
             self.logger.print(f"[server.update] {traceback.format_exc()}")
             return None
 
@@ -360,6 +369,9 @@ class Server:
         Args:
             data (dict): The data to update the database with
         """
+        if "favicon" in data:
+            del data["favicon"]
+
         threading.Thread(target=self._updateDB, args=(data,)).start()
 
     def _updateDB(self, data: dict):
@@ -369,8 +381,12 @@ class Server:
             data (dict): The data to update the database with
         """
 
-        self.db.update_one(
-            {"host.ip": data["ip"]},
-            {"$set": {data}},
-            upsert=True,
-        )
+        try:
+            self.db.update_one(
+                {"ip": data["ip"], "port": data["port"]},
+                {"$set": data},
+                upsert=True,
+            )
+        except Exception as err:
+            self.logger.error(f"[server._updateDB] {err}")
+            self.logger.print(f"[server._updateDB] {traceback.format_exc()}")

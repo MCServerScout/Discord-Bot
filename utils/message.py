@@ -186,82 +186,38 @@ class Message:
             # get the server status
             isOnline = "🔴"
             data["cracked"] = None
-            if not fast:
+            if type(pipeline) == dict and fast:
+                # set all values to default
+                data["description"] = {"text": "..."}
+                data["players"] = {"online": 0, "max": 0}
+                data["version"] = {"name": "...", "protocol": 0}
+                data["favicon"] = None
+                data["cracked"] = None
+                data["hasForgeData"] = False
+                data["lastSeen"] = 0
+            elif not fast:
                 try:
-                    status = self.server.status(ip=data["ip"], port=data["port"], version=data["version"]["protocol"])
-                    if status is not None:
-                        self.logger.info("[message.asyncEmbed] Server status: " + str(status))
-                        isOnline = "🟢"
-                        # update the data
-                        data["players"]["max"] = status["players"]["max"]
-                        data["players"]["online"] = status["players"]["online"]
-                        if "favicon" in status:
-                            data["favicon"] = status["favicon"]
+                    status = self.server.update(host=data["ip"], port=data["port"])
 
-                        data["description"] = status["description"]
-                        if "extra" in data["description"]:
-                            desc = ""
-                            for extra in data["description"]["extra"]:
-                                ext = ""
-                                if "color" in extra:
-                                    ext += self.text.colorMine(extra["color"])
-                                if "text" in extra:
-                                    ext += self.text.cFilter(extra["text"])
-                                desc += ext
-                            data["description"]["text"] = desc
-                        if "text" not in data["description"] and str(data["description"]).strip() == "":
-                            data["description"] = {"text": "..."}
-                        else:
-                            data["description"] = {"text": str(data["description"])}
-                    else:
-                        self.logger.print("[message.asyncEmbed] Server is offline")
-                        data["players"]["online"] = 0
-                        data["players"]["max"] = 0
-                        if "extra" in data["description"]:
-                            desc = ""
-                            for extra in data["description"]["extra"]:
-                                ext = ""
-                                if "color" in extra:
-                                    ext += self.text.colorMine(extra["color"])
-                                if "text" in extra:
-                                    ext += self.text.cFilter(extra["text"])
-                                desc += ext
-                            data["description"]["text"] = desc
-                        if "text" not in data["description"] and str(data["description"]).strip() == "":
-                            data["description"] = {"text": "..."}
-                        else:
-                            data["description"] = {"text": str(data["description"])}
+                    if status is None:
+                        # server is offline
                         isOnline = "🔴"
-
-                    # detect if the server is cracked
-                    joined = self.server.join(ip=data["ip"], port=data["port"], version=data["version"]["protocol"])
-                    data["cracked"] = joined.getType() == "CRACKED"
-                    data["hasForgeData"] = joined.getType() == "MODDED"
-
-                    self.logger.print("[message.asyncEmbed] Server online: " + isOnline)
+                        data["cracked"] = None
+                        data["description"] = self.text.motdParse(data["description"])
+                    else:
+                        # server is online
+                        isOnline = "🟢"
+                        data = status
                 except Exception as e:
                     self.logger.error("[message.asyncEmbed] Error: " + str(e))
                     self.logger.print(f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}")
             else:
                 # isonline is yellow
                 isOnline = "🟡"
-                if "extra" in data["description"]:
-                    desc = ""
-                    for extra in data["description"]["extra"]:
-                        ext = ""
-                        if "color" in extra:
-                            ext += self.text.colorMine(extra["color"])
-                        if "text" in extra:
-                            ext += self.text.cFilter(extra["text"])
-                        desc += ext
-                    data["description"]["text"] = desc
-                if "text" not in data["description"] and str(data["description"]).strip() == "":
-                    data["description"] = {"text": "..."}
-                else:
-                    data["description"] = {"text": str(data["description"])}
+                data["description"] = self.text.motdParse(data["description"])
 
             # get the server icon
-            if "favicon" in data and isOnline == "🟢":
+            if isOnline == "🟢" and "favicon" in data:
                 bits = data["favicon"].split(",")[1] if "," in data["favicon"] else data["favicon"]
                 with open("assets/favicon.png", "wb") as f:
                     f.write(base64.b64decode(bits))
@@ -331,7 +287,9 @@ class Message:
                     "sample" not in data["players"] or type(pipeline) is dict,  # players
                     total_servers <= 1,  # sort
                     "https://mcstatus.io/status/java/" + str(data["ip"]) + ":" + str(data["port"]),  # MCStatus
-                ),
+                ) if not fast else self.buttons(True, True, True, True, True, True,
+                                                "https://mcstatus.io/status/java/" + str(data["ip"]) + ":" + str(
+                                                    data["port"])),
             }
         except Exception as e:
             self.logger.error(f"[message.asyncEmbed] {e}")

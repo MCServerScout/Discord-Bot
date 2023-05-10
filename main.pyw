@@ -352,7 +352,7 @@ async def next_page(ctx: interactions.ComponentContext):
         orgFoot = ctx.message.embeds[0].footer.text
         await ctx.defer(edit_origin=True)
 
-        logger.print(f"[main.previous_page] previous page called")
+        logger.print(f"[main.previous_page] next page called")
 
         msg = await ctx.edit_origin(
             embed=messageLib.standardEmbed(
@@ -672,6 +672,10 @@ async def sort(ctx: interactions.ComponentContext):
                 value="version",
             ),
             interactions.StringSelectOption(
+                label="Last scan",
+                value="last_scan",
+            ),
+            interactions.StringSelectOption(
                 label="Random",
                 value="random",
             ),
@@ -722,6 +726,8 @@ async def sort(ctx: interactions.ComponentContext):
                     sortMethod = {"$sort": {"players.max": -1}}
                 case "version":
                     sortMethod = {"$sort": {"version": -1}}
+                case "last_scan":
+                    sortMethod = {"$sort": {"lastSeen": -1}}
                 case "random":
                     sortMethod = {"$sample": {"size": 1000}}
                 case _:
@@ -883,72 +889,25 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
 
         port = port if port is not None else 25565
 
-        # check if the server is in the database
-        pipeline = [
-            {
-                "$match": {
-                    "ip": ip,
-                    "port": port,
-                }
-            },
-            {"$limit": 1},
-        ]
+        pipeline = {
+            "ip": ip,
+            "port": port,
+        }
 
-        count = databaseLib.count(pipeline)
-
-        if count == 0:
-            status = serverLib.status(ip, port)
-            if status is None:
-                logger.print(f"[main.ping] Server not found")
-                await ctx.send(
-                    embed=messageLib.standardEmbed(
-                        title="Error",
-                        description="Server not found",
-                        color=RED,
-                    ),
-                    ephemeral=True,
-                )
-                return
-
-            status["cracked"] = serverLib.join(ip, port, ) == "CRACKED"
-
-            if "hasForgeData" not in status:
-                status["hasForgeData"] = False
-
-            status["ip"] = ip
-            status["port"] = port
-            status["lastSeen"] = int(time.time())
-
-            logger.print(f"[main.ping] Got info from server: {type(status)}")
-
-            pipeline = status
-
-        # get the server
-        stuff = await messageLib.asyncEmbed(
-            pipeline=pipeline,
-            index=0,
+        msg = await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description="Loading server 1 of 1",
+                color=BLUE,
+            ),
+            components=messageLib.buttons(),
         )
 
-        if stuff is None:
-            logger.print(f"[main.ping] Server not in database")
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="Error",
-                    description="Server not in database",
-                    color=RED,
-                ),
-                ephemeral=True,
-            )
-            return
-
-        embed = stuff["embed"]
-        comps = stuff["components"]
-
-        await ctx.send(
-            embed=embed,
-            components=comps,
-            file=interactions.File(file="assets/favicon.png", file_name="assets/favicon.png"),
-            ephemeral=True,
+        # get the server
+        await messageLib.asyncLoadServer(
+            index=0,
+            pipeline=pipeline,
+            msg=msg,
         )
     except Exception as err:
         if "403|Forbidden" in str(err):
@@ -1326,7 +1285,7 @@ if __name__ == "__main__":
             asyncio.run(bot.close())
             break
         except Exception as e:
-            if "Error: The Websocket closed with code: 1000 - Normal Closure" in str(e):
+            if "Error: The Websocket closed with code: 1000" in str(e):
                 logger.print("[main] Websocket closed, restarting bot")
 
                 time.sleep(5)

@@ -92,8 +92,6 @@ class Logger:
         sys.stdout = self.out  # output to log.log
         self.logger.error(message)
 
-        self.hook(message)
-
     def critical(self, message):
         sys.stdout = norm
         print(message)
@@ -140,7 +138,10 @@ class Logger:
         self.info(msg)
 
     def hook(self, message: str):
-        asyncio.get_event_loop().create_task(self.asyncHook(message))
+        if asyncio.get_event_loop().is_running():
+            asyncio.create_task(self.asyncHook(message))
+        else:
+            asyncio.run(self.asyncHook(message))
 
     async def asyncHook(self, message: str):
         if self.webhook is not None and self.webhook != "":
