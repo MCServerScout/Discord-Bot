@@ -313,7 +313,7 @@ class Text:
         if "text" in motd:
             text += motd["text"]
 
-        if type(motd) == str:
+        if type(motd) is str:
             text = motd
 
         if text == "":
