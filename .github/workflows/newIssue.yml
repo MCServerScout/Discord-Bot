@@ -34,7 +34,18 @@ jobs:
             
             ### Usual Fix
             
-            Open \`privVars.py\` and make sure that \`MONGO_URL\` and \`DISCORD_TOKEN\` are properly set.`;
+            Open \`privVars.py\` and make sure that \`MONGO_URL\` and \`DISCORD_TOKEN\` are properly set.
+            
+            `pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 111] Connection refused\`
+            
+            ### Usual Fix
+            
+            Make sure that you have a mongo server running on \`localhost:27017\` or in Atlas, make sure you are using the correct connection string and in the network access tab, make sure that your IP is whitelisted.
+            
+            ## If you are still having issues, please make sure that your issue has the following information:
+            `interactions.py` version
+            `python3.x` version
+            `;
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
