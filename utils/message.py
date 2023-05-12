@@ -15,11 +15,11 @@ from .text import Text
 
 class Message:
     def __init__(
-            self,
-            logger: "Logger",
-            db: "Database",
-            text: "Text",
-            server: "Server",
+        self,
+        logger: "Logger",
+        db: "Database",
+        text: "Text",
+        server: "Server",
     ):
         self.logger = logger
         self.db = db
@@ -49,11 +49,15 @@ class Message:
             ]
         """
         if len(args) != 7:
-            disabled = [True, True, True, True,
-                        True,
-                        True,
-                        "https://mcstatus.io",
-                        ]
+            disabled = [
+                True,
+                True,
+                True,
+                True,
+                True,
+                True,
+                "https://mcstatus.io",
+            ]
         else:
             disabled = list(args)
 
@@ -104,10 +108,10 @@ class Message:
         return rows
 
     async def asyncEmbed(
-            self,
-            pipeline: list | dict,
-            index: int,
-            fast=True,
+        self,
+        pipeline: list | dict,
+        index: int,
+        fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -162,7 +166,8 @@ class Message:
                 data = self.db.get_doc_at_index(pipeline, index)
 
                 if data is None:
-                    self.logger.print("[message.asyncEmbed] No server found in db")
+                    self.logger.print(
+                        "[message.asyncEmbed] No server found in db")
                     return {
                         "embed": self.standardEmbed(
                             title="Error",
@@ -191,20 +196,24 @@ class Message:
                 data["lastSeen"] = 0
             elif not fast:
                 try:
-                    status = self.server.update(host=data["ip"], port=data["port"])
+                    status = self.server.update(
+                        host=data["ip"], port=data["port"])
 
                     if status is None:
                         # server is offline
                         isOnline = "🔴"
                         data["cracked"] = None
-                        data["description"] = self.text.motdParse(data["description"])
+                        data["description"] = self.text.motdParse(
+                            data["description"])
                     else:
                         # server is online
                         isOnline = "🟢"
                         data = status
                 except Exception as e:
                     self.logger.error("[message.asyncEmbed] Error: " + str(e))
-                    self.logger.print(f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}")
+                    self.logger.print(
+                        f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}"
+                    )
             else:
                 # isonline is yellow
                 isOnline = "🟡"
@@ -212,20 +221,27 @@ class Message:
 
             # get the server icon
             if isOnline == "🟢" and "favicon" in data:
-                bits = data["favicon"].split(",")[1] if "," in data["favicon"] else data["favicon"]
+                bits = (
+                    data["favicon"].split(",")[1]
+                    if "," in data["favicon"]
+                    else data["favicon"]
+                )
                 with open("assets/favicon.png", "wb") as f:
                     f.write(base64.b64decode(bits))
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
-                with open("assets/DefFavicon.png", "rb") as f:
-                    with open("assets/favicon.png", "wb") as f2:
-                        f2.write(f.read())
+                with open("assets/DefFavicon.png", "rb") as f, open(
+                    "assets/favicon.png", "wb"
+                ) as f2:
+                    f2.write(f.read())
 
             # create the embed
             embed = self.standardEmbed(
                 title=f"{isOnline} {data['ip']}",
                 description=f"```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
-                color=(self.GREEN if isOnline == "🟢" else self.PINK) if isOnline != "🟡" else None,
+                color=(self.GREEN if isOnline == "🟢" else self.PINK)
+                if isOnline != "🟡"
+                else None,
             ).set_image(url="attachment://favicon.png")
 
             # set the footer to say the index, pipeline, and total servers
@@ -264,7 +280,9 @@ class Message:
             )
 
             # last online
-            stamp: datetime.datetime = datetime.datetime.utcfromtimestamp(data["lastSeen"])
+            stamp: datetime.datetime = datetime.datetime.utcfromtimestamp(
+                data["lastSeen"]
+            )
             embed.add_field(
                 name="Time since last scan",
                 value=self.text.timeAgo(stamp),
@@ -278,23 +296,40 @@ class Message:
                     index <= 0,  # previous
                     total_servers <= 1,  # jump
                     type(pipeline) is dict,  # update
-                    "sample" not in data["players"] or type(pipeline) is dict,  # players
+                    "sample" not in data["players"]
+                    or type(pipeline) is dict,  # players
                     total_servers <= 1,  # sort
-                    "https://mcstatus.io/status/java/" + str(data["ip"]) + ":" + str(data["port"]),  # MCStatus
-                ) if not fast else self.buttons(True, True, True, True, True, True,
-                                                "https://mcstatus.io/status/java/" + str(data["ip"]) + ":" + str(
-                                                    data["port"])),
+                    "https://mcstatus.io/status/java/"
+                    + str(data["ip"])
+                    + ":"
+                    + str(data["port"]),  # MCStatus
+                )
+                if not fast
+                else self.buttons(
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    True,
+                    "https://mcstatus.io/status/java/"
+                    + str(data["ip"])
+                    + ":"
+                    + str(data["port"]),
+                ),
             }
         except Exception as e:
             self.logger.error(f"[message.asyncEmbed] {e}")
-            self.logger.print(f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}")
+            self.logger.print(
+                f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}"
+            )
             return None
 
     def standardEmbed(
-            self,
-            title: str,
-            description: str,
-            color: int,
+        self,
+        title: str,
+        description: str,
+        color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 
@@ -321,7 +356,9 @@ class Message:
             )
         except Exception as e:
             self.logger.error(f"[message.standardEmbed] {e}")
-            self.logger.print(f"[message.standardEmbed] Full traceback: {traceback.format_exc()}")
+            self.logger.print(
+                f"[message.standardEmbed] Full traceback: {traceback.format_exc()}"
+            )
             return interactions.Embed(
                 title=title,
                 description=description,
@@ -329,10 +366,10 @@ class Message:
             )
 
     async def asyncLoadServer(
-            self,
-            index: int,
-            pipeline: dict | list,
-            msg: interactions.Message,
+        self,
+        index: int,
+        pipeline: dict | list,
+        msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=True)
