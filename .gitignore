@@ -6,3 +6,4 @@ utils/__pycache__/*
 log.log
 /out.log
 /testing.py
+/assets/*

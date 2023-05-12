@@ -1274,6 +1274,7 @@ async def help_command(ctx: interactions.SlashContext):
 async def on_ready():
     user = await bot.fetch_user(bot.user.id)
     logger.print(f"[main.on_ready] Logged in as {user.username}#{user.discriminator}")
+    logger.critical(f"[main.on_ready] Logged in as {user.username}#{user.discriminator}")
 
 
 # -----------------------------------------------------------------------------
