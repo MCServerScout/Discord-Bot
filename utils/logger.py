@@ -8,7 +8,7 @@ import unicodedata
 norm = sys.stdout
 
 
-class StreamToLogger(object):
+class StreamToLogger:
     """
     Fake file-like stream object that redirects writes to a logger instance.
     """
