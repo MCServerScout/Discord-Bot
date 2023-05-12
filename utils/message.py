@@ -123,7 +123,7 @@ class Message:
             }
         """
         try:
-            if type(pipeline) == dict:
+            if type(pipeline) is dict:
                 self.logger.print("[message.asyncEmbed] Server data provided")
                 # server is not in db, and we got the server data
                 data = pipeline
@@ -180,7 +180,7 @@ class Message:
             # get the server status
             isOnline = "🔴"
             data["cracked"] = None
-            if type(pipeline) == dict and fast:
+            if type(pipeline) is dict and fast:
                 # set all values to default
                 data["description"] = {"text": "..."}
                 data["players"] = {"online": 0, "max": 0}
