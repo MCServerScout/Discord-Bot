@@ -1,6 +1,10 @@
 # Dollar Tree Copenheimer (Discord Bot)
 
 [![DeepSource](https://app.deepsource.com/gh/ServerScout-bust-cosmic-trespass/Discord-Bot.svg/?label=resolved+issues&show_trend=true&token=WBeh3kT2daCAxLlfI8PhPJsD)](https://app.deepsource.com/gh/ServerScout-bust-cosmic-trespass/Discord-Bot/?ref=repository-badge)
+![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/ServerScout-bust-cosmic-trespass/Discord-Bot)
+![GitHub](https://img.shields.io/github/license/ServerScout-bust-cosmic-trespass/Discord-Bot)
+
+![Contributor](https://contrib.rocks/image?repo=ServerScout-bust-cosmic-trespass/Discord-Bot)
 
 This is a Discord bot that I made for my friends and I to use in our Discord server. It is a work in progress, and I
 will be adding more features as time goes on.
