@@ -3,10 +3,8 @@ name: Comment on new bug issue
 on:
   issues:
     types: [opened]
-  # Only run this action when an issue with the "bug" label is created
-  types: [issues]
-  tags:
-    - bug
+    label:
+      - bug
 
 jobs:
   comment:
