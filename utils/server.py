@@ -164,14 +164,14 @@ class Server:
                 try:
                     version = server.status().version.protocol if version == -1 else version
                 except TimeoutError:
-                    self.logger.print(f"[server.status] Connection error (timeout)")
+                    self.logger.print("[server.status] Connection error (timeout)")
                     return None
                 except ConnectionRefusedError:
-                    self.logger.print(f"[server.status] Connection error (refused)")
+                    self.logger.print("[server.status] Connection error (refused)")
                     return None
                 except Exception as err:
                     if "An existing connection was forcibly closed by the remote host" in str(err):
-                        self.logger.error(f"[server.status] Connection error")
+                        self.logger.error("[server.status] Connection error")
                         return None
                     else:
                         self.logger.error(f"[server.status] {err}")
@@ -203,12 +203,12 @@ class Server:
             try:
                 response = connection.read_buffer()
             except socket.error:
-                self.logger.error(f"[server.status] Connection error")
+                self.logger.error("[server.status] Connection error")
                 return None
             resID = response.read_varint()
 
             if resID == -1:
-                self.logger.error(f"[server.status] Connection error")
+                self.logger.error("[server.status] Connection error")
                 return None
             elif resID != 0:
                 self.logger.error("[server.status] Invalid packet ID received: " + str(resID))
@@ -220,7 +220,7 @@ class Server:
                 data = json.loads(data.decode("utf8"))
                 return data
         except TimeoutError:
-            self.logger.print(f"[server.status] Connection error (timeout)")
+            self.logger.print("[server.status] Connection error (timeout)")
             return None
 
     def join(
@@ -236,14 +236,14 @@ class Server:
             try:
                 version = server.status().version.protocol if version == -1 else version
             except TimeoutError:
-                self.logger.print(f"[server.join] Connection error (timeout)")
+                self.logger.print("[server.join] Connection error (timeout)")
                 return self.ServerType(ip, -1, "UNKNOWN")
             except ConnectionRefusedError:
-                self.logger.print(f"[server.join] Connection error (refused)")
+                self.logger.print("[server.join] Connection error (refused)")
                 return self.ServerType(ip, -1, "UNKNOWN")
             except Exception as err:
                 if "An existing connection was forcibly closed by the remote host" in str(err):
-                    self.logger.print(f"[server.join] Connection error")
+                    self.logger.print("[server.join] Connection error")
                     return self.ServerType(ip, -1, "UNKNOWN")
                 else:
                     self.logger.error(f"[server.join] {err}")
