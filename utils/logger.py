@@ -42,12 +42,12 @@ class StreamToLogger(object):
 class EmailFileHandler(logging.FileHandler):
     def emit(self, record):
         if (
-                "To sign in, use a web browser to open the page" in record.getMessage()
-                or "email_modal" in record.getMessage()
-                or "heartbeat" in record.getMessage().lower()
-                or "Added " in record.getMessage()
-                or "Sending data to websocket: {" in record.getMessage()
-                or "event.ctx.responses" in record.getMessage()
+            "To sign in, use a web browser to open the page" in record.getMessage()
+            or "email_modal" in record.getMessage()
+            or "heartbeat" in record.getMessage().lower()
+            or "Added " in record.getMessage()
+            or "Sending data to websocket: {" in record.getMessage()
+            or "event.ctx.responses" in record.getMessage()
         ):
             return
         super().emit(record)
@@ -59,7 +59,9 @@ def clear():
 
 
 class Logger:
-    def __init__(self, debug=False, level: int = logging.INFO, discord_webhook: str = None):
+    def __init__(
+        self, debug=False, level: int = logging.INFO, discord_webhook: str = None
+    ):
         """Initializes the logger class
 
         Args:
@@ -74,7 +76,8 @@ class Logger:
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a",
+                                 encoding="utf-8", delay=False),
             ],
         )
 
@@ -146,10 +149,10 @@ class Logger:
     async def asyncHook(self, message: str):
         if self.webhook is not None and self.webhook != "":
             async with aiohttp.ClientSession() as session, session.post(
-                    self.webhook,
-                    json={
-                        "content": message,
-                    },
+                self.webhook,
+                json={
+                    "content": message,
+                },
             ) as resp:
                 if resp.status != 204:
                     self.error(f"Failed to send message to webhook: {message}")

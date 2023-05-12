@@ -35,7 +35,8 @@ class Player:
         Returns:
             bool: True if the server is cracked, False if not
         """
-        url = "https://api.mcstatus.io/v2/status/java/" + host + ":" + str(port)
+        url = "https://api.mcstatus.io/v2/status/java/" + \
+            host + ":" + str(port)
 
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
@@ -99,11 +100,14 @@ class Player:
         data = self.db.find_one({"ip": ip, "port": port})
 
         if data is None:
-            self.logger.print(f"[player.playerList] Server {ip}:{port} not found in database")
+            self.logger.print(
+                f"[player.playerList] Server {ip}:{port} not found in database"
+            )
             return None
 
         if "sample" not in data["players"]:
-            self.logger.print(f"[player.playerList] Server {ip}:{port} has no players")
+            self.logger.print(
+                f"[player.playerList] Server {ip}:{port} has no players")
             return None
 
         db_names = []
@@ -122,7 +126,7 @@ class Player:
             player = {
                 "name": name,
                 "id": await self.asyncGetUUID(name),
-                "online": name in status_names
+                "online": name in status_names,
             }
             players.append(player)
 
@@ -132,7 +136,7 @@ class Player:
                 player = {
                     "name": player,
                     "id": await self.asyncGetUUID(player),
-                    "online": True
+                    "online": True,
                 }
                 players.append(player)
 
