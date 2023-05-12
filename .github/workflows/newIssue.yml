@@ -37,7 +37,7 @@ jobs:
             Open \`privVars.py\` and make sure that \`MONGO_URL\` and \`DISCORD_TOKEN\` are properly set.`;
             
             github.issues.createComment({
-              issue_number: context.issue.number,
+              issue_number: context.payload.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
               body: comment
