@@ -9,34 +9,38 @@ on:
 jobs:
   comment:
     runs-on: ubuntu-latest
+    permissions:
+    issues: write
+    pull-requests: write
+
     steps:
-    - name: Comment on issue
-      uses: actions/github-script@v5
-      with:
-        script: |
-          var comment = `# Common Errors
-
-          \`Failed to import _______\`
-          \`No module named _____\`
-
-          ----
-
-          ### Usual Fix
-
-          run \`python3.x -m pip install {failed package}\`
-
-          \`Please add your mongo url to 'privVars.py'\`
-          \`Please add your bot token to 'privVars.py'\`
-
-          ### Usual Fix
-
-          Open \`privVars.py\` and make sure that \`MONGO_URL\` and \`DISCORD_TOKEN\` are properly set.`;
-
-          github.issues.createComment({
-            issue_number: context.issue.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: comment
-          });
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Comment on issue
+        uses: actions/github-script@v5
+        with:
+          script: |
+            var comment = `# Common Errors
+            
+            \`Failed to import _______\`
+            \`No module named _____\`
+            
+            ----
+            
+            ### Usual Fix
+            
+            run \`python3.x -m pip install {failed package}\`
+            
+            \`Please add your mongo url to 'privVars.py'\`
+            \`Please add your bot token to 'privVars.py'\`
+            
+            ### Usual Fix
+            
+            Open \`privVars.py\` and make sure that \`MONGO_URL\` and \`DISCORD_TOKEN\` are properly set.`;
+            
+            github.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
