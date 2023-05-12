@@ -1284,22 +1284,18 @@ if __name__ == "__main__":
     This is the main loop for the bot. It will restart the bot if the websocket closes.
     """
 
-    while True:
-        try:
-            bot.start()
-        except KeyboardInterrupt:
-            logger.print("[main] Keyboard interrupt, stopping bot")
-            asyncio.run(bot.close())
-            break
-        except Exception as e:
-            if "Error: The Websocket closed with code: 1000" in str(e):
-                logger.print("[main] Websocket closed, restarting bot")
+    try:
+        bot.start()
+    except KeyboardInterrupt:
+        logger.print("[main] Keyboard interrupt, stopping bot")
+        asyncio.run(bot.close())
+    except Exception as e:
+        if "Error: The Websocket closed with code: 1000" in str(e):
+            logger.print("[main] Websocket closed, restarting bot")
 
-                time.sleep(5)
-                asyncio.run(bot.close())
-                continue
-            else:
-                logger.critical(f"[main] {e}")
-                logger.print("[main] Stopping bot")
-                asyncio.run(bot.close())
-                break
+            time.sleep(5)
+            asyncio.run(bot.close())
+        else:
+            logger.critical(f"[main] {e}")
+            logger.print("[main] Stopping bot")
+            asyncio.run(bot.close())

@@ -78,12 +78,6 @@ class Message:
                     custom_id="jump",
                     disabled=disabled[2],
                 ),
-                interactions.Button(
-                    style=interactions.ButtonStyle.SUCCESS,
-                    emoji="🔄",
-                    custom_id="update",
-                    disabled=disabled[3],
-                ),
             ),
             interactions.ActionRow(
                 interactions.Button(
@@ -94,15 +88,15 @@ class Message:
                 ),
                 interactions.Button(
                     label="Sort",
-                    style=interactions.ButtonStyle.SECONDARY,
+                    style=interactions.ButtonStyle.DANGER,
                     custom_id="sort",
                     disabled=disabled[5],
                 ),
                 interactions.Button(
-                    label="MCStatus.io",
-                    style=interactions.ButtonStyle.LINK,
-                    url=disabled[6],
-                    disabled=disabled[6] == "https://mcstatus.io",
+                    style=interactions.ButtonStyle.SUCCESS,
+                    emoji="🔄",
+                    custom_id="update",
+                    disabled=disabled[3],
                 ),
             ),
         ]

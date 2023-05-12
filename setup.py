@@ -7,12 +7,12 @@ import sys
 
 async def install_requirements():
     # check that python is 3.10+
-    if not (3, 10) <= sys.version_info:
-        print("Python 3.10+ is required")
-        sys.exit(1)
+    if sys.version_info[0] != 3 and sys.version_info[1] < 10:
+        print("Python 3.10+ is required.")
+        sys.exit("Python 3.10+ is required.")
 
     proc = await asyncio.create_subprocess_shell(
-        "pip install -r requirements.txt",
+        "pip install -Ur requirements.txt",
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
