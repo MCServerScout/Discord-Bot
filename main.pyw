@@ -1273,12 +1273,12 @@ async def help_command(ctx: interactions.SlashContext):
 @interactions.listen()
 async def on_ready():
     user = await bot.fetch_user(bot.user.id)
-    logger.print(f"[main.on_ready] Logged in as {user.username}#{user.discriminator}")
     logger.critical(f"[main.on_ready] Logged in as {user.username}#{user.discriminator}")
 
 
 # -----------------------------------------------------------------------------
 # bot apps
+
 
 @interactions.message_context_menu(name="stats")
 async def stats(ctx: interactions.SlashContext):
