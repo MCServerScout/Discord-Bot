@@ -27,9 +27,8 @@ class Twitch:
         }
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(url, params=params) as response:
-                    response.raise_for_status()
+            async with aiohttp.ClientSession() as session, session.post(url, params=params) as response:
+                response.raise_for_status()
         except aiohttp.ClientResponseError as e:
             if str(e).startswith("400"):
                 self.logger.error("[twitch.getStreamers] Invalid client ID or client secret")
@@ -49,9 +48,8 @@ class Twitch:
         url += "?game_id=27471&first=100&type=live"
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, headers=headers) as response:
-                    response.raise_for_status()
+            async with aiohttp.ClientSession() as session, session.get(url, headers=headers) as response:
+                response.raise_for_status()
         except aiohttp.ClientResponseError as e:
             self.logger.error(f"[twitch.getStreamers] {e}")
             return []

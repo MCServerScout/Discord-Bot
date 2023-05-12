@@ -217,9 +217,8 @@ class Message:
                     f.write(base64.b64decode(bits))
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
-                with open("assets/DefFavicon.png", "rb") as f:
-                    with open("assets/favicon.png", "wb") as f2:
-                        f2.write(f.read())
+                with open("assets/DefFavicon.png", "rb") as f, open("assets/favicon.png", "wb") as f2:
+                    f2.write(f.read())
 
             # create the embed
             embed = self.standardEmbed(

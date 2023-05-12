@@ -145,15 +145,14 @@ class Logger:
 
     async def asyncHook(self, message: str):
         if self.webhook is not None and self.webhook != "":
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                        self.webhook,
-                        json={
-                            "content": message,
-                        },
-                ) as resp:
-                    if resp.status != 204:
-                        self.error(f"Failed to send message to webhook: {message}")
+            async with aiohttp.ClientSession() as session, session.post(
+                    self.webhook,
+                    json={
+                        "content": message,
+                    },
+            ) as resp:
+                if resp.status != 204:
+                    self.error(f"Failed to send message to webhook: {message}")
             self.print(f"Sent message to webhook: {message}")
 
     def __repr__(self):
