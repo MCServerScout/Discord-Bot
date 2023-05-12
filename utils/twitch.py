@@ -32,7 +32,9 @@ class Twitch:
                     response.raise_for_status()
         except aiohttp.ClientResponseError as e:
             if str(e).startswith("400"):
-                self.logger.error("[twitch.getStreamers] Invalid client ID or client secret")
+                self.logger.error(
+                    "[twitch.getStreamers] Invalid client ID or client secret"
+                )
             else:
                 self.logger.error(f"[twitch.getStreamers] {e}")
             return []
@@ -56,15 +58,19 @@ class Twitch:
             self.logger.error(f"[twitch.getStreamers] {e}")
             return []
         else:
-            self.logger.print(f"[twitch.getStreamers] {len((await response.json())['data'])} streamers are live")
+            self.logger.print(
+                f"[twitch.getStreamers] {len((await response.json())['data'])} streamers are live"
+            )
 
         streamers = []
         for stream in (await response.json())["data"]:
-            streamers.append({
-                "name": stream["user_name"],
-                "title": stream["title"],
-                "viewer_count": stream["viewer_count"],
-                "url": f"https://twitch.tv/{stream['user_name']}?tt_content=live_view_card",
-            })
+            streamers.append(
+                {
+                    "name": stream["user_name"],
+                    "title": stream["title"],
+                    "viewer_count": stream["viewer_count"],
+                    "url": f"https://twitch.tv/{stream['user_name']}?tt_content=live_view_card",
+                }
+            )
 
         return streamers

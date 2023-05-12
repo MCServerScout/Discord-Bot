@@ -32,7 +32,9 @@ class Utils:
         self.col = col
         self.logLevel = level
         if log is None:
-            self.logger = Logger(debug=debug, level=self.logLevel, discord_webhook=discord_webhook)
+            self.logger = Logger(
+                debug=debug, level=self.logLevel, discord_webhook=discord_webhook
+            )
         else:
             self.logger = log
 
@@ -43,7 +45,11 @@ class Utils:
         self.text = Text(logger=self.logger)
         self.twitch = Twitch(logger=self.logger)
 
-        self.server = Server(db=self.database, logger=self.logger, text=self.text)
+        self.server = Server(
+            db=self.database, logger=self.logger, text=self.text)
 
-        self.player = Player(logger=self.logger, server=self.server, db=self.database)
-        self.message = Message(logger=self.logger, db=self.database, text=self.text, server=self.server)
+        self.player = Player(logger=self.logger,
+                             server=self.server, db=self.database)
+        self.message = Message(
+            logger=self.logger, db=self.database, text=self.text, server=self.server
+        )
