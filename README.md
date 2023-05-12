@@ -108,9 +108,9 @@ The docs are in the following json format:
 }
 ```
 
-## Credits
+## Contributors:
 
-* Pilot1782 - Creator
+![Contributors](https://contrib.rocks/image?repo=ServerScout-bust-cosmic-trespass/Discord-Bot)
 
 ## Legal
 
