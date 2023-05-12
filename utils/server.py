@@ -122,7 +122,7 @@ class Server:
                         )
 
                     # append the dbVal sample to the status sample
-                    if "sample" in dbVal["players"]:
+                    if "sample" in dbVal["players"] and "sample" in status["players"]:
                         for player in dbVal["players"]["sample"]:
                             if player not in status["players"]["sample"]:
                                 status["players"]["sample"].append(player)

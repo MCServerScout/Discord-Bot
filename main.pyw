@@ -55,7 +55,8 @@ bot = interactions.Client(
     token=DISCORD_TOKEN,
     status=interactions.Status.IDLE,
     activity=interactions.Activity(
-        type=interactions.ActivityType.GAME, name="Trolling the masses"
+        type=interactions.ActivityType.GAME,
+        name="Sussing out servers",
     ),
     logger=logger,
 )
@@ -295,6 +296,8 @@ async def find(
             pipeline[0]["$match"]["$and"].append(
                 {"players.sample": {"$size": logged_players}}
             )
+        if cracked is not None:
+            pipeline[0]["$match"]["$and"].append({"cracked": cracked})
 
         total = databaseLib.count(pipeline)
 
@@ -877,8 +880,9 @@ async def update(ctx: interactions.ComponentContext):
     ],
 )
 async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
+    msg = None
     try:
-        await ctx.send(
+        msg = await ctx.send(
             embed=messageLib.standardEmbed(
                 title="Loading...",
                 description="Loading...",
@@ -918,6 +922,9 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
                     color=RED,
                 ),
                 ephemeral=True,
+            )
+            await ctx.delete(
+                message=msg,
             )
             return
         logger.error(f"[main.ping] {err}")
@@ -1157,7 +1164,7 @@ async def stats(ctx: interactions.SlashContext):
 
         mainEmbed.add_field(
             name="Total Logged Players",
-            value=f"{totalSamplePlayers:,}",
+            value=f"{totalSamplePlayers:,} ({round(totalSamplePlayers / totalPlayers * 100, 2)}%)",
             inline=True,
         )
         msg = await msg.edit(embed=mainEmbed, )
@@ -1292,7 +1299,7 @@ if __name__ == "__main__":
                 asyncio.run(bot.close())
                 continue
             else:
-                logger.error(f"[main] {e}")
+                logger.critical(f"[main] {e}")
                 logger.print("[main] Stopping bot")
                 asyncio.run(bot.close())
                 break
