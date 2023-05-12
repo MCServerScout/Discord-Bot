@@ -31,20 +31,20 @@ class Server:
             return self.type
 
     def __init__(
-            self,
-            db: "Database",
-            logger: "Logger",
-            text: "Text",
+        self,
+        db: "Database",
+        logger: "Logger",
+        text: "Text",
     ):
         self.db = db
         self.logger = logger
         self.text = text
 
     def update(
-            self,
-            host: str,
-            fast: bool = False,
-            port: int = 25565,
+        self,
+        host: str,
+        fast: bool = False,
+        port: int = 25565,
     ) -> Optional[dict]:
         """
         Update a server and return a doc similar to:
@@ -95,7 +95,8 @@ class Server:
                 return None
 
             server_type = (
-                self.join(ip=host, port=port, version=status["version"]["protocol"])
+                self.join(ip=host, port=port,
+                          version=status["version"]["protocol"])
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
@@ -110,16 +111,17 @@ class Server:
             status["description"] = self.text.motdParse(status["description"])
 
             # if the server is in the db, then get the db doc
-            if self.db.col.find_one({"ip": status["ip"], "port": status["port"]}) is not None:
-                dbVal = self.db.col.find_one({"ip": status["ip"], "port": status["port"]})
+            if (
+                self.db.col.find_one(
+                    {"ip": status["ip"], "port": status["port"]})
+                is not None
+            ):
+                dbVal = self.db.col.find_one(
+                    {"ip": status["ip"], "port": status["port"]}
+                )
                 if dbVal is not None:
                     if "cracked" in dbVal:
-                        status["cracked"] = (
-                                status["cracked"]
-                                or dbVal[
-                                    "cracked"
-                                ]
-                        )
+                        status["cracked"] = status["cracked"] or dbVal["cracked"]
 
                     # append the dbVal sample to the status sample
                     if "sample" in dbVal["players"] and "sample" in status["players"]:
@@ -127,10 +129,13 @@ class Server:
                             if player not in status["players"]["sample"]:
                                 status["players"]["sample"].append(player)
                 else:
-                    self.logger.warning(f"Failed to get dbVal for {host}, making new entry")
+                    self.logger.warning(
+                        f"Failed to get dbVal for {host}, making new entry"
+                    )
                 self.updateDB(status)
             else:
-                self.logger.warning(f"Failed to get dbVal for {host}, making new entry")
+                self.logger.warning(
+                    f"Failed to get dbVal for {host}, making new entry")
                 self.updateDB(status)
 
             return status
@@ -140,10 +145,10 @@ class Server:
             return None
 
     def status(
-            self,
-            ip: str,
-            port: int = 25565,
-            version: int = -1,
+        self,
+        ip: str,
+        port: int = 25565,
+        version: int = -1,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -160,22 +165,31 @@ class Server:
         try:
             if version == -1:
                 # get info on the server
-                server = mcstatus.JavaServer.lookup(ip + ":" + str(port), timeout=5)
+                server = mcstatus.JavaServer.lookup(
+                    ip + ":" + str(port), timeout=5)
                 try:
-                    version = server.status().version.protocol if version == -1 else version
+                    version = (
+                        server.status().version.protocol if version == -1 else version
+                    )
                 except TimeoutError:
-                    self.logger.print("[server.status] Connection error (timeout)")
+                    self.logger.print(
+                        "[server.status] Connection error (timeout)")
                     return None
                 except ConnectionRefusedError:
-                    self.logger.print("[server.status] Connection error (refused)")
+                    self.logger.print(
+                        "[server.status] Connection error (refused)")
                     return None
                 except Exception as err:
-                    if "An existing connection was forcibly closed by the remote host" in str(err):
+                    if (
+                        "An existing connection was forcibly closed by the remote host"
+                        in str(err)
+                    ):
                         self.logger.error("[server.status] Connection error")
                         return None
                     else:
                         self.logger.error(f"[server.status] {err}")
-                        self.logger.print(f"[server.status] {traceback.format_exc()}")
+                        self.logger.print(
+                            f"[server.status] {traceback.format_exc()}")
                         return None
 
             connection = TCPSocketConnection((ip, port))
@@ -211,7 +225,9 @@ class Server:
                 self.logger.error("[server.status] Connection error")
                 return None
             elif resID != 0:
-                self.logger.error("[server.status] Invalid packet ID received: " + str(resID))
+                self.logger.error(
+                    "[server.status] Invalid packet ID received: " + str(resID)
+                )
                 return None
             elif resID == 0:
                 length = response.read_varint()
@@ -224,11 +240,11 @@ class Server:
             return None
 
     def join(
-            self,
-            ip: str,
-            port: int,
-            version: int = -1,
-            player_username: str = "Pilot1782",
+        self,
+        ip: str,
+        port: int,
+        version: int = -1,
+        player_username: str = "Pilot1782",
     ) -> ServerType:
         try:
             # get info on the server
@@ -242,12 +258,16 @@ class Server:
                 self.logger.print("[server.join] Connection error (refused)")
                 return self.ServerType(ip, -1, "UNKNOWN")
             except Exception as err:
-                if "An existing connection was forcibly closed by the remote host" in str(err):
+                if (
+                    "An existing connection was forcibly closed by the remote host"
+                    in str(err)
+                ):
                     self.logger.print("[server.join] Connection error")
                     return self.ServerType(ip, -1, "UNKNOWN")
                 else:
                     self.logger.error(f"[server.join] {err}")
-                    self.logger.print(f"[server.join] {traceback.format_exc()}")
+                    self.logger.print(
+                        f"[server.join] {traceback.format_exc()}")
                     return self.ServerType(ip, -1, "UNKNOWN")
 
             connection = TCPSocketConnection((ip, port))
@@ -288,7 +308,9 @@ class Server:
                     self.logger.print("[server.join] Modded server")
                 else:
                     self.logger.print("[server.join] Vanilla server")
-                return self.ServerType(ip, version, "VANILLA" if not modded else "MODDED")
+                return self.ServerType(
+                    ip, version, "VANILLA" if not modded else "MODDED"
+                )
             elif _id == 3:
                 self.logger.print("[server.join] Setting compression")
                 compression_threshold = response.read_varint()
@@ -309,9 +331,12 @@ class Server:
                     self.logger.print("[server.join] Modded server")
                 else:
                     self.logger.print("[server.join] Vanilla server")
-                return self.ServerType(ip, version, "VANILLA" if not modded else "MODDED")
+                return self.ServerType(
+                    ip, version, "VANILLA" if not modded else "MODDED"
+                )
             else:
-                self.logger.warning("[server.join] Unknown response: " + str(_id))
+                self.logger.warning(
+                    "[server.join] Unknown response: " + str(_id))
                 try:
                     reason = response.read_utf()
                 except Exception:
