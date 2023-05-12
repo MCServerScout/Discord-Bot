@@ -71,7 +71,7 @@ class Text:
         text = "".join(
             [
                 char
-                if char == "\u001b" or char == "\n"
+                if char in ("\u001b", "\n")
                 else unicodedata.normalize("NFKD", char)
                 for char in text
             ]
