@@ -807,6 +807,7 @@ async def update(ctx: interactions.ComponentContext):
                 color=BLUE,
             ),
             components=messageLib.buttons(),
+            file=interactions.File(file="assets/loading.png", file_name="favicon.png"),
         )
 
         # get the pipeline and index from the message
@@ -1273,6 +1274,117 @@ async def help_command(ctx: interactions.SlashContext):
 async def on_ready():
     user = await bot.fetch_user(bot.user.id)
     logger.print(f"[main.on_ready] Logged in as {user.username}#{user.discriminator}")
+
+
+# -----------------------------------------------------------------------------
+# bot apps
+
+@interactions.message_context_menu(name="stats")
+async def stats(ctx: interactions.SlashContext):
+    msg = None
+    await ctx.defer()
+
+    try:
+        mainEmbed = messageLib.standardEmbed(
+            title="Stats",
+            description="General stats about the database",
+            color=BLUE,
+        )
+
+        msg = await ctx.send(embed=mainEmbed, )
+
+        # get the stats
+        totalServers = databaseLib.col.count_documents({})
+
+        mainEmbed.add_field(
+            name="Total Servers",
+            value=f"{totalServers:,}",
+            inline=True,
+        )
+        msg = await msg.edit(embed=mainEmbed, )
+
+        # get the total player count, ignoring servers with over 150k players and less than 1 player
+        pipeline = [
+            {"$match": {"players.online": {"$lt": 150000, "$gt": 0}}},
+            {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
+        ]
+        totalPlayers = databaseLib.aggregate(pipeline)[0]["total"]
+
+        mainEmbed.add_field(
+            name="Total Players",
+            value=f"{totalPlayers:,}",
+            inline=True,
+        )
+        msg = await msg.edit(embed=mainEmbed, )
+
+        # get the total number of players in players.sample
+        pipeline = [
+            {"$unwind": "$players.sample"},
+            {"$group": {"_id": None, "total": {"$sum": 1}}},
+        ]
+        totalSamplePlayers = databaseLib.aggregate(pipeline)[0]["total"]
+
+        mainEmbed.add_field(
+            name="Total Logged Players",
+            value=f"{totalSamplePlayers:,} ({round(totalSamplePlayers / totalPlayers * 100, 2)}%)",
+            inline=True,
+        )
+        msg = await msg.edit(embed=mainEmbed, )
+
+        # get the five most common server version names
+        pipeline = [
+            {"$match": {"version.name": {"$ne": None}}},
+            {"$group": {"_id": "$version.name", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 5},
+        ]
+        topFiveVersions = list(databaseLib.aggregate(pipeline))
+
+        mainEmbed.add_field(
+            name="Top Five Versions",
+            value="```css\n" + "\n".join([
+                f"{i['_id']}: {round(i['count'] / totalServers * 100, 2)}%"
+                for i in topFiveVersions
+            ]) + "\n```",
+            inline=True,
+        )
+        msg = await msg.edit(embed=mainEmbed, )
+
+        # get the five most common server version ids
+        pipeline = [
+            {"$match": {"version.protocol": {"$ne": None}}},
+            {"$group": {"_id": "$version.protocol", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 5},
+        ]
+        topFiveVersionIds = list(databaseLib.aggregate(pipeline))
+
+        mainEmbed.add_field(
+            name="Top Five Version IDs",
+            value="```css\n" + "\n".join([
+                f"{textLib.protocolStr(i['_id'])}: {round(i['count'] / totalServers * 100, 2)}%"
+                for i in topFiveVersionIds
+            ]) + "\n```",
+            inline=True,
+        )
+        await msg.edit(embed=mainEmbed, )
+    except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.delete(
+                message=msg
+            )
+            return
+
+        logger.error(f"[main.stats] {err}")
+        logger.print(f"[main.stats] Full traceback: {traceback.format_exc()}")
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="Error",
+                description="An error occurred while trying to get stats",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
 
 
 # -----------------------------------------------------------------------------
