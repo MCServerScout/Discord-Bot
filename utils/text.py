@@ -122,8 +122,8 @@ class Text:
             "§r": "",
         }
 
-        for color in ansi:
-            text = text.replace(color, ansi[color])
+        for color in ansi.items():
+            text = text.replace(color[0], color[1])
 
         # remove remaining color codes
         text = re.sub(r"§[0-9a-fk-or]*", "", text)

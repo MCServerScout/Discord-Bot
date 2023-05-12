@@ -883,15 +883,6 @@ async def update(ctx: interactions.ComponentContext):
 async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
     msg = None
     try:
-        msg = await ctx.send(
-            embed=messageLib.standardEmbed(
-                title="Loading...",
-                description="Loading...",
-                color=BLUE,
-            ),
-            ephemeral=True,
-        )
-
         port = port if port is not None else 25565
 
         pipeline = {
