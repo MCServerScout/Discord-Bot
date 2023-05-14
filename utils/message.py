@@ -275,7 +275,9 @@ class Message:
             # is modded
             embed.add_field(
                 name="Modded",
-                value="Yes" if data["hasForgeData"] or "modpackData" in data.keys() else "No",
+                value="Yes"
+                if data["hasForgeData"] or "modpackData" in data.keys()
+                else "No",
                 inline=True,
             )
 
