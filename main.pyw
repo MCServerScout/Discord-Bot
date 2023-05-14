@@ -9,8 +9,8 @@ import time
 import traceback
 
 import interactions
-import pymongo
 from interactions import slash_command, SlashCommandOption
+from pymongo import MongoClient
 
 import utils
 
@@ -34,9 +34,17 @@ if DISCORD_TOKEN == "":
 # Setup
 # ---------------------------------------------
 
-client = pymongo.MongoClient(MONGO_URL, server_api=pymongo.server_api.ServerApi("1"))  # type: ignore
-db = client["MCSS"]
+client = MongoClient(MONGO_URL)
+db = client['MCSS']
 col = db["scannedServers"]
+
+# test the db
+try:
+    col.count_documents({})
+except Exception as e:
+    print("Error connecting to database")
+    print(e)
+    sys.exit("Config error in privVars.py, please fix before rerunning")
 
 utils = utils.Utils(
     col,
