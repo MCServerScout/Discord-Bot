@@ -14,9 +14,7 @@ from pymongo import MongoClient
 
 import utils
 
-DISCORD_WEBHOOK = ""
-DISCORD_TOKEN = ""
-MONGO_URL = ""
+DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name = "", "", "", "", ""
 DEBUG = False
 try:
     from privVars import *
@@ -35,8 +33,8 @@ if DISCORD_TOKEN == "":
 # ---------------------------------------------
 
 client = MongoClient(MONGO_URL)
-db = client['MCSS']
-col = db["scannedServers"]
+db = client['MCSS' if db_name == "" else db_name]
+col = db["scannedServers" if col_name == "" else col_name]
 
 # test the db
 try:

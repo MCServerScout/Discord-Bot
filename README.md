@@ -113,12 +113,6 @@ The docs are in the following json format:
 }
 ```
 
-[//]: # (## Contributors:)
-
-[//]: # ()
-
-[//]: # (![Contributors]&#40;https://contrib.rocks/image?repo=ServerScout-bust-cosmic-trespass/Discord-Bot&#41;)
-
 ## Legal
 
 This project is licensed under the GNU Affero General Public License v3.0. See the [LICENSE](LICENSE) file for more
