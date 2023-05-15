@@ -113,9 +113,11 @@ The docs are in the following json format:
 }
 ```
 
-## Contributors:
+[//]: # (## Contributors:)
 
-![Contributors](https://contrib.rocks/image?repo=ServerScout-bust-cosmic-trespass/Discord-Bot)
+[//]: # ()
+
+[//]: # (![Contributors]&#40;https://contrib.rocks/image?repo=ServerScout-bust-cosmic-trespass/Discord-Bot&#41;)
 
 ## Legal
 
