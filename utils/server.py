@@ -240,11 +240,11 @@ class Server:
             return None
 
     def join(
-            self,
-            ip: str,
-            port: int,
-            version: int = -1,
-            player_username: str = "Pilot1783",
+        self,
+        ip: str,
+        port: int,
+        version: int = -1,
+        player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             # get info on the server
