@@ -1,4 +1,4 @@
-# Dollar Tree Copenheimer (Discord Bot)
+# Server Scout (Discord Bot)
 
 [![DeepSource](https://app.deepsource.com/gh/ServerScout-bust-cosmic-trespass/Discord-Bot.svg/?label=resolved+issues&show_trend=true&token=WBeh3kT2daCAxLlfI8PhPJsD)](https://app.deepsource.com/gh/ServerScout-bust-cosmic-trespass/Discord-Bot/?ref=repository-badge)
 
