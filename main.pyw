@@ -32,16 +32,16 @@ if DISCORD_TOKEN == "":
 # Setup
 # ---------------------------------------------
 
-client = MongoClient(MONGO_URL)
-db = client['MCSS' if db_name == "" else db_name]
-col = db["scannedServers" if col_name == "" else col_name]
-
-# test the db
+# test the db connection
 try:
+    client = MongoClient(MONGO_URL)
+    db = client['MCSS' if db_name == "" else db_name]
+    col = db["scannedServers" if col_name == "" else col_name]
+
     col.count_documents({})
 except Exception as e:
     print("Error connecting to database")
-    print(e)
+    print(traceback.format_exc())
     sys.exit("Config error in privVars.py, please fix before rerunning")
 
 utils = utils.Utils(
@@ -82,6 +82,7 @@ def print(*args, **kwargs):
 # ---------------------------------------------
 
 # command to file by anything in the doc
+
 @slash_command(
     name="find",
     description="Find a server by anything in the database",

@@ -13,12 +13,12 @@ class Utils:
     """A class to hold all the utils classes"""
 
     def __init__(
-        self,
-        col: pymongo.collection.Collection,
-        discord_webhook: str,
-        log: Logger = None,
-        debug=True,
-        level: int = 20,
+            self,
+            col: pymongo.collection.Collection,
+            discord_webhook: str,
+            log: Logger = None,
+            debug: bool = True,
+            level: int = 20,
     ):
         """Initializes the utils class
 
