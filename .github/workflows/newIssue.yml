@@ -1,0 +1,56 @@
+name: Comment on new bug issue
+
+on:
+  issues:
+    types: [opened]
+    label:
+      - bug
+
+jobs:
+  comment:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: Comment on issue
+        uses: actions/github-script@v6
+        with:
+          script: |
+            var comment = `# Common Errors
+            
+            \`Failed to import _______\`
+            \`No module named _____\`
+            
+            ----
+            
+            ### Usual Fix
+            
+            run \`python3.x -m pip install {failed package}\`
+            
+            \`Please add your mongo url to 'privVars.py'\`
+            \`Please add your bot token to 'privVars.py'\`
+            
+            ### Usual Fix
+            
+            Open \`privVars.py\` and make sure that \`MONGO_URL\` and \`DISCORD_TOKEN\` are properly set.
+            
+            `pymongo.errors.ServerSelectionTimeoutError: localhost:27017: [Errno 111] Connection refused\`
+            
+            ### Usual Fix
+            
+            Make sure that you have a mongo server running on \`localhost:27017\` or in Atlas, make sure you are using the correct connection string and in the network access tab, make sure that your IP is whitelisted.
+            
+            ## If you are still having issues, please make sure that your issue has the following information:
+            `interactions.py` version
+            `python3.x` version
+            `;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            })
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
