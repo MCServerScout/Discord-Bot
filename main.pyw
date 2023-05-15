@@ -81,44 +81,6 @@ def print(*args, **kwargs):
 # Commands
 # ---------------------------------------------
 
-"""example document in the database
-{
-    "ip": "127.0.0.1",
-    "port": 25565,
-    "version": {
-        "name": "1.19.3",
-        "protocol": 761
-    },
-    "players": {
-        "max": 100,
-        "online": 5,
-        "sample": [
-            {
-                "name": "thinkofdeath",
-                "id": "4566e69f-c907-48ee-8d71-d7ba5aa00d20"
-            },
-        ]
-    },
-    "world": {
-        "signs": [
-            {
-                "pos": {0,0,0},
-                "text": "Hello World!",
-            },
-        ]
-    },
-    "description": {
-        "text": "Hello world!"
-    },
-    "favicon": "data:image/png;base64,<data>",
-    "cracked": false,
-    "online": 12345,
-    "hasForgeData": true,
-    "enforcesSecureChat": true
-}
-"""
-
-
 # command to file by anything in the doc
 @slash_command(
     name="find",
@@ -378,10 +340,8 @@ async def find(
             components=messageLib.buttons(),
         )
 
-        index = 0
-
         await messageLib.asyncLoadServer(
-            index=index,
+            index=0,
             pipeline=pipeline,
             msg=msg,
         )
