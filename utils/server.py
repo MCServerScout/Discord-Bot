@@ -101,13 +101,13 @@ class Server:
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
 
-            status["cracked"] = server_type == "CRACKED"
+            status["cracked"] = server_type.getType() == "CRACKED"
 
             status["ip"] = host
             status["port"] = port
             status["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
             status["hasFavicon"] = "favicon" in status
-            status["hasForgeData"] = server_type == "MODDED"
+            status["hasForgeData"] = server_type.getType() == "MODDED"
             status["description"] = self.text.motdParse(status["description"])
 
             # if the server is in the db, then get the db doc
@@ -240,11 +240,11 @@ class Server:
             return None
 
     def join(
-        self,
-        ip: str,
-        port: int,
-        version: int = -1,
-        player_username: str = "Pilot1782",
+            self,
+            ip: str,
+            port: int,
+            version: int = -1,
+            player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             # get info on the server

@@ -127,6 +127,12 @@ def print(*args, **kwargs):
     description="Find a server by anything in the database",
     options=[
         SlashCommandOption(
+            name="ip",
+            description="The ip of the server or a subnet mask (ex:10.0.0.0/24)",
+            type=interactions.OptionType.STRING,
+            required=False,
+        ),
+        SlashCommandOption(
             name="version",
             description="The version of the server",
             type=interactions.OptionType.STRING,
@@ -184,6 +190,7 @@ def print(*args, **kwargs):
 )
 async def find(
         ctx: interactions.SlashContext,
+        ip: str = None,
         version: str = None,
         max_players: int = None,
         online_players: int = None,
@@ -306,6 +313,50 @@ async def find(
             )
         if cracked is not None:
             pipeline[0]["$match"]["$and"].append({"cracked": cracked})
+        if ip is not None:
+            # test if the ip is a valid subnet mask like 10.0.0.0/24
+
+            if "/" in ip:
+                mask = ip.split("/")[1]
+                ip = ip.split("/")[0]
+                ip = ip.replace("'", ".").replace('"', ".").replace('.', '/.')
+                if mask.isnumeric():
+                    # convert to a regex expression ie: 10.0.0.0/24 ->  10\.0\.0\.\d{1,3}, or 10.0.0.0/8 -> 10\.0\.\d{1,3}\.\d{1,3}
+                    match mask:
+                        case "32":
+                            exp = f"{ip}"
+                        case "24":
+                            exp = fr"{'/.'.join(ip.split('/.')[:3])}\.\d{{1,3}}"
+                        case "16":
+                            exp = fr"{'/.'.join(ip.split('/.')[:2])}\.\d{{1,3}}\.\d{{1,3}}"
+                        case "8":
+                            exp = fr"{'/.'.join(ip.split('/.')[0])}\.\d{{1,3}}\.\d{{1,3}}\.\d{{1,3}}"
+                        case _:
+                            await msg.edit(
+                                embed=messageLib.standardEmbed(
+                                    title="Error",
+                                    description=f"Mask `{mask}` not a valid mask",
+                                    color=RED,
+                                ),
+                                components=messageLib.buttons()
+                            )
+                            return
+                    exp = exp.replace("/.", "\\.")
+                    pipeline[0]["$match"]["$and"].append(
+                        {"ip": {"$regex": f"^{exp}$", "$options": "i"}}
+                    )
+                else:
+                    await msg.edit(
+                        embed=messageLib.standardEmbed(
+                            title="Error",
+                            description=f"Mask `{mask}` not a valid mask",
+                            color=RED,
+                        ),
+                        components=messageLib.buttons()
+                    )
+                    return
+            else:
+                pipeline[0]["$match"]["$and"].append({"ip": {"$regex": f"^{ip}$", "$options": "i"}})
 
         total = databaseLib.count(pipeline)
 
