@@ -31,6 +31,7 @@ class Twitch:
                 url, params=params
             ) as response:
                 response.raise_for_status()
+                access_token = (await response.json())["access_token"]
         except aiohttp.ClientResponseError as e:
             if str(e).startswith("400"):
                 self.logger.error(
@@ -41,8 +42,6 @@ class Twitch:
             return []
         else:
             self.logger.print("[twitch.getStreamers] Got access token")
-
-        access_token = (await response.json())["access_token"]
 
         url = "https://api.twitch.tv/helix/streams"
         headers = {
@@ -56,16 +55,17 @@ class Twitch:
                 url, headers=headers
             ) as response:
                 response.raise_for_status()
+                data = await response.json()
         except aiohttp.ClientResponseError as e:
             self.logger.error(f"[twitch.getStreamers] {e}")
             return []
         else:
             self.logger.print(
-                f"[twitch.getStreamers] {len((await response.json())['data'])} streamers are live"
+                f"[twitch.getStreamers] {len(data['data'])} streamers are live"
             )
 
         streamers = []
-        for stream in (await response.json())["data"]:
+        for stream in data["data"]:
             streamers.append(
                 {
                     "name": stream["user_name"],

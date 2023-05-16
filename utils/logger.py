@@ -89,11 +89,12 @@ class Logger:
     def info(self, message):
         self.logger.info(message)
 
-    def error(self, message):
+    def error(self, *message):
+        msg = " ".join([str(arg) for arg in message])
         sys.stdout = norm  # output to console
-        print(message)
+        print(msg)
         sys.stdout = self.out  # output to log.log
-        self.logger.error(message)
+        self.logger.error(msg)
 
     def critical(self, message):
         sys.stdout = norm

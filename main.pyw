@@ -14,7 +14,7 @@ from pymongo import MongoClient
 
 import utils
 
-DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name = "", "", "", "", ""
+DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name, client_id, client_secret = "", "", "", "", "", "", ""
 DEBUG = False
 try:
     from privVars import *
@@ -955,6 +955,17 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
     description="Get a list of servers with streams on them",
 )
 async def streamers(ctx: interactions.SlashContext):
+    user = ctx.author.username + "#" + ctx.author.discriminator
+    if user != "Pilot1782#6718":
+        await ctx.send(
+            embed=messageLib.standardEmbed(
+                title="An error occurred",
+                description="This command is currently disabled",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+        return
     try:
         await ctx.send(
             embed=messageLib.standardEmbed(
@@ -965,46 +976,50 @@ async def streamers(ctx: interactions.SlashContext):
             ephemeral=True,
         )
 
-        # spawn a modal asking for client id and secret
-        clientId = interactions.ShortText(
-            label="Client ID",
-            placeholder="Client ID",
-            custom_id="clientId",
-            min_length=1,
-            max_length=100,
-        )
-        clientSecret = interactions.ShortText(
-            label="Client Secret",
-            placeholder="Client Secret",
-            custom_id="clientSecret",
-            min_length=1,
-            max_length=100,
-        )
+        global client_id, client_secret
 
-        modal = interactions.Modal(
-            clientId, clientSecret,
-            title="Auth",
-        )
-
-        await ctx.send_modal(modal)
-
-        modal_ctx = ctx
-        try:
-            modal_ctx = await ctx.bot.wait_for_modal(timeout=90, modal=modal)
-        except asyncio.TimeoutError:
-            logger.print(f"[main.streamers] Timed out")
-            await modal_ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="Error",
-                    description="Timed out",
-                    color=RED,
-                ),
-                ephemeral=True,
+        # test if 'client_id' and 'client_secret' are not None
+        if client_id == "" or client_secret == "":
+            # spawn a modal asking for client id and secret
+            clientId = interactions.ShortText(
+                label="Client ID",
+                placeholder="Client ID",
+                custom_id="clientId",
+                min_length=1,
+                max_length=100,
             )
-            return
-        else:
-            clientId = modal_ctx.responses["clientId"]
-            clientSecret = modal_ctx.responses["clientSecret"]
+            clientSecret = interactions.ShortText(
+                label="Client Secret",
+                placeholder="Client Secret",
+                custom_id="clientSecret",
+                min_length=1,
+                max_length=100,
+            )
+
+            modal = interactions.Modal(
+                clientId, clientSecret,
+                title="Auth",
+            )
+
+            await ctx.send_modal(modal)
+
+            modal_ctx = ctx
+            try:
+                modal_ctx = await ctx.bot.wait_for_modal(timeout=90, modal=modal)
+            except asyncio.TimeoutError:
+                logger.print(f"[main.streamers] Timed out")
+                await modal_ctx.send(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description="Timed out",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+            else:
+                client_id = modal_ctx.responses["clientId"]
+                client_secret = modal_ctx.responses["clientSecret"]
 
             await modal_ctx.send(
                 embed=messageLib.standardEmbed(
@@ -1015,88 +1030,100 @@ async def streamers(ctx: interactions.SlashContext):
                 ephemeral=True,
             )
 
-            streams = twitchLib.asyncGetStreamers(
-                client_id=clientId,
-                client_secret=clientSecret,
+        if (client_id == "" or client_secret == "") or (client_id is None or client_secret is None):
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="Client ID or Client Secret is empty",
+                    color=RED,
+                ),
+                ephemeral=True,
             )
+            return
 
-            if streams is None or streams == []:
-                await ctx.send(
-                    embed=messageLib.standardEmbed(
-                        title="Error",
-                        description="No streamers found",
-                        color=RED,
-                    ),
-                    ephemeral=True,
-                )
-                return
+        streams = await twitchLib.asyncGetStreamers(
+            client_id=client_id,
+            client_secret=client_secret,
+        )
 
-            # streams is a list of data in the format of {"name": "username", "title": "title", "viewer_count": 0, "url": "url"}
+        if streams is None or streams == []:
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="No streamers found",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
 
-            # sort streams by viewer_count
-            streams = sorted(streams, key=lambda k: k["viewer_count"], reverse=True)
+        # streams is a list of data in the format of {"name": "username",
+        # "title": "title", "viewer_count": 0, "url": "url"}
 
-            uuids = []
-            for stream in streams[:100]:
-                uuid = await playerLib.asyncGetUUID(stream["name"])
-                if len(uuid) > 0:
-                    # add dashes
-                    uuid = f"{uuid[0:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:32]}"
-                    uuids.append(uuid)
+        # sort streams by viewer_count
+        streams = sorted(streams, key=lambda k: k["viewer_count"], reverse=True)
 
-            # get the servers
-            # by getting the servers with the streamers in sample
-            pipeline = [
-                {
-                    "$match": {
-                        "players.sample": {
-                            "$elemMatch": {
-                                "id": {
-                                    "$in": uuids,
-                                }
+        uuids = []
+        for stream in streams[:100]:
+            uuid = await playerLib.asyncGetUUID(stream["name"])
+            if len(uuid) > 0:
+                # add dashes
+                uuid = f"{uuid[0:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:32]}"
+                uuids.append(uuid)
+
+        # get the servers
+        # by getting the servers with the streamers in sample
+        pipeline = [
+            {
+                "$match": {
+                    "players.sample": {
+                        "$elemMatch": {
+                            "id": {
+                                "$in": uuids,
                             }
                         }
                     }
-                },
-                {"$limit": 10},
-            ]
+                }
+            },
+            {"$limit": 10},
+        ]
 
-            total = databaseLib.count(pipeline)
-            logger.print(f"[main.streamers] Got {total} servers")
+        total = databaseLib.count(pipeline)
+        logger.print(f"[main.streamers] Got {total} servers")
 
-            if total == 0:
-                await ctx.send(
-                    embed=messageLib.standardEmbed(
-                        title="Error",
-                        description="No servers found",
-                        color=RED,
-                    ),
-                    ephemeral=True,
-                )
-                return
-
-            stuff = await messageLib.asyncEmbed(
-                pipeline=pipeline,
-                index=0,
-            )
-
-            if stuff is None:
-                await ctx.send(
-                    embed=messageLib.standardEmbed(
-                        title="Error",
-                        description="No servers found",
-                        color=RED,
-                    ),
-                    ephemeral=True,
-                )
-                return
-
-            # send the embed
+        if total == 0:
             await ctx.send(
-                embed=stuff["embed"],
-                components=stuff["components"],
-                file=interactions.File(file="assets/favicon.png", file_name="assets/favicon.png"),
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="No servers found",
+                    color=RED,
+                ),
+                ephemeral=True,
             )
+            return
+
+        stuff = await messageLib.asyncEmbed(
+            pipeline=pipeline,
+            index=0,
+        )
+
+        if stuff is None:
+            await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Error",
+                    description="No servers found",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        # send the embed
+        await ctx.send(
+            embed=stuff["embed"],
+            components=stuff["components"],
+            file=interactions.File(file="assets/favicon.png", file_name="assets/favicon.png"),
+        )
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
