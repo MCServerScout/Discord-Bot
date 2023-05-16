@@ -3,3 +3,4 @@ pymongo>=4.3.3
 aiohttp>=3.8.4
 asyncio>=3.4.3
 requests>=2.30.0
+cryptography>=40.0.2

@@ -23,7 +23,7 @@ def printAndLog(*args, **kwargs):
 
 
 zipURL = (
-    "https://github.com/ServerScout-bust-cosmic-trespass/Discord-Bot/archive/refs/heads/main.zip"
+    "https://github.com/ServerScout-bust-cosmic-trespass/Discord-Bot/archive/refs/heads/master.zip"
 )
 
 runFile = "main.pyw"
@@ -41,7 +41,7 @@ def seconds_until_midnight_mountain():
 
 def downloadZip():
     printAndLog("\n{}\nUpdating files".format("-" * 10))
-    zipFile = "dev-builds.zip"
+    zipFile = "main.zip"
     if os.path.exists(zipFile):
         os.remove(zipFile)
 
@@ -50,9 +50,10 @@ def downloadZip():
         # force and recursive remove of dir gitDir
         subprocess.call(["rm", "-rf", gitDir])
 
-    subprocess.call(["wget", zipURL])
-    subprocess.call(["unzip", "main.zip", "-d", "Discord-Bot-main"])
-    subprocess.call(["rm", "main.zip"])
+    subprocess.call(["mkdir", gitDir])
+
+    subprocess.call(["wget", zipURL, "-O", zipFile])
+    subprocess.call(["unzip", zipFile, "-d", gitDir])
 
 
 def installRequirements():
@@ -62,11 +63,11 @@ def installRequirements():
             "pip3",
             "install",
             "-Ur",
-            "Discord-Bot-main/Discord-Bot-main/requirements.txt",
+            "Discord-Bot-main/Discord-Bot-master/requirements.txt",
         ]
     )
     subprocess.call(
-        ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-main/privVars.py"]
+        ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-master/privVars.py"]
     )
 
 
@@ -84,7 +85,7 @@ def run():
         else:
             timeOut -= SCRIPT_DURATION
         exitID = subprocess.call(
-            ["python3", "Discord-Bot-main/Discord-Bot-main/" + runFile],
+            ["python3", "Discord-Bot-main/Discord-Bot-master/" + runFile],
             timeout=timeOut,
         )
     except subprocess.TimeoutExpired:
