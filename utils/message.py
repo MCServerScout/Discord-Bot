@@ -11,20 +11,23 @@ from .database import Database
 from .logger import Logger
 from .server import Server
 from .text import Text
+from .twitch import Twitch
 
 
 class Message:
     def __init__(
-        self,
-        logger: "Logger",
-        db: "Database",
-        text: "Text",
-        server: "Server",
+            self,
+            logger: "Logger",
+            db: "Database",
+            text: "Text",
+            server: "Server",
+            twitch: "Twitch",
     ):
         self.logger = logger
         self.db = db
         self.text = text
         self.server = server
+        self.twitch = twitch
 
         self.RED = 0xFF0000  # error
         self.GREEN = 0x00FF00  # success
@@ -108,10 +111,10 @@ class Message:
         return rows
 
     async def asyncEmbed(
-        self,
-        pipeline: list | dict,
-        index: int,
-        fast=True,
+            self,
+            pipeline: list | dict,
+            index: int,
+            fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -185,6 +188,7 @@ class Message:
             # get the server status
             isOnline = "🔴"
             data["cracked"] = None
+            streams = []
             if type(pipeline) is dict and fast:
                 # set all values to default
                 data["description"] = {"text": "..."}
@@ -214,6 +218,13 @@ class Message:
                     self.logger.print(
                         f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}"
                     )
+
+                # try and see if any of the players are live-streaming
+                if "sample" in data["players"]:
+                    for player in data["players"]["sample"]:
+                        stream = await self.twitch.getStream(user=player["name"].lower())
+                        if stream != {}:
+                            streams.append(stream)
             else:
                 # isonline is yellow
                 isOnline = "🟡"
@@ -231,13 +242,13 @@ class Message:
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                    "assets/favicon.png", "wb"
+                        "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
             # create the embed
             embed = self.standardEmbed(
-                title=f"{isOnline} {data['ip']}",
+                title=f"{isOnline} {data['ip']}:{data['port']}",
                 description=f"```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
                 color=(self.GREEN if isOnline == "🟢" else self.PINK)
                 if isOnline != "🟡"
@@ -291,6 +302,14 @@ class Message:
                 inline=True,
             )
 
+            # add the streams
+            if len(streams) > 0:
+                embed.add_field(
+                    name="Streams",
+                    value="\n".join([f"[{stream['title']}]({stream['url']})" for stream in streams]),
+                    inline=False,
+                )
+
             return {
                 "embed": embed,
                 "components": self.buttons(
@@ -328,10 +347,10 @@ class Message:
             return None
 
     def standardEmbed(
-        self,
-        title: str,
-        description: str,
-        color: int,
+            self,
+            title: str,
+            description: str,
+            color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 
@@ -368,10 +387,10 @@ class Message:
             )
 
     async def asyncLoadServer(
-        self,
-        index: int,
-        pipeline: dict | list,
-        msg: interactions.Message,
+            self,
+            index: int,
+            pipeline: dict | list,
+            msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=True)

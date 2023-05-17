@@ -19,6 +19,8 @@ class Utils:
             log: Logger = None,
             debug: bool = True,
             level: int = 20,
+            client_id: str = None,
+            client_secret: str = None,
     ):
         """Initializes the utils class
 
@@ -43,7 +45,7 @@ class Utils:
         self.database = Database(self.col, self.logger)
 
         self.text = Text(logger=self.logger)
-        self.twitch = Twitch(logger=self.logger)
+        self.twitch = Twitch(logger=self.logger, client_id=client_id, client_secret=client_secret)
 
         self.server = Server(
             db=self.database, logger=self.logger, text=self.text)
@@ -51,5 +53,5 @@ class Utils:
         self.player = Player(logger=self.logger,
                              server=self.server, db=self.database)
         self.message = Message(
-            logger=self.logger, db=self.database, text=self.text, server=self.server
+            logger=self.logger, db=self.database, text=self.text, server=self.server, twitch=self.twitch
         )

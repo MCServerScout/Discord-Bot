@@ -319,6 +319,11 @@ class Text:
         if text == "":
             text = "Unknown"
 
+        # remove bad chars
+        chars = ["`", "@"]
+        for char in chars:
+            text = text.replace(char, "")
+
         return {
             "text": text,
         }

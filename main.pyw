@@ -48,6 +48,8 @@ utils = utils.Utils(
     col,
     debug=DEBUG,
     discord_webhook=DISCORD_WEBHOOK,
+    client_id=client_id,
+    client_secret=client_secret,
 )
 logger = utils.logger
 databaseLib = utils.database
@@ -953,19 +955,18 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
 @slash_command(
     name="streamers",
     description="Get a list of servers with streams on them",
+    options=[
+        SlashCommandOption(
+            name="lang",
+            description="The language of the stream",
+            type=interactions.OptionType.STRING,
+            required=False,
+            min_length=2,
+            max_length=2,
+        ),
+    ],
 )
-async def streamers(ctx: interactions.SlashContext):
-    # user = ctx.author.username + "#" + ctx.author.discriminator
-    # if user != "Pilot1782#6718":
-    #     await ctx.send(
-    #         embed=messageLib.standardEmbed(
-    #             title="An error occurred",
-    #             description="This command is currently disabled",
-    #             color=RED,
-    #         ),
-    #         ephemeral=True,
-    #     )
-    #     return
+async def streamers(ctx: interactions.SlashContext, lang: str = None):
     try:
         msg = await ctx.send(
             embed=messageLib.standardEmbed(
@@ -1043,6 +1044,7 @@ async def streamers(ctx: interactions.SlashContext):
         streams = await twitchLib.asyncGetStreamers(
             client_id=client_id,
             client_secret=client_secret,
+            lang=lang,
         )
 
         if streams is None or streams == []:
@@ -1063,20 +1065,12 @@ async def streamers(ctx: interactions.SlashContext):
                 ),
             )
 
-        # streams is a list of data in the format of {"name": "username",
-        # "title": "title", "viewer_count": 0, "url": "url"}
-
         # sort streams by viewer_count
         streams = sorted(streams, key=lambda k: k["viewer_count"], reverse=True)
 
         names = []
         for stream in streams:
-            names.append(stream["name"])
-        uuids = []
-        for stream in streams:
-            uuid = await playerLib.asyncGetUUID(stream["name"])
-            if uuid != "":
-                uuids.append(uuid)
+            names.append(stream["user_name"])
 
         # get the servers
         # by case-insensitive name of streamer
@@ -1089,11 +1083,6 @@ async def streamers(ctx: interactions.SlashContext):
                                 "$in": names
                             }
                         },
-                        {
-                            "players.sample.id": {
-                                "$in": uuids
-                            }
-                        }
                     ]
                 }
             }
