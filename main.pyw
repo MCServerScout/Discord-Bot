@@ -955,25 +955,24 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
     description="Get a list of servers with streams on them",
 )
 async def streamers(ctx: interactions.SlashContext):
-    user = ctx.author.username + "#" + ctx.author.discriminator
-    if user != "Pilot1782#6718":
-        await ctx.send(
-            embed=messageLib.standardEmbed(
-                title="An error occurred",
-                description="This command is currently disabled",
-                color=RED,
-            ),
-            ephemeral=True,
-        )
-        return
+    # user = ctx.author.username + "#" + ctx.author.discriminator
+    # if user != "Pilot1782#6718":
+    #     await ctx.send(
+    #         embed=messageLib.standardEmbed(
+    #             title="An error occurred",
+    #             description="This command is currently disabled",
+    #             color=RED,
+    #         ),
+    #         ephemeral=True,
+    #     )
+    #     return
     try:
-        await ctx.send(
+        msg = await ctx.send(
             embed=messageLib.standardEmbed(
                 title="Loading...",
                 description="Loading...",
                 color=BLUE,
             ),
-            ephemeral=True,
         )
 
         global client_id, client_secret
@@ -1047,15 +1046,22 @@ async def streamers(ctx: interactions.SlashContext):
         )
 
         if streams is None or streams == []:
-            await ctx.send(
+            await msg.edit(
                 embed=messageLib.standardEmbed(
                     title="Error",
-                    description="No streamers found",
+                    description="No streams found",
                     color=RED,
                 ),
-                ephemeral=True,
             )
             return
+        else:
+            msg = await msg.edit(
+                embed=messageLib.standardEmbed(
+                    title="Loading...",
+                    description="Found " + str(len(streams)) + " streams",
+                    color=BLUE,
+                ),
+            )
 
         # streams is a list of data in the format of {"name": "username",
         # "title": "title", "viewer_count": 0, "url": "url"}
@@ -1063,66 +1069,81 @@ async def streamers(ctx: interactions.SlashContext):
         # sort streams by viewer_count
         streams = sorted(streams, key=lambda k: k["viewer_count"], reverse=True)
 
+        names = []
+        for stream in streams:
+            names.append(stream["name"])
         uuids = []
-        for stream in streams[:100]:
+        for stream in streams:
             uuid = await playerLib.asyncGetUUID(stream["name"])
-            if len(uuid) > 0:
-                # add dashes
-                uuid = f"{uuid[0:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:32]}"
+            if uuid != "":
                 uuids.append(uuid)
 
         # get the servers
-        # by getting the servers with the streamers in sample
+        # by case-insensitive name of streamer
         pipeline = [
             {
                 "$match": {
-                    "players.sample": {
-                        "$elemMatch": {
-                            "id": {
-                                "$in": uuids,
+                    "$or": [
+                        {
+                            "players.sample.name": {
+                                "$in": names
+                            }
+                        },
+                        {
+                            "players.sample.id": {
+                                "$in": uuids
                             }
                         }
-                    }
+                    ]
                 }
-            },
-            {"$limit": 10},
+            }
         ]
 
         total = databaseLib.count(pipeline)
-        logger.print(f"[main.streamers] Got {total} servers")
-
-        if total == 0:
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="Error",
-                    description="No servers found",
-                    color=RED,
-                ),
-                ephemeral=True,
-            )
-            return
-
-        stuff = await messageLib.asyncEmbed(
-            pipeline=pipeline,
-            index=0,
+        logger.print(f"[main.streamers] Got {total} servers: {names}")
+        msg = await msg.edit(
+            embed=messageLib.standardEmbed(
+                title="Loading...",
+                description="Found " + str(total) + " servers in the database",
+                color=BLUE,
+            ),
         )
 
-        if stuff is None:
-            await ctx.send(
+        ips = []
+        for server in databaseLib.aggregate(pipeline):
+            ips.append(server["ip"])
+        pipeline = [
+            {
+                "$match": {
+                    "ip": {
+                        "$in": ips
+                    }
+                }
+            }
+        ]
+
+        if total == 0:
+            await msg.edit(
                 embed=messageLib.standardEmbed(
                     title="Error",
                     description="No servers found",
                     color=RED,
                 ),
-                ephemeral=True,
             )
             return
+        else:
+            msg = await msg.edit(
+                embed=messageLib.standardEmbed(
+                    title="Loading...",
+                    description="Loading 1 of " + str(total),
+                    color=BLUE,
+                ),
+            )
 
-        # send the embed
-        await ctx.send(
-            embed=stuff["embed"],
-            components=stuff["components"],
-            file=interactions.File(file="assets/favicon.png", file_name="assets/favicon.png"),
+        await messageLib.asyncLoadServer(
+            pipeline=pipeline,
+            index=0,
+            msg=msg,
         )
     except Exception as err:
         if "403|Forbidden" in str(err):

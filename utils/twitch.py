@@ -8,71 +8,47 @@ class Twitch:
         self.logger = logger
 
     async def asyncGetStreamers(self, client_id: str, client_secret: str) -> list:
-        """Return a list of streamers that are live playing Minecraft
+        token_url = "https://id.twitch.tv/oauth2/token"
+        streams_url = "https://api.twitch.tv/helix/streams"
 
-        Args:
-            client_id (str): Twitch client ID
-            client_secret (str): Twitch client secret
+        # Get access token
+        async with aiohttp.ClientSession() as session:
+            params = {
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "grant_type": "client_credentials"
+            }
+            async with session.post(token_url, params=params) as response:
+                token_data = await response.json()
+                access_token = token_data["access_token"]
 
-        Returns:
-            list: List of streamers that are live
-        """
-
-        # get access token
-        url = "https://id.twitch.tv/oauth2/token"
-        params = {
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "grant_type": "client_credentials",
-        }
-
-        try:
-            async with aiohttp.ClientSession() as session, session.post(
-                url, params=params
-            ) as response:
-                response.raise_for_status()
-                access_token = (await response.json())["access_token"]
-        except aiohttp.ClientResponseError as e:
-            if str(e).startswith("400"):
-                self.logger.error(
-                    "[twitch.getStreamers] Invalid client ID or client secret"
-                )
-            else:
-                self.logger.error(f"[twitch.getStreamers] {e}")
-            return []
-        else:
-            self.logger.print("[twitch.getStreamers] Got access token")
-
-        url = "https://api.twitch.tv/helix/streams"
+        # Fetch Minecraft streams
         headers = {
-            "Authorization": f"Bearer {access_token}",
-            "Client-Id": client_id,
+            "Client-ID": client_id,
+            "Authorization": f"Bearer {access_token}"
         }
-        url += "?game_id=27471&first=100&type=live"
+        params = {
+            "game_id": "27471",
+            "first": 100,
+            "type": "live"
+        }
 
-        try:
-            async with aiohttp.ClientSession() as session, session.get(
-                url, headers=headers
-            ) as response:
-                response.raise_for_status()
+        async with aiohttp.ClientSession() as session:
+            async with session.get(streams_url, headers=headers, params=params) as response:
                 data = await response.json()
-        except aiohttp.ClientResponseError as e:
-            self.logger.error(f"[twitch.getStreamers] {e}")
-            return []
-        else:
-            self.logger.print(
-                f"[twitch.getStreamers] {len(data['data'])} streamers are live"
-            )
 
-        streamers = []
-        for stream in data["data"]:
-            streamers.append(
-                {
+        # Process stream data
+        minecraft_streams = []
+        if "data" in data:
+            for stream in data["data"]:
+                self.logger.info(
+                    f"Found Minecraft stream: {stream['user_name']} ({stream['viewer_count']} viewers) - {stream['title']}")
+                streamer = {
                     "name": stream["user_name"],
-                    "title": stream["title"],
                     "viewer_count": stream["viewer_count"],
-                    "url": f"https://twitch.tv/{stream['user_name']}?tt_content=live_view_card",
+                    "title": stream["title"],
+                    "url": f"https://twitch.tv/{stream['user_name']}"
                 }
-            )
+                minecraft_streams.append(streamer)
 
-        return streamers
+        return minecraft_streams

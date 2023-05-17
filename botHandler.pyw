@@ -60,7 +60,9 @@ def installRequirements():
     printAndLog("\n{}\nInstalling reqs".format("-" * 10))
     subprocess.call(
         [
-            "pip3",
+            "python3",
+            "-m",
+            "pip",
             "install",
             "-Ur",
             "Discord-Bot-main/Discord-Bot-master/requirements.txt",
