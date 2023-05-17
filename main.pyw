@@ -1065,28 +1065,33 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
                 ),
             )
 
-        # sort streams by viewer_count
-        streams = sorted(streams, key=lambda k: k["viewer_count"], reverse=True)
-
         names = []
         for stream in streams:
             names.append(stream["user_name"])
 
         # get the servers
-        # by case-insensitive name of streamer
+        # by case-insensitive name of streamer and players.sample is not none
         pipeline = [
             {
                 "$match": {
-                    "$or": [
+                    "$and": [
                         {
                             "players.sample.name": {
-                                "$in": names
+                                "$in": [re.compile(name, re.IGNORECASE) for name in names]
+                            }
+                        },
+                        {
+                            "players.sample": {
+                                "$not": {
+                                    "$size": 0
+                                }
                             }
                         },
                     ]
                 }
             }
         ]
+        logger.print(f"[main.streamers] Pipeline: {pipeline}")
 
         total = databaseLib.count(pipeline)
         logger.print(f"[main.streamers] Got {total} servers: {names}")
@@ -1295,7 +1300,7 @@ async def help_command(ctx: interactions.SlashContext):
         )
         .add_field(
             name="`/streamers`",
-            value="Get a list of servers with streams on them, you must provide a twitch application's client id and secret",
+            value="... it's just stream sniping, but now with language support",
             inline=False,
         )
         .add_field(

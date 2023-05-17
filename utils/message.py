@@ -201,7 +201,8 @@ class Message:
             elif not fast:
                 try:
                     status = self.server.update(
-                        host=data["ip"], port=data["port"])
+                        host=data["ip"], port=data["port"]
+                    )
 
                     if status is None:
                         # server is offline

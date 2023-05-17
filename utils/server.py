@@ -47,43 +47,7 @@ class Server:
         port: int = 25565,
     ) -> Optional[dict]:
         """
-        Update a server and return a doc similar to:
-        {
-            "host": {
-                "ip": "127.0.0.1",
-                "hostname": "localhost",
-                "port": 25565,
-            }
-            "version": {
-                "name": "1.19.3",
-                "protocol": 761
-            },
-            "players": {
-                "max": 100,
-                "online": 5,
-                "sample": [
-                    {
-                        "name": "thinkofdeath",
-                        "id": "4566e69f-c907-48ee-8d71-d7ba5aa00d20"
-                    },
-                ]
-            },
-            "world": {
-                "signs": [
-                    {
-                        "pos": {0,0,0},
-                        "text": "Hello World!",
-                    },
-                ]
-            },
-            "description": {
-                "text": "Hello world!"
-            },
-            "favicon": "data:image/png;base64,<data>",
-            "cracked": false,
-            "online": Date(12345),
-            "enforcesSecureChat": true
-        }
+        Update a server and return a doc
         """
 
         try:
@@ -91,7 +55,7 @@ class Server:
             status = self.status(host)
 
             if status is None:
-                self.logger.warning(f"Failed to get status for {host}")
+                self.logger.warning(f"[server.update] Failed to get status for {host}")
                 return None
 
             server_type = (
@@ -130,12 +94,12 @@ class Server:
                                 status["players"]["sample"].append(player)
                 else:
                     self.logger.warning(
-                        f"Failed to get dbVal for {host}, making new entry"
+                        f"[server.update] Failed to get dbVal for {host}, making new entry"
                     )
                 self.updateDB(status)
             else:
                 self.logger.warning(
-                    f"Failed to get dbVal for {host}, making new entry")
+                    f"[server.update] Failed to get dbVal for {host}, making new entry")
                 self.updateDB(status)
 
             return status
