@@ -55,7 +55,8 @@ class Server:
             status = self.status(host)
 
             if status is None:
-                self.logger.warning(f"[server.update] Failed to get status for {host}")
+                self.logger.warning(
+                    f"[server.update] Failed to get status for {host}")
                 return None
 
             server_type = (
@@ -99,7 +100,8 @@ class Server:
                 self.updateDB(status)
             else:
                 self.logger.warning(
-                    f"[server.update] Failed to get dbVal for {host}, making new entry")
+                    f"[server.update] Failed to get dbVal for {host}, making new entry"
+                )
                 self.updateDB(status)
 
             return status

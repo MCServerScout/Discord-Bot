@@ -333,12 +333,14 @@ class Text:
     @staticmethod
     def convert_string_to_json(string):
         # prefixes
-        string = string.replace("'", '"') \
-            .replace("ObjectId(", '{"$oid": ') \
-            .replace(")", '}') \
-            .replace("True", "true") \
-            .replace("False", "false") \
+        string = (
+            string.replace("'", '"')
+            .replace("ObjectId(", '{"$oid": ')
+            .replace(")", "}")
+            .replace("True", "true")
+            .replace("False", "false")
             .replace("None", "null")
+        )
 
         def convert_to_objectid(data):
             if isinstance(data, dict):
@@ -357,10 +359,13 @@ class Text:
 
     @staticmethod
     def convert_json_to_string(json_data):
-        out = str(json_data).replace("'", '"') \
-            .replace("ObjectId(", '{"$oid": ') \
-            .replace(")", '}') \
-            .replace("True", "true") \
-            .replace("False", "false") \
+        out = (
+            str(json_data)
+            .replace("'", '"')
+            .replace("ObjectId(", '{"$oid": ')
+            .replace(")", "}")
+            .replace("True", "true")
+            .replace("False", "false")
             .replace("None", "null")
+        )
         return out
