@@ -253,12 +253,8 @@ class Server:
             # Send login start packet: ID, username, include sig data, has uuid, uuid
             loginStart = Connection()
 
-            if version > 760:
-                loginStart.write_varint(0)  # Packet ID
-                loginStart.write_utf(player_username)  # Username
-            else:
-                loginStart.write_varint(0)  # Packet ID
-                loginStart.write_utf(player_username)  # Username
+            loginStart.write_varint(0)  # Packet ID
+            loginStart.write_utf(player_username)  # Username
             connection.write_buffer(loginStart)
 
             # Read response
