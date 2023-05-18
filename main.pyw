@@ -2,7 +2,6 @@
 """
 
 import asyncio
-import json
 import re
 import sys
 import time
@@ -387,7 +386,8 @@ async def next_page(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        pipeline = json.loads(orgFoot.split(" servers in: ")[1].replace("'", '"'))
+        pipeline = orgFoot.split(" servers in: ")[1]
+        pipeline = textLib.convert_string_to_json(pipeline)
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
         if index + 1 >= total:
@@ -451,7 +451,7 @@ async def previous_page(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        pipeline = json.loads(orgFoot.split(" servers in: ")[1].replace("'", '"'))
+        pipeline = textLib.convert_string_to_json(orgFoot.split(" servers in: ")[1])
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
         if index - 1 >= 0:
@@ -505,7 +505,7 @@ async def players(ctx: interactions.ComponentContext):
         logger.print(f"[main.players] players called")
 
         # get the host dict from the db
-        pipeline = json.loads(orgFoot.split(" servers in: ")[1].replace("'", '"'))
+        pipeline = textLib.convert_string_to_json(orgFoot.split(" servers in: ")[1])
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
 
         host = databaseLib.get_doc_at_index(pipeline, index)
@@ -578,7 +578,7 @@ async def jump(ctx: interactions.ComponentContext):
         logger.print(f"[main.jump] jump called")
 
         # get the pipeline and index from the message
-        pipeline = json.loads(original.embeds[0].footer.text.split(" servers in: ")[1].replace("'", '"'))
+        pipeline = textLib.convert_string_to_json(original.embeds[0].footer.text.split(" servers in: ")[1])
 
         # get the total number of servers
         total = databaseLib.count(pipeline)
@@ -675,7 +675,7 @@ async def sort(ctx: interactions.ComponentContext):
         logger.print(f"[main.sort] sort called")
 
         # get the pipeline
-        pipelineCP = json.loads(orgFooter.text.split(" servers in: ")[1].replace("'", '"'))
+        pipelineCP = textLib.convert_string_to_json(orgFooter.text.split(" servers in: ")[1])
         logger.print(f"[main.sort] pipeline: {pipelineCP}")
         pipeline = pipelineCP.copy()
 
@@ -830,7 +830,7 @@ async def update(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        pipeline = json.loads(orgFoot.split(" servers in: ")[1].replace("'", '"'))
+        pipeline = textLib.convert_string_to_json(orgFoot.split(" servers in: ")[1])
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
 
@@ -1070,7 +1070,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             names.append(stream["user_name"])
 
         # get the servers
-        # by case-insensitive name of streamer and players.sample is not none
+        # by case-insensitive name of streamer and players.sample is greater than 0
         pipeline = [
             {
                 "$match": {
@@ -1080,21 +1080,14 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
                                 "$in": [re.compile(name, re.IGNORECASE) for name in names]
                             }
                         },
-                        {
-                            "players.sample": {
-                                "$not": {
-                                    "$size": 0
-                                }
-                            }
-                        },
+                        {"players.sample": {"$exists": True}},
                     ]
                 }
             }
         ]
-        logger.print(f"[main.streamers] Pipeline: {pipeline}")
 
         total = databaseLib.count(pipeline)
-        logger.print(f"[main.streamers] Got {total} servers: {names}")
+        logger.debug(f"[main.streamers] Got {total} servers: {names}")
         msg = await msg.edit(
             embed=messageLib.standardEmbed(
                 title="Loading...",
@@ -1103,15 +1096,16 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             ),
         )
 
-        ips = []
-        for server in databaseLib.aggregate(pipeline):
-            ips.append(server["ip"])
+        _ids = []
+        for doc in databaseLib.aggregate(pipeline):
+            _ids.append(doc["_id"])
         pipeline = [
             {
                 "$match": {
-                    "ip": {
-                        "$in": ips
-                    }
+                    "$and": [
+                        {"_id": {"$in": _ids}},
+                        {"players.sample": {"$exists": True}},
+                    ]
                 }
             }
         ]

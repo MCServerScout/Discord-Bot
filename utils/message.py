@@ -41,14 +41,14 @@ class Message:
 
         Args:
             *args (bool | str): The buttons to disable and the link to MCStatus.io
-                order: next, previous, jump, update, players, sort, MCStatus.io
+                order: next, previous, jump, update, players, sort, join
 
         Returns:
             [
                 interactions.ActionRow(): Next, Previous, Jump to, Update
                 interactions.ActionRow(): Show Players
                 interactions.StringSelectMenu(): Sort
-                interactions.Button(): MCStatus.io
+                interactions.Button(): Join
             ]
         """
         if len(args) != 7:
@@ -59,7 +59,7 @@ class Message:
                 True,
                 True,
                 True,
-                "https://mcstatus.io",
+                True,
             ]
         else:
             disabled = list(args)
@@ -259,7 +259,7 @@ class Message:
             # set the footer to say the index, pipeline, and total servers
             embed.set_footer(
                 f"Showing {index + 1} of {total_servers} servers in: "
-                + f"{str(pipeline).replace('True', 'true').replace('False', 'false')}",
+                + f"{self.text.convert_json_to_string(pipeline)}",
             )
             embed.timestamp = self.text.timeNow()
 
@@ -321,10 +321,7 @@ class Message:
                     "sample" not in data["players"]
                     or type(pipeline) is dict,  # players
                     total_servers <= 1,  # sort
-                    "https://mcstatus.io/status/java/"
-                    + str(data["ip"])
-                    + ":"
-                    + str(data["port"]),  # MCStatus
+                    True,  # join
                 )
                 if not fast
                 else self.buttons(
@@ -334,10 +331,7 @@ class Message:
                     True,
                     True,
                     True,
-                    "https://mcstatus.io/status/java/"
-                    + str(data["ip"])
-                    + ":"
-                    + str(data["port"]),
+                    True,
                 ),
             }
         except Exception as e:

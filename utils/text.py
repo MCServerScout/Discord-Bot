@@ -1,7 +1,9 @@
 import datetime
+import json
 import re
 
 import unicodedata
+from bson import ObjectId
 
 
 class Text:
@@ -327,3 +329,42 @@ class Text:
         return {
             "text": text,
         }
+
+    # @staticmethod
+    def convert_string_to_json(self, string):
+        # prefixes
+        string = string.replace("'", '"') \
+            .replace("ObjectId(", '{"$oid": ') \
+            .replace(")", '}') \
+            .replace("True", "true") \
+            .replace("False", "false") \
+            .replace("None", "null")
+
+        self.logger.info(f"[text.convert_string_to_json] string: {string}")
+
+        def convert_to_objectid(data):
+            if isinstance(data, dict):
+                for key, value in data.items():
+                    if key == "$oid":
+                        return ObjectId(value)
+                    else:
+                        data[key] = convert_to_objectid(value)
+            elif isinstance(data, list):
+                for i in range(len(data)):
+                    data[i] = convert_to_objectid(data[i])
+            return data
+
+        json_data = json.loads(string)
+        return convert_to_objectid(json_data)
+
+    # @staticmethod
+    def convert_json_to_string(self, json_data):
+        out = str(json_data).replace("'", '"') \
+            .replace("ObjectId(", '{"$oid": ') \
+            .replace(")", '}') \
+            .replace("True", "true") \
+            .replace("False", "false") \
+            .replace("None", "null")
+
+        self.logger.info(f"[text.convert_json_to_string] out: {out}")
+        return out
