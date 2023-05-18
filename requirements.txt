@@ -6,3 +6,4 @@ requests>=2.30.0
 cryptography>=40.0.2
 attrs>=23.1.0
 pyOpenSSL>=22.1.0
+ipinfo>=4.4

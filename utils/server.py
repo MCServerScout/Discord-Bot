@@ -7,6 +7,7 @@ import threading
 import traceback
 from typing import Optional
 
+import ipinfo
 import mcstatus
 from mcstatus.protocol.connection import Connection, TCPSocketConnection
 
@@ -31,20 +32,22 @@ class Server:
             return self.type
 
     def __init__(
-        self,
-        db: "Database",
-        logger: "Logger",
-        text: "Text",
+            self,
+            db: "Database",
+            logger: "Logger",
+            text: "Text",
+            ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
         self.text = text
+        self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
-    def update(
-        self,
-        host: str,
-        fast: bool = False,
-        port: int = 25565,
+    async def update(
+            self,
+            host: str,
+            fast: bool = False,
+            port: int = 25565,
     ) -> Optional[dict]:
         """
         Update a server and return a doc
@@ -75,11 +78,29 @@ class Server:
             status["hasForgeData"] = server_type.getType() == "MODDED"
             status["description"] = self.text.motdParse(status["description"])
 
+            geo = {}
+            # fetch info from ipinfo
+            try:
+                geoData = self.ipinfoHandle.getDetails(status["ip"])
+                geo["lat"] = float(geoData.loc.split(",")[0])
+                geo["lon"] = float(geoData.loc.split(",")[1])
+                geo["country"] = str(geoData.country)
+                geo["city"] = str(geoData.city)
+            except Exception as err:
+                self.logger.warning(
+                    f"[server.update] Failed to get geo for {host}")
+                self.logger.print(f"[server.update] {err}")
+                self.logger.print(
+                    f"[server.update] {traceback.format_exc()}")
+
+            if geo != {}:
+                status["geo"] = geo
+
             # if the server is in the db, then get the db doc
             if (
-                self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]})
-                is not None
+                    self.db.col.find_one(
+                        {"ip": status["ip"], "port": status["port"]})
+                    is not None
             ):
                 dbVal = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}

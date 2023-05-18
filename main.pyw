@@ -13,7 +13,7 @@ from pymongo import MongoClient
 
 import utils
 
-DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name, client_id, client_secret = "", "", "", "", "", "", ""
+DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name, client_id, client_secret, IP_INFO_TOKEN = "", "", "", "", "", "", "", ""
 DEBUG = False
 try:
     from privVars import *
@@ -49,6 +49,7 @@ utils = utils.Utils(
     discord_webhook=DISCORD_WEBHOOK,
     client_id=client_id,
     client_secret=client_secret,
+    info_token=IP_INFO_TOKEN,
 )
 logger = utils.logger
 databaseLib = utils.database

@@ -200,7 +200,7 @@ class Message:
                 data["lastSeen"] = 0
             elif not fast:
                 try:
-                    status = self.server.update(
+                    status = await self.server.update(
                         host=data["ip"], port=data["port"])
 
                     if status is None:
@@ -303,6 +303,14 @@ class Message:
                 value=self.text.timeAgo(stamp),
                 inline=True,
             )
+
+            # geolocation
+            if "geo" in data and not fast:
+                embed.add_field(
+                    name="Location",
+                    value=f"{data['geo']['country']} ({data['geo']['city']})",
+                    inline=True,
+                )
 
             # add the streams
             if len(streams) > 0:
