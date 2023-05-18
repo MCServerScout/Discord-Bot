@@ -32,11 +32,11 @@ class Server:
             return self.type
 
     def __init__(
-            self,
-            db: "Database",
-            logger: "Logger",
-            text: "Text",
-            ipinfo_token: str,
+        self,
+        db: "Database",
+        logger: "Logger",
+        text: "Text",
+        ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -44,10 +44,10 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     async def update(
-            self,
-            host: str,
-            fast: bool = False,
-            port: int = 25565,
+        self,
+        host: str,
+        fast: bool = False,
+        port: int = 25565,
     ) -> Optional[dict]:
         """
         Update a server and return a doc
@@ -56,7 +56,9 @@ class Server:
         try:
             # get the status response
             status = self.status(host)
-            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get status")
+            self.logger.info(
+                f"[server.async_update] Took {time.time() - tStart} seconds to get status"
+            )
             tStart = time.time()
 
             if status is None:
@@ -71,7 +73,9 @@ class Server:
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
 
-            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get server type")
+            self.logger.info(
+                f"[server.async_update] Took {time.time() - tStart} seconds to get server type"
+            )
             tStart = time.time()
 
             status["cracked"] = server_type.getType() == "CRACKED"
@@ -95,20 +99,21 @@ class Server:
                 self.logger.warning(
                     f"[server.update] Failed to get geo for {host}")
                 self.logger.print(f"[server.update] {err}")
-                self.logger.print(
-                    f"[server.update] {traceback.format_exc()}")
+                self.logger.print(f"[server.update] {traceback.format_exc()}")
 
             if geo != {}:
                 status["geo"] = geo
 
-            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get geo")
+            self.logger.info(
+                f"[server.async_update] Took {time.time() - tStart} seconds to get geo"
+            )
             tStart = time.time()
 
             # if the server is in the db, then get the db doc
             if (
-                    self.db.col.find_one(
-                        {"ip": status["ip"], "port": status["port"]})
-                    is not None
+                self.db.col.find_one(
+                    {"ip": status["ip"], "port": status["port"]})
+                is not None
             ):
                 dbVal = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
@@ -133,7 +138,9 @@ class Server:
                 )
                 self.updateDB(status)
 
-            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to update db")
+            self.logger.info(
+                f"[server.async_update] Took {time.time() - tStart} seconds to update db"
+            )
             tStart = time.time()
 
             return status
@@ -143,10 +150,10 @@ class Server:
             return None
 
     def status(
-            self,
-            ip: str,
-            port: int = 25565,
-            version: int = 47,
+        self,
+        ip: str,
+        port: int = 25565,
+        version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -191,7 +198,9 @@ class Server:
                 return None
             resID = response.read_varint()
 
-            self.logger.info(f"[server.status] Took {time.time() - tStart} seconds to get status")
+            self.logger.info(
+                f"[server.status] Took {time.time() - tStart} seconds to get status"
+            )
             tStart = time.time()
 
             if resID == -1:
@@ -213,11 +222,11 @@ class Server:
             return None
 
     def join(
-            self,
-            ip: str,
-            port: int,
-            version: int = 47,
-            player_username: str = "Pilot1783",
+        self,
+        ip: str,
+        port: int,
+        version: int = 47,
+        player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))

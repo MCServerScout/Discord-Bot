@@ -187,7 +187,9 @@ class Message:
 
                 data = self.db.get_doc_at_index(pipeline, index)
 
-            self.logger.info(f"[message.asyncEmbed] Took {time.time() - tStart} seconds to parse th pipeline")
+            self.logger.info(
+                f"[message.asyncEmbed] Took {time.time() - tStart} seconds to parse th pipeline"
+            )
             tStart = time.time()
 
             # get the server status
@@ -206,7 +208,8 @@ class Message:
             elif not fast:
                 try:
                     status = await self.server.update(
-                        host=data["ip"], port=data["port"])
+                        host=data["ip"], port=data["port"]
+                    )
 
                     if status is None:
                         # server is offline
@@ -238,7 +241,8 @@ class Message:
                 data["description"] = self.text.motdParse(data["description"])
 
             self.logger.info(
-                f"[message.asyncEmbed] Took {time.time() - tStart} seconds to get the server status ({fast})")
+                f"[message.asyncEmbed] Took {time.time() - tStart} seconds to get the server status ({fast})"
+            )
             tStart = time.time()
 
             # get the server icon
@@ -253,11 +257,13 @@ class Message:
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                        "assets/favicon.png", "wb"
+                    "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
-            self.logger.info(f"[message.asyncEmbed] Took {time.time() - tStart} seconds to get the server icon")
+            self.logger.info(
+                f"[message.asyncEmbed] Took {time.time() - tStart} seconds to get the server icon"
+            )
             tStart = time.time()
 
             # create the embed
@@ -335,7 +341,9 @@ class Message:
                     inline=False,
                 )
 
-            self.logger.info(f"[message.asyncEmbed] Took {time.time() - tStart} seconds to create the embed")
+            self.logger.info(
+                f"[message.asyncEmbed] Took {time.time() - tStart} seconds to create the embed"
+            )
             tStart = time.time()
 
             return {
@@ -427,16 +435,23 @@ class Message:
                 file=None,
             )
             return
-        self.logger.info(f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to fast load server")
+        self.logger.info(
+            f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to fast load server"
+        )
         tStart = time.time()
 
         # then send the embed
         await msg.edit(
             embed=stuff["embed"],
             components=stuff["components"],
-            files=[interactions.File("assets/favicon.png"), interactions.File("pipeline.ason")],
+            files=[
+                interactions.File("assets/favicon.png"),
+                interactions.File("pipeline.ason"),
+            ],
         )
-        self.logger.info(f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to send message")
+        self.logger.info(
+            f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to send message"
+        )
         tStart = time.time()
 
         # then call the asyncEmbed function again with slow
@@ -451,13 +466,20 @@ class Message:
                 file=None,
             )
             return
-        self.logger.info(f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to slow load server")
+        self.logger.info(
+            f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to slow load server"
+        )
         tStart = time.time()
 
         # then send the embed
         await msg.edit(
             embed=stuff["embed"],
             components=stuff["components"],
-            files=[interactions.File("assets/favicon.png"), interactions.File("pipeline.ason")],
+            files=[
+                interactions.File("assets/favicon.png"),
+                interactions.File("pipeline.ason"),
+            ],
         )
-        self.logger.info(f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to send message")
+        self.logger.info(
+            f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to send message"
+        )
