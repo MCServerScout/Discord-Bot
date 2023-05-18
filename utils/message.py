@@ -259,10 +259,11 @@ class Message:
 
             # set the footer to say the index, pipeline, and total servers
             embed.set_footer(
-                f"Showing {index + 1} of {total_servers} servers in: "
-                + f"{self.text.convert_json_to_string(pipeline)}",
+                f"Showing {index + 1} of {total_servers} servers",
             )
             embed.timestamp = self.text.timeNow()
+            with open("pipeline.ason", "w") as f:
+                f.write(self.text.convert_json_to_string(pipeline))
 
             # add the version
             embed.add_field(
@@ -415,7 +416,7 @@ class Message:
         await msg.edit(
             embed=stuff["embed"],
             components=stuff["components"],
-            file=interactions.File("assets/favicon.png"),
+            files=[interactions.File("assets/favicon.png"), interactions.File("pipeline.ason")],
         )
 
         # then call the asyncEmbed function again with slow
@@ -435,5 +436,5 @@ class Message:
         await msg.edit(
             embed=stuff["embed"],
             components=stuff["components"],
-            file=interactions.File("assets/favicon.png"),
+            files=[interactions.File("assets/favicon.png"), interactions.File("pipeline.ason")],
         )

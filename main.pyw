@@ -7,6 +7,7 @@ import sys
 import time
 import traceback
 
+import aiohttp
 import interactions
 from interactions import slash_command, SlashCommandOption
 from pymongo import MongoClient
@@ -372,6 +373,17 @@ async def next_page(ctx: interactions.ComponentContext):
     msg = None
     try:
         orgFoot = ctx.message.embeds[0].footer.text
+
+        # get the files attached to the message
+        files = ctx.message.attachments
+        pipeline = []
+        for file in files:
+            if file.filename == "pipeline.ason":
+                url = file.url
+                async with aiohttp.ClientSession() as session, session.get(url) as resp:
+                    pipeline = await resp.text()
+                pipeline = textLib.convert_string_to_json(pipeline)
+
         await ctx.defer(edit_origin=True)
 
         logger.print(f"[main.previous_page] next page called")
@@ -387,8 +399,6 @@ async def next_page(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        pipeline = orgFoot.split(" servers in: ")[1]
-        pipeline = textLib.convert_string_to_json(pipeline)
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
         if index + 1 >= total:
@@ -437,6 +447,15 @@ async def previous_page(ctx: interactions.ComponentContext):
     msg = None
     try:
         orgFoot = ctx.message.embeds[0].footer.text
+        # get the files attached to the message
+        files = ctx.message.attachments
+        pipeline = []
+        for file in files:
+            if file.filename == "pipeline.ason":
+                url = file.url
+                async with aiohttp.ClientSession() as session, session.get(url) as resp:
+                    pipeline = await resp.text()
+                pipeline = textLib.convert_string_to_json(pipeline)
         await ctx.defer(edit_origin=True)
 
         logger.print(f"[main.previous_page] previous page called")
@@ -452,7 +471,6 @@ async def previous_page(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        pipeline = textLib.convert_string_to_json(orgFoot.split(" servers in: ")[1])
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
         if index - 1 >= 0:
@@ -501,12 +519,20 @@ async def players(ctx: interactions.ComponentContext):
     try:
         org = ctx.message
         orgFoot = org.embeds[0].footer.text
+        # get the files attached to the message
+        files = ctx.message.attachments
+        pipeline = []
+        for file in files:
+            if file.filename == "pipeline.ason":
+                url = file.url
+                async with aiohttp.ClientSession() as session, session.get(url) as resp:
+                    pipeline = await resp.text()
+                pipeline = textLib.convert_string_to_json(pipeline)
         await ctx.defer(ephemeral=True)
 
         logger.print(f"[main.players] players called")
 
         # get the host dict from the db
-        pipeline = textLib.convert_string_to_json(orgFoot.split(" servers in: ")[1])
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
 
         host = databaseLib.get_doc_at_index(pipeline, index)
@@ -577,9 +603,15 @@ async def jump(ctx: interactions.ComponentContext):
         original = ctx.message
 
         logger.print(f"[main.jump] jump called")
-
-        # get the pipeline and index from the message
-        pipeline = textLib.convert_string_to_json(original.embeds[0].footer.text.split(" servers in: ")[1])
+        # get the files attached to the message
+        files = ctx.message.attachments
+        pipeline = []
+        for file in files:
+            if file.filename == "pipeline.ason":
+                url = file.url
+                async with aiohttp.ClientSession() as session, session.get(url) as resp:
+                    pipeline = await resp.text()
+                pipeline = textLib.convert_string_to_json(pipeline)
 
         # get the total number of servers
         total = databaseLib.count(pipeline)
@@ -673,10 +705,19 @@ async def sort(ctx: interactions.ComponentContext):
         org = ctx.message
         orgFooter = org.embeds[0].footer
 
+        # get the files attached to the message
+        files = ctx.message.attachments
+        pipelineCP = []
+        for file in files:
+            if file.filename == "pipeline.ason":
+                url = file.url
+                async with aiohttp.ClientSession() as session, session.get(url) as resp:
+                    pipeline = await resp.text()
+                pipelineCP = textLib.convert_string_to_json(pipeline)
+
         logger.print(f"[main.sort] sort called")
 
         # get the pipeline
-        pipelineCP = textLib.convert_string_to_json(orgFooter.text.split(" servers in: ")[1])
         logger.print(f"[main.sort] pipeline: {pipelineCP}")
         pipeline = pipelineCP.copy()
 
@@ -816,6 +857,15 @@ async def sort(ctx: interactions.ComponentContext):
 async def update(ctx: interactions.ComponentContext):
     try:
         orgFoot = ctx.message.embeds[0].footer.text
+        # get the files attached to the message
+        files = ctx.message.attachments
+        pipeline = []
+        for file in files:
+            if file.filename == "pipeline.ason":
+                url = file.url
+                async with aiohttp.ClientSession() as session, session.get(url) as resp:
+                    pipeline = await resp.text()
+                pipeline = textLib.convert_string_to_json(pipeline)
         await ctx.defer(edit_origin=True)
 
         logger.print(f"[main.update] update page called")
@@ -831,7 +881,6 @@ async def update(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        pipeline = textLib.convert_string_to_json(orgFoot.split(" servers in: ")[1])
         index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
 
