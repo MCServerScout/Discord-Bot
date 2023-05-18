@@ -42,10 +42,9 @@ class Twitch:
         if lang:
             params["language"] = lang
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(streams_url, headers=headers, params=params) as response:
-                data = await response.json()
-                self.logger.info(f"[twitch.asyncGetStreamers] Fetched {len(data['data'])} Minecraft streams")
+        async with aiohttp.ClientSession() as session, session.get(streams_url, headers=headers, params=params) as response:
+            data = await response.json()
+            self.logger.info(f"[twitch.asyncGetStreamers] Fetched {len(data['data'])} Minecraft streams")
 
         # Process stream data
         if "data" in data:
@@ -78,9 +77,8 @@ class Twitch:
             "type": "live",
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(streams_url, headers=headers, params=params) as response:
-                data = await response.json()
+        async with aiohttp.ClientSession() as session, session.get(streams_url, headers=headers, params=params) as response:
+            data = await response.json()
 
         # Process stream data
         stream = {}
