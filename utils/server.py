@@ -4,11 +4,11 @@ import datetime
 import json
 import socket
 import threading
+import time
 import traceback
 from typing import Optional
 
 import ipinfo
-import mcstatus
 from mcstatus.protocol.connection import Connection, TCPSocketConnection
 
 from .database import Database
@@ -52,10 +52,12 @@ class Server:
         """
         Update a server and return a doc
         """
-
+        tStart = time.time()
         try:
             # get the status response
             status = self.status(host)
+            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get status")
+            tStart = time.time()
 
             if status is None:
                 self.logger.warning(
@@ -68,6 +70,9 @@ class Server:
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
+
+            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get server type")
+            tStart = time.time()
 
             status["cracked"] = server_type.getType() == "CRACKED"
 
@@ -95,6 +100,9 @@ class Server:
 
             if geo != {}:
                 status["geo"] = geo
+
+            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get geo")
+            tStart = time.time()
 
             # if the server is in the db, then get the db doc
             if (
@@ -125,6 +133,9 @@ class Server:
                 )
                 self.updateDB(status)
 
+            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to update db")
+            tStart = time.time()
+
             return status
         except Exception as err:
             self.logger.warning(f"[server.update] {err}")
@@ -132,10 +143,10 @@ class Server:
             return None
 
     def status(
-        self,
-        ip: str,
-        port: int = 25565,
-        version: int = -1,
+            self,
+            ip: str,
+            port: int = 25565,
+            version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -149,36 +160,8 @@ class Server:
         Returns:
             Optional[dict]: The status response dict
         """
+        tStart = time.time()
         try:
-            if version == -1:
-                # get info on the server
-                server = mcstatus.JavaServer.lookup(
-                    ip + ":" + str(port), timeout=5)
-                try:
-                    version = (
-                        server.status().version.protocol if version == -1 else version
-                    )
-                except TimeoutError:
-                    self.logger.print(
-                        "[server.status] Connection error (timeout)")
-                    return None
-                except ConnectionRefusedError:
-                    self.logger.print(
-                        "[server.status] Connection error (refused)")
-                    return None
-                except Exception as err:
-                    if (
-                        "An existing connection was forcibly closed by the remote host"
-                        in str(err)
-                    ):
-                        self.logger.error("[server.status] Connection error")
-                        return None
-                    else:
-                        self.logger.error(f"[server.status] {err}")
-                        self.logger.print(
-                            f"[server.status] {traceback.format_exc()}")
-                        return None
-
             connection = TCPSocketConnection((ip, port))
 
             # Send a handshake packet: ID, protocol version, server address, server port, intention to log in
@@ -208,6 +191,9 @@ class Server:
                 return None
             resID = response.read_varint()
 
+            self.logger.info(f"[server.status] Took {time.time() - tStart} seconds to get status")
+            tStart = time.time()
+
             if resID == -1:
                 self.logger.error("[server.status] Connection error")
                 return None
@@ -227,38 +213,14 @@ class Server:
             return None
 
     def join(
-        self,
-        ip: str,
-        port: int,
-        version: int = -1,
-        player_username: str = "Pilot1783",
+            self,
+            ip: str,
+            port: int,
+            version: int = 47,
+            player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
-            # get info on the server
-            server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
-            try:
-                version = server.status().version.protocol if version == -1 else version
-            except TimeoutError:
-                self.logger.print("[server.join] Connection error (timeout)")
-                return self.ServerType(ip, -1, "UNKNOWN")
-            except ConnectionRefusedError:
-                self.logger.print("[server.join] Connection error (refused)")
-                return self.ServerType(ip, -1, "UNKNOWN")
-            except Exception as err:
-                if (
-                    "An existing connection was forcibly closed by the remote host"
-                    in str(err)
-                ):
-                    self.logger.print("[server.join] Connection error")
-                    return self.ServerType(ip, -1, "UNKNOWN")
-                else:
-                    self.logger.error(f"[server.join] {err}")
-                    self.logger.print(
-                        f"[server.join] {traceback.format_exc()}")
-                    return self.ServerType(ip, -1, "UNKNOWN")
-
             connection = TCPSocketConnection((ip, port))
-
             # Send a handshake packet: ID, protocol version, server address, server port, intention to log in
             # This does not change between versions
             handshake = Connection()

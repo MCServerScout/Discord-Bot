@@ -703,7 +703,6 @@ async def jump(ctx: interactions.ComponentContext):
 async def sort(ctx: interactions.ComponentContext):
     try:
         org = ctx.message
-        orgFooter = org.embeds[0].footer
 
         # get the files attached to the message
         files = ctx.message.attachments
