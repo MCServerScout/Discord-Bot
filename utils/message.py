@@ -1,7 +1,6 @@
 """Useful functions for sending messages to the user."""
 import base64
 import datetime
-import time
 import traceback
 from typing import List, Optional
 
@@ -130,7 +129,6 @@ class Message:
                 "components": [interactions.ActionRow], # The buttons
             }
         """
-        tStart = time.time()
         try:
             if type(pipeline) is dict:
                 self.logger.print("[message.asyncEmbed] Server data provided")
@@ -187,9 +185,6 @@ class Message:
 
                 data = self.db.get_doc_at_index(pipeline, index)
 
-            self.logger.info(f"[message.asyncEmbed] Took {time.time() - tStart} seconds to parse th pipeline")
-            tStart = time.time()
-
             # get the server status
             isOnline = "🔴"
             data["cracked"] = None
@@ -237,10 +232,6 @@ class Message:
                 isOnline = "🟡"
                 data["description"] = self.text.motdParse(data["description"])
 
-            self.logger.info(
-                f"[message.asyncEmbed] Took {time.time() - tStart} seconds to get the server status ({fast})")
-            tStart = time.time()
-
             # get the server icon
             if isOnline == "🟢" and "favicon" in data:
                 bits = (
@@ -256,9 +247,6 @@ class Message:
                         "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
-
-            self.logger.info(f"[message.asyncEmbed] Took {time.time() - tStart} seconds to get the server icon")
-            tStart = time.time()
 
             # create the embed
             embed = self.standardEmbed(
@@ -334,9 +322,6 @@ class Message:
                     ),
                     inline=False,
                 )
-
-            self.logger.info(f"[message.asyncEmbed] Took {time.time() - tStart} seconds to create the embed")
-            tStart = time.time()
 
             return {
                 "embed": embed,
@@ -414,7 +399,6 @@ class Message:
         pipeline: dict | list,
         msg: interactions.Message,
     ) -> None:
-        tStart = time.time()
         # first call the asyncEmbed function with fast
         stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=True)
         if stuff is None:
@@ -427,8 +411,6 @@ class Message:
                 file=None,
             )
             return
-        self.logger.info(f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to fast load server")
-        tStart = time.time()
 
         # then send the embed
         await msg.edit(
@@ -436,8 +418,6 @@ class Message:
             components=stuff["components"],
             files=[interactions.File("assets/favicon.png"), interactions.File("pipeline.ason")],
         )
-        self.logger.info(f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to send message")
-        tStart = time.time()
 
         # then call the asyncEmbed function again with slow
         stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=False)
@@ -451,8 +431,6 @@ class Message:
                 file=None,
             )
             return
-        self.logger.info(f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to slow load server")
-        tStart = time.time()
 
         # then send the embed
         await msg.edit(
@@ -460,4 +438,3 @@ class Message:
             components=stuff["components"],
             files=[interactions.File("assets/favicon.png"), interactions.File("pipeline.ason")],
         )
-        self.logger.info(f"[message.asyncLoadServer] Took {time.time() - tStart} seconds to send message")

@@ -4,7 +4,6 @@ import datetime
 import json
 import socket
 import threading
-import time
 import traceback
 from typing import Optional
 
@@ -52,12 +51,9 @@ class Server:
         """
         Update a server and return a doc
         """
-        tStart = time.time()
         try:
             # get the status response
             status = self.status(host)
-            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get status")
-            tStart = time.time()
 
             if status is None:
                 self.logger.warning(
@@ -70,9 +66,6 @@ class Server:
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
-
-            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get server type")
-            tStart = time.time()
 
             status["cracked"] = server_type.getType() == "CRACKED"
 
@@ -100,9 +93,6 @@ class Server:
 
             if geo != {}:
                 status["geo"] = geo
-
-            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to get geo")
-            tStart = time.time()
 
             # if the server is in the db, then get the db doc
             if (
@@ -133,9 +123,6 @@ class Server:
                 )
                 self.updateDB(status)
 
-            self.logger.info(f"[server.async_update] Took {time.time() - tStart} seconds to update db")
-            tStart = time.time()
-
             return status
         except Exception as err:
             self.logger.warning(f"[server.update] {err}")
@@ -160,7 +147,6 @@ class Server:
         Returns:
             Optional[dict]: The status response dict
         """
-        tStart = time.time()
         try:
             connection = TCPSocketConnection((ip, port))
 
@@ -190,9 +176,6 @@ class Server:
                 self.logger.error("[server.status] Connection error")
                 return None
             resID = response.read_varint()
-
-            self.logger.info(f"[server.status] Took {time.time() - tStart} seconds to get status")
-            tStart = time.time()
 
             if resID == -1:
                 self.logger.error("[server.status] Connection error")
