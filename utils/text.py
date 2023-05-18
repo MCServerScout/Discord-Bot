@@ -330,8 +330,8 @@ class Text:
             "text": text,
         }
 
-    # @staticmethod
-    def convert_string_to_json(self, string):
+    @staticmethod
+    def convert_string_to_json(string):
         # prefixes
         string = string.replace("'", '"') \
             .replace("ObjectId(", '{"$oid": ') \
@@ -339,8 +339,6 @@ class Text:
             .replace("True", "true") \
             .replace("False", "false") \
             .replace("None", "null")
-
-        self.logger.info(f"[text.convert_string_to_json] string: {string}")
 
         def convert_to_objectid(data):
             if isinstance(data, dict):
@@ -357,14 +355,12 @@ class Text:
         json_data = json.loads(string)
         return convert_to_objectid(json_data)
 
-    # @staticmethod
-    def convert_json_to_string(self, json_data):
+    @staticmethod
+    def convert_json_to_string(json_data):
         out = str(json_data).replace("'", '"') \
             .replace("ObjectId(", '{"$oid": ') \
             .replace(")", '}') \
             .replace("True", "true") \
             .replace("False", "false") \
             .replace("None", "null")
-
-        self.logger.info(f"[text.convert_json_to_string] out: {out}")
         return out
