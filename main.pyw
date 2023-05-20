@@ -111,14 +111,16 @@ def print(*args, **kwargs):
         SlashCommandOption(
             name="online_players",
             description="The online players of the server",
-            type=interactions.OptionType.INTEGER,
+            type=interactions.OptionType.STRING,
             required=False,
+            min_length=1,
         ),
         SlashCommandOption(
             name="logged_players",
             description="The logged players of the server",
-            type=interactions.OptionType.INTEGER,
+            type=interactions.OptionType.STRING,
             required=False,
+            min_length=1,
         ),
         SlashCommandOption(
             name="player",
@@ -157,8 +159,8 @@ async def find(
         ip: str = None,
         version: str = None,
         max_players: int = None,
-        online_players: int = None,
-        logged_players: int = None,
+        online_players: str = None,
+        logged_players: str = None,
         player: str = None,
         sign: str = None,
         description: str = None,
@@ -232,6 +234,34 @@ async def find(
         if max_players is not None:
             pipeline[0]["$match"]["$and"].append({"players.max": max_players})
         if online_players is not None:
+            if not online_players[1:].isnumeric():
+                await msg.edit(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description=f"Online players `{online_players}` not a valid number",
+                        color=RED,
+                    ),
+                    components=messageLib.buttons()
+                )
+                return
+            if online_players.startswith(">"):
+                online_players = {"$gt": int(online_players[1:])}
+            elif online_players.startswith("<"):
+                online_players = {"$lt": int(online_players[1:])}
+            elif online_players.startswith("="):
+                online_players = int(online_players[1:])
+            elif online_players.isnumeric():
+                online_players = int(online_players)
+            else:
+                await msg.edit(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description=f"Online players `{online_players}` not a valid number",
+                        color=RED,
+                    ),
+                    components=messageLib.buttons()
+                )
+                return
             pipeline[0]["$match"]["$and"].append({"players.online": online_players})
         if sign is not None:
             pipeline[0]["$match"]["$and"].append(
@@ -271,10 +301,43 @@ async def find(
         if has_favicon is not None:
             pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
         if logged_players is not None:
-            # match to the length of players.sample
-            pipeline[0]["$match"]["$and"].append(
-                {"players.sample": {"$size": logged_players}}
-            )
+            pipeline[0]["$match"]["$and"].append({"players.sample": {"$exists": True}})
+            if not logged_players[1:].isnumeric():
+                await msg.edit(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description=f"Logged players `{logged_players}` not a valid number",
+                        color=RED,
+                    ),
+                    components=messageLib.buttons()
+                )
+                return
+            if logged_players.startswith(">"):
+                pipeline[0]["$match"]["$and"].append(
+                    {f"players.sample.{int(logged_players[1:]) - 1}": {"$exists": True}}
+                )
+            elif logged_players.startswith("<"):
+                pipeline[0]["$match"]["$and"].append(
+                    {f"players.sample.{int(logged_players[1:]) + 1}": {"$exists": True}}
+                )
+            elif logged_players.startswith("="):
+                pipeline[0]["$match"]["$and"].append(
+                    {"players.sample": {"$size": int(logged_players[1:])}}
+                )
+            elif logged_players.isnumeric():
+                pipeline[0]["$match"]["$and"].append(
+                    {"players.sample.length": int(logged_players)}
+                )
+            else:
+                await msg.edit(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description=f"Logged players `{logged_players}` not a valid number",
+                        color=RED,
+                    ),
+                    components=messageLib.buttons()
+                )
+                return
         if cracked is not None:
             pipeline[0]["$match"]["$and"].append({"cracked": cracked})
         if ip is not None:
