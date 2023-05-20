@@ -201,7 +201,8 @@ class Message:
             elif not fast:
                 try:
                     status = await self.server.update(
-                        host=data["ip"], port=data["port"])
+                        host=data["ip"], port=data["port"]
+                    )
 
                     if status is None:
                         # server is offline
@@ -244,7 +245,7 @@ class Message:
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                        "assets/favicon.png", "wb"
+                    "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
@@ -416,7 +417,10 @@ class Message:
         await msg.edit(
             embed=stuff["embed"],
             components=stuff["components"],
-            files=[interactions.File("assets/favicon.png"), interactions.File("pipeline.ason")],
+            files=[
+                interactions.File("assets/favicon.png"),
+                interactions.File("pipeline.ason"),
+            ],
         )
 
         # then call the asyncEmbed function again with slow
@@ -436,5 +440,8 @@ class Message:
         await msg.edit(
             embed=stuff["embed"],
             components=stuff["components"],
-            files=[interactions.File("assets/favicon.png"), interactions.File("pipeline.ason")],
+            files=[
+                interactions.File("assets/favicon.png"),
+                interactions.File("pipeline.ason"),
+            ],
         )

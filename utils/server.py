@@ -31,11 +31,11 @@ class Server:
             return self.type
 
     def __init__(
-            self,
-            db: "Database",
-            logger: "Logger",
-            text: "Text",
-            ipinfo_token: str,
+        self,
+        db: "Database",
+        logger: "Logger",
+        text: "Text",
+        ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -43,10 +43,10 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     async def update(
-            self,
-            host: str,
-            fast: bool = False,
-            port: int = 25565,
+        self,
+        host: str,
+        fast: bool = False,
+        port: int = 25565,
     ) -> Optional[dict]:
         """
         Update a server and return a doc
@@ -88,17 +88,16 @@ class Server:
                 self.logger.warning(
                     f"[server.update] Failed to get geo for {host}")
                 self.logger.print(f"[server.update] {err}")
-                self.logger.print(
-                    f"[server.update] {traceback.format_exc()}")
+                self.logger.print(f"[server.update] {traceback.format_exc()}")
 
             if geo != {}:
                 status["geo"] = geo
 
             # if the server is in the db, then get the db doc
             if (
-                    self.db.col.find_one(
-                        {"ip": status["ip"], "port": status["port"]})
-                    is not None
+                self.db.col.find_one(
+                    {"ip": status["ip"], "port": status["port"]})
+                is not None
             ):
                 dbVal = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
@@ -130,10 +129,10 @@ class Server:
             return None
 
     def status(
-            self,
-            ip: str,
-            port: int = 25565,
-            version: int = 47,
+        self,
+        ip: str,
+        port: int = 25565,
+        version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -196,11 +195,11 @@ class Server:
             return None
 
     def join(
-            self,
-            ip: str,
-            port: int,
-            version: int = 47,
-            player_username: str = "Pilot1783",
+        self,
+        ip: str,
+        port: int,
+        version: int = 47,
+        player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))
