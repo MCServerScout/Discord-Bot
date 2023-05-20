@@ -107,6 +107,7 @@ def print(*args, **kwargs):
             description="The max players of the server",
             type=interactions.OptionType.INTEGER,
             required=False,
+            min_value=0,
         ),
         SlashCommandOption(
             name="online_players",
@@ -127,18 +128,21 @@ def print(*args, **kwargs):
             description="The player on the server",
             type=interactions.OptionType.STRING,
             required=False,
+            min_length=1,
         ),
         SlashCommandOption(
             name="sign",
             description="The text of a sign on the server",
             type=interactions.OptionType.STRING,
             required=False,
+            min_length=1,
         ),
         SlashCommandOption(
             name="description",
             description="The description of the server, via regex, the default is \".*<your search>.*\"",
             type=interactions.OptionType.STRING,
             required=False,
+            min_length=1,
         ),
         SlashCommandOption(
             name="cracked",
