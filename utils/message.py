@@ -309,7 +309,7 @@ class Message:
             if "geo" in data and not fast:
                 embed.add_field(
                     name="Location",
-                    value=f"{data['geo']['country']} ({data['geo']['city']})",
+                    value=f":flag_{data['geo']['country']}: ({data['geo']['city']})",
                     inline=True,
                 )
 
