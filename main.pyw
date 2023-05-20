@@ -318,11 +318,11 @@ async def find(
                 return
             if logged_players.startswith(">"):
                 pipeline[0]["$match"]["$and"].append(
-                    {f"players.sample.{int(logged_players[1:]) - 1}": {"$exists": True}}
+                    {f"players.sample.{int(logged_players[1:]) + 1}": {"$exists": True}}
                 )
             elif logged_players.startswith("<"):
                 pipeline[0]["$match"]["$and"].append(
-                    {f"players.sample.{int(logged_players[1:]) + 1}": {"$exists": True}}
+                    {f"players.sample.{int(logged_players[1:]) - 1}": {"$exists": True}}
                 )
             elif logged_players.startswith("="):
                 pipeline[0]["$match"]["$and"].append(
