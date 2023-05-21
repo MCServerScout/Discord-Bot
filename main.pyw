@@ -155,7 +155,15 @@ def print(*args, **kwargs):
             description="If the server has a favicon",
             type=interactions.OptionType.BOOLEAN,
             required=False,
-        )
+        ),
+        SlashCommandOption(
+            name="country",
+            description="The country of the server",
+            type=interactions.OptionType.STRING,
+            required=False,
+            min_length=2,
+            max_length=2,
+        ),
     ],
 )
 async def find(
@@ -170,6 +178,7 @@ async def find(
         description: str = None,
         cracked: bool = None,
         has_favicon: bool = None,
+        country: str = None,
 ):
     msg = None
     try:
@@ -387,6 +396,8 @@ async def find(
                     return
             else:
                 pipeline[0]["$match"]["$and"].append({"ip": {"$regex": f"^{ip}$", "$options": "i"}})
+        if country is not None:
+            pipeline[0]["$match"]["$and"].append({"geo.country": {"$regex": f"^{country}$", "$options": "i"}})
 
         total = databaseLib.count(pipeline)
 
