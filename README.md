@@ -109,7 +109,13 @@ The docs are in the following json format:
   "modpackData": {},
   "preventsChatReports": false,
   "previewsChat": false,
-  "forgeData": {}
+  "forgeData": {},
+  "geo": {
+    "lat": 0,
+    "lon": 0,
+    "city": "",
+    "country": ""
+  }
 }
 ```
 
