@@ -14,7 +14,8 @@ from pymongo import MongoClient
 
 import utils
 
-DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name, client_id, client_secret, IP_INFO_TOKEN = "", "", "", "", "", "", "", ""
+DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name, client_id, client_secret, IP_INFO_TOKEN \
+    = "", "", "", "", "", "", "", ""
 DEBUG = False
 try:
     from privVars import *

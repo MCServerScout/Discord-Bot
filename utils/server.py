@@ -20,15 +20,15 @@ class Server:
 
     class ServerType:
         def __init__(self, ip, version, joinability):
-            self.ip: str = ip
-            self.version: int = version
-            self.type: str = joinability
+            self._ip: str = ip
+            self._version: int = version
+            self._type: str = joinability
 
         def __str__(self):
-            return f"ServerType(ip={self.ip}, version={self.version}, type={self.type})"
+            return f"ServerType(ip={self._ip}, version={self._version}, type={self._type})"
 
         def getType(self) -> str:
-            return self.type
+            return self._type
 
     def __init__(
         self,

@@ -65,6 +65,7 @@ This command will show you a list of all the commands and how to use them.
 * `description` - The text in the description of the server matched via RegEx
 * `cracked` - Whether the server is cracked
 * `has_favicon` - Whether the server has a favicon
+* `country` - The country the server is in
 
 
 ## Documents

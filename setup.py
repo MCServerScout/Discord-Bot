@@ -4,12 +4,20 @@ import asyncio
 import os
 import sys
 
+import aiohttp
+
 
 async def install_requirements():
     # check that python is 3.10+
     if sys.version_info[0] != 3 and sys.version_info[1] < 10:
         print("Python 3.10+ is required.")
         sys.exit("Python 3.10+ is required.")
+
+    req_url = "https://raw.githubusercontent.com/ServerScout-bust-cosmic-trespass/Discord-Bot/master/requirements.txt"
+    print("Downloading requirements.txt")
+    async with aiohttp.ClientSession() as session, session.get(req_url) as resp:
+        with open("requirements.txt", "wb") as f:
+            f.write(await resp.read())
 
     proc = await asyncio.create_subprocess_shell(
         "pip install -Ur requirements.txt",
@@ -22,7 +30,7 @@ async def install_requirements():
 
 
 async def create_privVars():
-    text = """# Path: privVars.py
+    text = """#  Path: privVars.py
 DISCORD_TOKEN = ""
 DISCORD_WEBHOOK = ""
 MONGO_URL = ""
