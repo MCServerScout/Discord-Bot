@@ -5,7 +5,7 @@ import json
 import socket
 import threading
 import traceback
-from typing import Optional
+from typing import Optional, Mapping, Any
 
 import ipinfo
 from mcstatus.protocol.connection import Connection, TCPSocketConnection
@@ -31,11 +31,11 @@ class Server:
             return self.type
 
     def __init__(
-        self,
-        db: "Database",
-        logger: "Logger",
-        text: "Text",
-        ipinfo_token: str,
+            self,
+            db: "Database",
+            logger: "Logger",
+            text: "Text",
+            ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -43,39 +43,17 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     async def update(
-        self,
-        host: str,
-        fast: bool = False,
-        port: int = 25565,
-    ) -> Optional[dict]:
+            self,
+            host: str,
+            fast: bool = False,
+            port: int = 25565,
+    ) -> Optional[Mapping[str, Any]]:
         """
-        Update a server and return a doc
+        Update a server and return a doc, returns either, None or Mapping[str, Any]
         """
+        status = None
         try:
-            # get the status response
-            status = self.status(host)
-
-            if status is None:
-                self.logger.warning(
-                    f"[server.update] Failed to get status for {host}")
-                return None
-
-            server_type = (
-                self.join(ip=host, port=port,
-                          version=status["version"]["protocol"])
-                if not fast
-                else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
-            )
-
-            status["cracked"] = server_type.getType() == "CRACKED"
-
-            status["ip"] = host
-            status["port"] = port
-            status["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
-            status["hasFavicon"] = "favicon" in status
-            status["hasForgeData"] = server_type.getType() == "MODDED"
-            status["description"] = self.text.motdParse(status["description"])
-
+            status = {"ip": host, "port": port, "version": {"protocol": -1}}
             geo = {}
             # fetch info from ipinfo
             try:
@@ -95,44 +73,74 @@ class Server:
 
             # if the server is in the db, then get the db doc
             if (
-                self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]})
-                is not None
+                    self.db.col.find_one(
+                        {"ip": status["ip"], "port": status["port"]})
+                    is not None
             ):
                 dbVal = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
                 )
-                if dbVal is not None:
-                    if "cracked" in dbVal:
-                        status["cracked"] = status["cracked"] or dbVal["cracked"]
+                status.update(dbVal)
+                status["description"] = self.text.motdParse(status["description"])
+                status["cracked"] = dbVal["cracked"] if "cracked" in dbVal else False
+            else:
+                dbVal = None
 
-                    # append the dbVal sample to the status sample
-                    if "sample" in dbVal["players"] and "sample" in status["players"]:
-                        for player in dbVal["players"]["sample"]:
-                            if player not in status["players"]["sample"]:
-                                status["players"]["sample"].append(player)
-                else:
-                    self.logger.warning(
-                        f"[server.update] Failed to get dbVal for {host}, making new entry"
-                    )
-                self.updateDB(status)
+            # get the status response
+            status2 = self.status(host)
+
+            if status2 is None:
+                self.logger.warning(
+                    f"[server.update] Failed to get status for {host}")
+                raise Exception("Failed to get status")
+            else:
+                status.update(status2)
+
+            server_type = (
+                self.join(ip=host, port=port,
+                          version=status["version"]["protocol"])
+                if not fast
+                else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
+            )
+
+            status["cracked"] = server_type.getType() == "CRACKED"
+
+            status["ip"] = host
+            status["port"] = port
+            status["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
+            status["hasFavicon"] = "favicon" in status
+            status["hasForgeData"] = server_type.getType() == "MODDED"
+            status["description"] = self.text.motdParse(status["description"])
+
+            if dbVal is not None:
+                if "cracked" in dbVal:
+                    status["cracked"] = status["cracked"] or dbVal["cracked"]
+
+                # append the dbVal sample to the status sample
+                if "sample" in dbVal["players"] and "sample" in status["players"]:
+                    for player in dbVal["players"]["sample"]:
+                        if player not in status["players"]["sample"]:
+                            status["players"]["sample"].append(player)
             else:
                 self.logger.warning(
                     f"[server.update] Failed to get dbVal for {host}, making new entry"
                 )
-                self.updateDB(status)
+            self.updateDB(status)
 
             return status
         except Exception as err:
             self.logger.warning(f"[server.update] {err}")
             self.logger.print(f"[server.update] {traceback.format_exc()}")
-            return None
+            if status is not None:
+                return status
+            else:
+                return None
 
     def status(
-        self,
-        ip: str,
-        port: int = 25565,
-        version: int = 47,
+            self,
+            ip: str,
+            port: int = 25565,
+            version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -195,11 +203,11 @@ class Server:
             return None
 
     def join(
-        self,
-        ip: str,
-        port: int,
-        version: int = 47,
-        player_username: str = "Pilot1783",
+            self,
+            ip: str,
+            port: int,
+            version: int = 47,
+            player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))

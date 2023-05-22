@@ -5,6 +5,7 @@ import traceback
 from typing import List, Optional
 
 import interactions
+import mcstatus
 from interactions import ActionRow
 
 from .database import Database
@@ -204,15 +205,21 @@ class Message:
                         host=data["ip"], port=data["port"]
                     )
 
+                    try:
+                        if mcstatus.JavaServer.lookup(data["ip"]).ping() > 0:
+                            isOnline = "🟢"
+                        else:
+                            isOnline = "🔴"
+                    except Exception:
+                        isOnline = "🔴"
+
                     if status is None:
                         # server is offline
-                        isOnline = "🔴"
                         data["cracked"] = None
                         data["description"] = self.text.motdParse(
                             data["description"])
                     else:
                         # server is online
-                        isOnline = "🟢"
                         data = status
                 except Exception as e:
                     self.logger.error("[message.asyncEmbed] Error: " + str(e))
@@ -250,6 +257,7 @@ class Message:
                     f2.write(f.read())
 
             # create the embed
+            data["description"] = self.text.motdParse(data["description"])
             embed = self.standardEmbed(
                 title=f"{isOnline} {data['ip']}:{data['port']}",
                 description=f"```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
@@ -307,12 +315,14 @@ class Message:
             )
 
             # geolocation
-            if "geo" in data and not fast:
+            if "geo" in data:
                 embed.add_field(
                     name="Location",
                     value=f":flag_{data['geo']['country'].lower()}: {data['geo']['city']}",
                     inline=True,
                 )
+            else:
+                self.logger.warning(f"[message.asyncEmbed] No geolocation data found: {data.keys()}")
 
             # add the streams
             if len(streams) > 0:
