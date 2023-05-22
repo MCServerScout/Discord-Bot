@@ -248,7 +248,8 @@ async def find(
         if max_players is not None:
             pipeline[0]["$match"]["$and"].append({"players.max": max_players})
         if online_players is not None:
-            if not online_players[1:].isnumeric():
+            if not str(online_players).isdigit() and not online_players.startswith(
+                    ">") and not online_players.startswith("<") and not online_players.startswith("="):
                 await msg.edit(
                     embed=messageLib.standardEmbed(
                         title="Error",
@@ -257,6 +258,7 @@ async def find(
                     ),
                     components=messageLib.buttons()
                 )
+                logger.error(f"Online players `{online_players}` not a valid number: {online_players}")
                 return
             if online_players.startswith(">"):
                 online_players = {"$gt": int(online_players[1:])}
@@ -264,7 +266,7 @@ async def find(
                 online_players = {"$lt": int(online_players[1:])}
             elif online_players.startswith("="):
                 online_players = int(online_players[1:])
-            elif online_players.isnumeric():
+            elif str(online_players).isdigit():
                 online_players = int(online_players)
             else:
                 await msg.edit(
@@ -316,7 +318,8 @@ async def find(
             pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
         if logged_players is not None:
             pipeline[0]["$match"]["$and"].append({"players.sample": {"$exists": True}})
-            if not logged_players[1:].isnumeric():
+            if not str(logged_players).isdigit() and not logged_players.startswith(
+                    ">") and not logged_players.startswith("<") and not logged_players.startswith("="):
                 await msg.edit(
                     embed=messageLib.standardEmbed(
                         title="Error",
@@ -338,7 +341,7 @@ async def find(
                 pipeline[0]["$match"]["$and"].append(
                     {"players.sample": {"$size": int(logged_players[1:])}}
                 )
-            elif logged_players.isnumeric():
+            elif logged_players.isdigit():
                 pipeline[0]["$match"]["$and"].append(
                     {"players.sample.length": int(logged_players)}
                 )
