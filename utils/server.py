@@ -25,7 +25,9 @@ class Server:
             self._type: str = joinability
 
         def __str__(self):
-            return f"ServerType(ip={self._ip}, version={self._version}, type={self._type})"
+            return (
+                f"ServerType(ip={self._ip}, version={self._version}, type={self._type})"
+            )
 
         def getType(self) -> str:
             return self._type
