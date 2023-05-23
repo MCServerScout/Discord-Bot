@@ -18,8 +18,10 @@ will be adding more features as time goes on.
 - [X] Get a player list
 - [ ] Make it work well
 
-
 ## Commands
+
+<details>
+<summary>Click to show all commands</summary>
 
 ### Find
 
@@ -52,6 +54,7 @@ This command will show you information about a provided server.
 
 This command will show you a list of all the commands and how to use them.
 
+</details>
 
 ## Filters
 
@@ -67,13 +70,15 @@ This command will show you a list of all the commands and how to use them.
 * `has_favicon` - Whether the server has a favicon
 * `country` - The country the server is in
 
-
 ## Documents
 
 The docs are in the following json format:
 
-```json
-{
+<details>
+  <summary>Click to show example doc</summary>
+
+  ```json
+  {
   "_id": {
     "$oid": "1534978d9f542e403cfa5026"
   },
@@ -118,7 +123,9 @@ The docs are in the following json format:
     "country": ""
   }
 }
-```
+  ```
+
+</details>
 
 ## Legal
 
@@ -127,3 +134,4 @@ This project is licensed under the GNU Affero General Public License v3.0. See t
 [Terms of service](TOS.md)
 
 [Privacy Policy](PRIVACY.md)
+
