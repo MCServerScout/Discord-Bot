@@ -252,15 +252,18 @@ class Message:
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                    "assets/favicon.png", "wb"
+                        "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
             # create the embed
             data["description"] = self.text.motdParse(data["description"])
+            domain = ""
+            if "domain" in data:
+                domain = f"**Domain:** `{data['domain']}`\n"
             embed = self.standardEmbed(
                 title=f"{isOnline} {data['ip']}:{data['port']}",
-                description=f"```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
+                description=f"{domain}```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
                 color=(self.GREEN if isOnline == "🟢" else self.PINK)
                 if isOnline != "🟡"
                 else None,

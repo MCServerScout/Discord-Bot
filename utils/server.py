@@ -64,6 +64,7 @@ class Server:
                 geo["lon"] = float(geoData.loc.split(",")[1])
                 geo["country"] = str(geoData.country)
                 geo["city"] = str(geoData.city)
+                status["domain"] = str(geoData.hostname)
             except Exception as err:
                 self.logger.warning(
                     f"[server.update] Failed to get geo for {host}")
@@ -116,9 +117,6 @@ class Server:
             status["description"] = self.text.motdParse(status["description"])
 
             if dbVal is not None:
-                if "cracked" in dbVal:
-                    status["cracked"] = status["cracked"] or dbVal["cracked"]
-
                 # append the dbVal sample to the status sample
                 if "sample" in dbVal["players"] and "sample" in status["players"]:
                     for player in dbVal["players"]["sample"]:
