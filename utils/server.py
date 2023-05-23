@@ -55,7 +55,12 @@ class Server:
         """
         status = None
         try:
-            status = {"ip": host, "port": port, "version": {"protocol": -1}, "description": ""}
+            status = {
+                "ip": host,
+                "port": port,
+                "version": {"protocol": -1},
+                "description": "",
+            }
             geo = {}
             # fetch info from ipinfo
             try:
