@@ -1052,6 +1052,21 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
             components=messageLib.buttons(),
         )
 
+        # test if the server is online or in the database
+        if serverLib.status(ip, port) is None:
+            # if the server is not online, check if it is in the database
+            if databaseLib.count({"$match": pipeline}) == 0:
+                await ctx.send(
+                    embed=messageLib.standardEmbed(
+                        title="Error",
+                        description="The server is not online or in the database",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                await msg.delete()
+                return
+
         # get the server
         await messageLib.asyncLoadServer(
             index=0,

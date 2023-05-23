@@ -216,6 +216,13 @@ class Server:
         except TimeoutError:
             self.logger.print("[server.status] Connection error (timeout)")
             return None
+        except ConnectionRefusedError:
+            self.logger.print("[server.status] Connection error (refused)")
+            return None
+        except Exception as err:
+            self.logger.warning(f"[server.status] {err}")
+            self.logger.print(f"[server.status] {traceback.format_exc()}")
+            return None
 
     def join(
         self,
