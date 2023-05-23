@@ -324,10 +324,6 @@ class Message:
                     value=f":flag_{data['geo']['country'].lower()}: {data['geo']['city']}",
                     inline=True,
                 )
-            else:
-                self.logger.warning(
-                    f"[message.asyncEmbed] No geolocation data found: {data.keys()}"
-                )
 
             # add the streams
             if len(streams) > 0:
