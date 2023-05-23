@@ -95,9 +95,9 @@ class Message:
                     disabled=disabled[4],
                 ),
                 interactions.Button(
-                    label="Sort",
                     style=interactions.ButtonStyle.DANGER,
                     custom_id="sort",
+                    emoji="🔃",
                     disabled=disabled[5],
                 ),
                 interactions.Button(
