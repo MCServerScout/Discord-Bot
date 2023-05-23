@@ -55,16 +55,17 @@ class Server:
         """
         status = None
         try:
-            status = {"ip": host, "port": port, "version": {"protocol": -1}}
+            status = {"ip": host, "port": port, "version": {"protocol": -1}, "description": ""}
             geo = {}
             # fetch info from ipinfo
             try:
-                geoData = self.ipinfoHandle.getDetails(status["ip"])
-                geo["lat"] = float(geoData.loc.split(",")[0])
-                geo["lon"] = float(geoData.loc.split(",")[1])
-                geo["country"] = str(geoData.country)
-                geo["city"] = str(geoData.city)
-                status["domain"] = str(geoData.hostname)
+                geoData = self.ipinfoHandle.getDetails(status["ip"]).all
+                geo["lat"] = float(geoData["latitude"])
+                geo["lon"] = float(geoData["longitude"])
+                geo["country"] = str(geoData["country"])
+                geo["city"] = str(geoData["city"])
+                if "hostname" in geoData:
+                    geo["hostname"] = str(geoData["hostname"])
             except Exception as err:
                 self.logger.warning(
                     f"[server.update] Failed to get geo for {host}")
@@ -96,7 +97,8 @@ class Server:
             if status2 is None:
                 self.logger.warning(
                     f"[server.update] Failed to get status for {host}")
-                raise Exception("Failed to get status")
+                self.updateDB(status) if status is not None else None
+                return status
             else:
                 status.update(status2)
 
@@ -132,6 +134,9 @@ class Server:
         except Exception as err:
             self.logger.warning(f"[server.update] {err}")
             self.logger.print(f"[server.update] {traceback.format_exc()}")
+
+            self.updateDB(status) if status is not None else None
+
             if status is not None:
                 return status
             else:
