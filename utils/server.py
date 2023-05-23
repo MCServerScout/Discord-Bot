@@ -58,8 +58,12 @@ class Server:
             status = {
                 "ip": host,
                 "port": port,
-                "version": {"protocol": -1},
+                "version": {"protocol": -1, "name": "UNKNOWN"},
                 "description": "",
+                "players": {"online": 0, "max": 0},
+                "hasForgeData": False,
+                "cracked": False,
+                "lastSeen": 0,
             }
             geo = {}
             # fetch info from ipinfo

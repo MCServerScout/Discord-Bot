@@ -1034,6 +1034,9 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
     msg = None
     try:
         port = port if port is not None else 25565
+        if ":" in ip:
+            ip, port = ip.split(":")
+            port = int(port)
 
         pipeline = {
             "ip": ip,
