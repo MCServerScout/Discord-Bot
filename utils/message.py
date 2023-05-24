@@ -1,11 +1,11 @@
 """Useful functions for sending messages to the user."""
 import base64
 import datetime
+import time
 import traceback
 from typing import List, Optional
 
 import interactions
-import mcstatus
 from interactions import ActionRow
 
 from .database import Database
@@ -17,12 +17,12 @@ from .twitch import Twitch
 
 class Message:
     def __init__(
-        self,
-        logger: "Logger",
-        db: "Database",
-        text: "Text",
-        server: "Server",
-        twitch: "Twitch",
+            self,
+            logger: "Logger",
+            db: "Database",
+            text: "Text",
+            server: "Server",
+            twitch: "Twitch",
     ):
         self.logger = logger
         self.db = db
@@ -81,7 +81,7 @@ class Message:
                     disabled=disabled[0],
                 ),
                 interactions.Button(
-                    style=interactions.ButtonStyle.SUCCESS,
+                    style=interactions.ButtonStyle.PRIMARY,
                     emoji="⤵️",
                     custom_id="jump",
                     disabled=disabled[2],
@@ -89,10 +89,16 @@ class Message:
             ),
             interactions.ActionRow(
                 interactions.Button(
-                    label="Players",
                     style=interactions.ButtonStyle.SECONDARY,
+                    emoji="👥",
                     custom_id="players",
                     disabled=disabled[4],
+                ),
+                interactions.Button(
+                    style=interactions.ButtonStyle.SECONDARY,
+                    emoji="🔄",
+                    custom_id="update",
+                    disabled=disabled[3],
                 ),
                 interactions.Button(
                     style=interactions.ButtonStyle.DANGER,
@@ -101,10 +107,10 @@ class Message:
                     disabled=disabled[5],
                 ),
                 interactions.Button(
-                    style=interactions.ButtonStyle.SUCCESS,
-                    emoji="🔄",
-                    custom_id="update",
-                    disabled=disabled[3],
+                    style=interactions.ButtonStyle.DANGER,
+                    custom_id="reverse",
+                    emoji="🔀",
+                    disabled=disabled[5],
                 ),
             ),
         ]
@@ -112,10 +118,10 @@ class Message:
         return rows
 
     async def asyncEmbed(
-        self,
-        pipeline: list | dict,
-        index: int,
-        fast=True,
+            self,
+            pipeline: list | dict,
+            index: int,
+            fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -205,14 +211,6 @@ class Message:
                         host=data["ip"], port=data["port"]
                     )
 
-                    try:
-                        if mcstatus.JavaServer.lookup(data["ip"]).ping() > 0:
-                            isOnline = "🟢"
-                        else:
-                            isOnline = "🔴"
-                    except Exception:
-                        isOnline = "🔴"
-
                     if status is None:
                         # server is offline
                         data["cracked"] = None
@@ -220,7 +218,11 @@ class Message:
                             data["description"])
                     else:
                         # server is online
-                        data = status
+                        data.update(status)
+
+                    # mark online if the server was lastSeen within 5 minutes
+                    if data["lastSeen"] > time.time() - 300:
+                        isOnline = "🟢"
                 except Exception as e:
                     self.logger.error("[message.asyncEmbed] Error: " + str(e))
                     self.logger.print(
@@ -252,7 +254,7 @@ class Message:
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                    "assets/favicon.png", "wb"
+                        "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
@@ -319,11 +321,12 @@ class Message:
 
             # geolocation
             if "geo" in data:
-                embed.add_field(
-                    name="Location",
-                    value=f":flag_{data['geo']['country'].lower()}: {data['geo']['city']}",
-                    inline=True,
-                )
+                if ("country", "city") in data["geo"]:
+                    embed.add_field(
+                        name="Location",
+                        value=f":flag_{data['geo']['country'].lower()}: {data['geo']['city']}",
+                        inline=True,
+                    )
 
             # add the streams
             if len(streams) > 0:
@@ -366,10 +369,10 @@ class Message:
             return None
 
     def standardEmbed(
-        self,
-        title: str,
-        description: str,
-        color: int,
+            self,
+            title: str,
+            description: str,
+            color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 
@@ -406,10 +409,10 @@ class Message:
             )
 
     async def asyncLoadServer(
-        self,
-        index: int,
-        pipeline: dict | list,
-        msg: interactions.Message,
+            self,
+            index: int,
+            pipeline: dict | list,
+            msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=True)

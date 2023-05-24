@@ -2,6 +2,7 @@
 """
 import datetime
 import json
+import re
 import socket
 import threading
 import traceback
@@ -68,13 +69,14 @@ class Server:
             geo = {}
             # fetch info from ipinfo
             try:
-                geoData = self.ipinfoHandle.getDetails(status["ip"]).all
-                geo["lat"] = float(geoData["latitude"])
-                geo["lon"] = float(geoData["longitude"])
-                geo["country"] = str(geoData["country"])
-                geo["city"] = str(geoData["city"])
-                if "hostname" in geoData:
-                    geo["hostname"] = str(geoData["hostname"])
+                if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host):
+                    geoData = self.ipinfoHandle.getDetails(status["ip"]).all
+                    geo["lat"] = float(geoData["latitude"])
+                    geo["lon"] = float(geoData["longitude"])
+                    geo["country"] = str(geoData["country"])
+                    geo["city"] = str(geoData["city"])
+                    if "hostname" in geoData:
+                        geo["hostname"] = str(geoData["hostname"])
             except Exception as err:
                 self.logger.warning(
                     f"[server.update] Failed to get geo for {host}")
