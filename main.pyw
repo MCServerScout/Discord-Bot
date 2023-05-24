@@ -783,6 +783,7 @@ async def jump(ctx: interactions.ComponentContext):
 # button to change the sort method
 @interactions.component_callback("sort")
 async def sort(ctx: interactions.ComponentContext):
+    msg = None
     try:
         org = ctx.message
 
@@ -825,7 +826,7 @@ async def sort(ctx: interactions.ComponentContext):
                 value="random",
             ),
             placeholder="Sort the servers by...",
-            custom_id="sort",
+            custom_id="sort_method",
             min_values=1,
             max_values=1,
             disabled=False,
@@ -849,14 +850,6 @@ async def sort(ctx: interactions.ComponentContext):
             # wait for the response
             menu = await ctx.bot.wait_for_component(timeout=60, components=stringMenu)
         except asyncio.TimeoutError:
-            await ctx.send(
-                embed=messageLib.standardEmbed(
-                    title="Error",
-                    description="Timed out",
-                    color=RED,
-                ),
-                ephemeral=True,
-            )
             await msg.delete(context=ctx)
             return
         else:
@@ -886,6 +879,16 @@ async def sort(ctx: interactions.ComponentContext):
                         ephemeral=True,
                     )
 
+            await msg.delete(context=ctx)
+            msg = await ctx.send(
+                embed=messageLib.standardEmbed(
+                    title="Success",
+                    description=f"Sorting by `{value}`",
+                    color=GREEN,
+                ),
+                ephemeral=True,
+            )
+
             # loop through the pipeline and replace the sort method
             for i in range(len(pipeline)):
                 if "$sort" in pipeline[i] or "$sample" in pipeline[i]:
@@ -909,6 +912,8 @@ async def sort(ctx: interactions.ComponentContext):
                 pipeline=pipeline,
                 msg=org,
             )
+
+            await msg.delete(context=ctx)
     except AttributeError:
         logger.print(f"[main.sort] AttributeError")
     except Exception as err:
