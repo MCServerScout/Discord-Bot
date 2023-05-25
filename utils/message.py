@@ -403,10 +403,10 @@ class Message:
             )
 
     async def async_load_server(
-            self,
-            index: int,
-            pipeline: dict | list,
-            msg: interactions.Message,
+        self,
+        index: int,
+        pipeline: dict | list,
+        msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)
