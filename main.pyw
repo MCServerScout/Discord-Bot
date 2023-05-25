@@ -445,7 +445,7 @@ async def find(
             components=messageLib.buttons(),
         )
 
-        await messageLib.asyncLoadServer(
+        await messageLib.async_load_server(
             index=0,
             pipeline=pipeline,
             msg=msg,
@@ -508,7 +508,7 @@ async def next_page(ctx: interactions.ComponentContext):
             file=None
         )
 
-        await messageLib.asyncLoadServer(
+        await messageLib.async_load_server(
             index=index,
             pipeline=pipeline,
             msg=msg,
@@ -571,7 +571,7 @@ async def previous_page(ctx: interactions.ComponentContext):
             file=None
         )
 
-        await messageLib.asyncLoadServer(
+        await messageLib.async_load_server(
             index=index,
             pipeline=pipeline,
             msg=msg,
@@ -729,7 +729,7 @@ async def jump(ctx: interactions.ComponentContext):
                 )
 
             # edit the message
-            await messageLib.asyncLoadServer(
+            await messageLib.async_load_server(
                 index=index - 1,
                 pipeline=pipeline,
                 msg=org,
@@ -879,7 +879,7 @@ async def sort(ctx: interactions.ComponentContext):
             pipeline.append({"$limit": 1000})
 
             # edit the message
-            await messageLib.asyncLoadServer(
+            await messageLib.async_load_server(
                 index=0,
                 pipeline=pipeline,
                 msg=org,
@@ -944,7 +944,7 @@ async def update(ctx: interactions.ComponentContext):
         )
 
         # load the server
-        await messageLib.asyncLoadServer(
+        await messageLib.async_load_server(
             index=index,
             pipeline=pipeline,
             msg=msg,
@@ -1043,7 +1043,7 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
             pipeline = [{"$match": pipeline}]
 
         # get the server
-        await messageLib.asyncLoadServer(
+        await messageLib.async_load_server(
             index=0,
             pipeline=pipeline,
             msg=msg,
@@ -1252,7 +1252,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
                 ),
             )
 
-        await messageLib.asyncLoadServer(
+        await messageLib.async_load_server(
             pipeline=pipeline,
             index=0,
             msg=msg,
@@ -1315,11 +1315,11 @@ async def stats(ctx: interactions.SlashContext):
             {"$match": {"players.online": {"$lt": 150000, "$gt": 0}}},
             {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
         ]
-        totalPlayers = databaseLib.aggregate(pipeline)[0]["total"]
+        total_players = databaseLib.aggregate(pipeline)[0]["total"]
 
         main_embed.add_field(
             name="Total Players",
-            value=f"{totalPlayers:,}",
+            value=f"{total_players:,}",
             inline=True,
         )
         msg = await msg.edit(embed=main_embed, )
@@ -1333,7 +1333,7 @@ async def stats(ctx: interactions.SlashContext):
 
         main_embed.add_field(
             name="Total Logged Players",
-            value=f"{totalSamplePlayers:,} ({round(totalSamplePlayers / totalPlayers * 100, 2)}%)",
+            value=f"{totalSamplePlayers:,} ({round(totalSamplePlayers / total_players * 100, 2)}%)",
             inline=True,
         )
         msg = await msg.edit(embed=main_embed, )
@@ -1345,13 +1345,13 @@ async def stats(ctx: interactions.SlashContext):
             {"$sort": {"count": -1}},
             {"$limit": 5},
         ]
-        topFiveVersions = list(databaseLib.aggregate(pipeline))
+        top_five_versions = list(databaseLib.aggregate(pipeline))
 
         main_embed.add_field(
             name="Top Five Versions",
             value="```css\n" + "\n".join([
                 f"{i['_id']}: {round(i['count'] / total_servers * 100, 2)}%"
-                for i in topFiveVersions
+                for i in top_five_versions
             ]) + "\n```",
             inline=True,
         )
@@ -1364,13 +1364,13 @@ async def stats(ctx: interactions.SlashContext):
             {"$sort": {"count": -1}},
             {"$limit": 5},
         ]
-        topFiveVersionIds = list(databaseLib.aggregate(pipeline))
+        top_five_version_ids = list(databaseLib.aggregate(pipeline))
 
         main_embed.add_field(
             name="Top Five Version IDs",
             value="```css\n" + "\n".join([
                 f"{textLib.protocol_str(i['_id'])}: {round(i['count'] / total_servers * 100, 2)}%"
-                for i in topFiveVersionIds
+                for i in top_five_version_ids
             ]) + "\n```",
             inline=True,
         )

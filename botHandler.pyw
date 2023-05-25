@@ -85,7 +85,7 @@ def install_requirements():
 
 def run():
     print_and_log("\n{}\nRunning".format("-" * 10))
-    exitID = 0
+    exit_id = 0
     try:
         # time remaining until midnight
         time_out = seconds_until_midnight_mountain()
@@ -96,7 +96,7 @@ def run():
             time_out = script_duration
         else:
             time_out -= script_duration
-        exitID = subprocess.call(
+        exit_id = subprocess.call(
             ["python3", "Discord-Bot-main/Discord-Bot-master/" + run_file],
             timeout=time_out,
         )
@@ -104,19 +104,19 @@ def run():
         return "1 - Timeout"
     except Exception:
         print_and_log(traceback.format_exc())
-    return str(exitID) + " - Exited"
+    return str(exit_id) + " - Exited"
 
 
 def main():
-    lastRun = 0
+    last_run = 0
     while True:
         download_zip()
         install_requirements()
 
-        if time.time() - lastRun < 60 * 5:
+        if time.time() - last_run < 60 * 5:
             print_and_log("Restarted too soon, waiting 15 min")
             time.sleep(60 * 15)
-        lastRun = time.time()
+        last_run = time.time()
 
         err = run()
 

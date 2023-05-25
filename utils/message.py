@@ -402,7 +402,7 @@ class Message:
                 timestamp=self.text.time_now(),
             )
 
-    async def asyncLoadServer(
+    async def async_load_server(
             self,
             index: int,
             pipeline: dict | list,

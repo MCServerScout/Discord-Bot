@@ -9,4 +9,3 @@ log.log
 /assets/*
 /pipeline.ason
 scanner.ipynb
-/qodana.yaml
