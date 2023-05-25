@@ -1442,12 +1442,6 @@ async def help_command(ctx: interactions.SlashContext):
             inline=False,
         )
         .add_field(
-            name="Buttons",
-            value="`⬅️` - previous page\n`➡️` - next page\n`⤵️` - go to page\n`👥` - show players playing on the server\n"
-                  "`🔄` - refresh the info\n`🔃` - sort the servers\n`🔀` - reverse the sort",
-            inline=False,
-        )
-        .add_field(
             name="`/ping`",
             value="Get info about a single server",
             inline=False,
