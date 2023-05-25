@@ -36,7 +36,7 @@ class Player:
             bool: True if the server is cracked, False if not
         """
         url = "https://api.mcstatus.io/v2/status/java/" + \
-              host + ":" + str(port)
+            host + ":" + str(port)
 
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
@@ -87,7 +87,9 @@ class Player:
             else:
                 return ""
 
-    async def async_player_list(self, ip: str, port: int = 25565) -> Optional[list[dict]]:
+    async def async_player_list(
+        self, ip: str, port: int = 25565
+    ) -> Optional[list[dict]]:
         """Gets a list of players on a server
 
         Args:
