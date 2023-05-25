@@ -106,12 +106,6 @@ class Message:
                     custom_id="sort",
                     disabled=disabled[5],
                 ),
-                interactions.Button(
-                    style=interactions.ButtonStyle.DANGER,
-                    label="-Sort",
-                    custom_id="reverse",
-                    disabled=disabled[5],
-                ),
             ),
         ]
 
