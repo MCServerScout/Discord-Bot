@@ -30,15 +30,15 @@ class Server:
                 f"ServerType(ip={self._ip}, version={self._version}, type={self._type})"
             )
 
-        def getType(self) -> str:
+        def get_type(self) -> str:
             return self._type
 
     def __init__(
-        self,
-        db: "Database",
-        logger: "Logger",
-        text: "Text",
-        ipinfo_token: str,
+            self,
+            db: "Database",
+            logger: "Logger",
+            text: "Text",
+            ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -46,10 +46,10 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     async def update(
-        self,
-        host: str,
-        fast: bool = False,
-        port: int = 25565,
+            self,
+            host: str,
+            fast: bool = False,
+            port: int = 25565,
     ) -> Optional[Mapping[str, Any]]:
         """
         Update a server and return a doc, returns either, None or Mapping[str, Any]
@@ -88,9 +88,9 @@ class Server:
 
             # if the server is in the db, then get the db doc
             if (
-                self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]})
-                is not None
+                    self.db.col.find_one(
+                        {"ip": status["ip"], "port": status["port"]})
+                    is not None
             ):
                 dbVal = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
@@ -108,7 +108,7 @@ class Server:
             if status2 is None:
                 self.logger.warning(
                     f"[server.update] Failed to get status for {host}")
-                self.updateDB(status) if status is not None else None
+                self.update_db(status) if status is not None else None
                 return status
             else:
                 status.update(status2)
@@ -120,13 +120,13 @@ class Server:
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
 
-            status["cracked"] = server_type.getType() == "CRACKED"
+            status["cracked"] = server_type.get_type() == "CRACKED"
 
             status["ip"] = host
             status["port"] = port
             status["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
             status["hasFavicon"] = "favicon" in status
-            status["hasForgeData"] = server_type.getType() == "MODDED"
+            status["hasForgeData"] = server_type.get_type() == "MODDED"
             status["description"] = self.text.motdParse(status["description"])
 
             if dbVal is not None:
@@ -139,14 +139,14 @@ class Server:
                 self.logger.warning(
                     f"[server.update] Failed to get dbVal for {host}, making new entry"
                 )
-            self.updateDB(status)
+            self.update_db(status)
 
             return status
         except Exception as err:
             self.logger.warning(f"[server.update] {err}")
             self.logger.print(f"[server.update] {traceback.format_exc()}")
 
-            self.updateDB(status) if status is not None else None
+            self.update_db(status) if status is not None else None
 
             if status is not None:
                 return status
@@ -154,10 +154,10 @@ class Server:
                 return None
 
     def status(
-        self,
-        ip: str,
-        port: int = 25565,
-        version: int = 47,
+            self,
+            ip: str,
+            port: int = 25565,
+            version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -227,11 +227,11 @@ class Server:
             return None
 
     def join(
-        self,
-        ip: str,
-        port: int,
-        version: int = 47,
-        player_username: str = "Pilot1783",
+            self,
+            ip: str,
+            port: int,
+            version: int = 47,
+            player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))
@@ -248,11 +248,11 @@ class Server:
             connection.write_buffer(handshake)
 
             # Send login start packet: ID, username, include sig data, has uuid, uuid
-            loginStart = Connection()
+            login_start = Connection()
 
-            loginStart.write_varint(0)  # Packet ID
-            loginStart.write_utf(player_username)  # Username
-            connection.write_buffer(loginStart)
+            login_start.write_varint(0)  # Packet ID
+            login_start.write_utf(player_username)  # Username
+            connection.write_buffer(login_start)
 
             # Read response
             response = connection.read_buffer()
@@ -298,8 +298,8 @@ class Server:
                     "[server.join] Unknown response: " + str(_id))
                 try:
                     reason = response.read_utf()
-                except Exception:
-                    reason = "Unknown"
+                except TimeoutError:
+                    return self.ServerType(ip, version, "OFFLINE")
 
                 self.logger.debug("[server.join] Reason: " + reason)
                 return self.ServerType(ip, version, "UNKNOWN")
@@ -336,7 +336,7 @@ class Server:
         return socket.gethostbyname(host)
 
     @staticmethod
-    def resHostname(ip: str) -> str:
+    def res_hostname(ip: str) -> str:
         """Resolves an IP address to a hostname
 
         Args:
@@ -347,7 +347,7 @@ class Server:
         """
         return socket.gethostbyaddr(ip)[0]
 
-    def updateDB(self, data: dict):
+    def update_db(self, data: dict):
         """Updates the database with the given data
 
         Args:
@@ -356,9 +356,9 @@ class Server:
         if "favicon" in data:
             del data["favicon"]
 
-        threading.Thread(target=self._updateDB, args=(data,)).start()
+        threading.Thread(target=self._update_db, args=(data,)).start()
 
-    def _updateDB(self, data: dict):
+    def _update_db(self, data: dict):
         """Updates the database with the given data
 
         Args:

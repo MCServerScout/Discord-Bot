@@ -11,6 +11,7 @@ import aiohttp
 import interactions
 from interactions import SlashCommandOption, slash_command
 from pymongo import MongoClient
+from pymongo.errors import ServerSelectionTimeoutError
 
 import utils
 
@@ -40,7 +41,7 @@ try:
     col = db["scannedServers" if col_name == "" else col_name]
 
     col.count_documents({})
-except Exception as e:
+except ServerSelectionTimeoutError:
     print("Error connecting to database")
     print(traceback.format_exc())
     sys.exit("Config error in privVars.py, please fix before rerunning")
@@ -76,10 +77,6 @@ GREEN = 0x00FF00  # success
 YELLOW = 0xFFFF00  # warning
 BLUE = 0x0000FF  # info
 PINK = 0xFFC0CB  # offline
-
-
-def print(*args, **kwargs):
-    logger.print(" ".join(map(str, args)), **kwargs)
 
 
 # Commands
@@ -205,7 +202,7 @@ async def find(
         if player is not None:
             if len(player) < 16:
                 # get the uuid of the player
-                uuid = await playerLib.asyncGetUUID(player)
+                uuid = await playerLib.async_get_uuid(player)
             else:
                 uuid = player.replace("-", "")
 
@@ -367,13 +364,13 @@ async def find(
                     ip = ip.split(".")
                     match mask:
                         case "8":
-                            exp = f"{ip[0]}\.{ip[1]}\.{ip[2]}\.\d+"
+                            exp = fr"{ip[0]}\.{ip[1]}\.{ip[2]}\.\d+"
                         case "16":
-                            exp = f"{ip[0]}\.{ip[1]}\.\d+\.\d+"
+                            exp = fr"{ip[0]}\.{ip[1]}\.\d+\.\d+"
                         case "24":
-                            exp = f"{ip[0]}\.\d+\.\d+\.\d+"
+                            exp = fr"{ip[0]}\.\d+\.\d+\.\d+"
                         case "32":
-                            exp = f"{ip[0]}\.{ip[1]}\.{ip[2]}\.{ip[3]}"
+                            exp = fr"{ip[0]}\.{ip[1]}\.{ip[2]}\.{ip[3]}"
                         case _:
                             await msg.edit(
                                 embed=messageLib.standardEmbed(
@@ -454,7 +451,7 @@ async def find(
 async def next_page(ctx: interactions.ComponentContext):
     msg = None
     try:
-        orgFoot = ctx.message.embeds[0].footer.text
+        org_foot = ctx.message.embeds[0].footer.text
 
         # get the files attached to the message
         files = ctx.message.attachments
@@ -481,7 +478,7 @@ async def next_page(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
+        index = int(org_foot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
         if index + 1 >= total:
             index = 0
@@ -528,7 +525,7 @@ async def next_page(ctx: interactions.ComponentContext):
 async def previous_page(ctx: interactions.ComponentContext):
     msg = None
     try:
-        orgFoot = ctx.message.embeds[0].footer.text
+        org_foot = ctx.message.embeds[0].footer.text
         # get the files attached to the message
         files = ctx.message.attachments
         pipeline = []
@@ -553,7 +550,7 @@ async def previous_page(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
+        index = int(org_foot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
         if index - 1 >= 0:
             index -= 1
@@ -600,7 +597,7 @@ async def previous_page(ctx: interactions.ComponentContext):
 async def players(ctx: interactions.ComponentContext):
     try:
         org = ctx.message
-        orgFoot = org.embeds[0].footer.text
+        org_foot = org.embeds[0].footer.text
         # get the files attached to the message
         files = ctx.message.attachments
         pipeline = []
@@ -615,7 +612,7 @@ async def players(ctx: interactions.ComponentContext):
         logger.print(f"[main.players] players called")
 
         # get the host dict from the db
-        index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
+        index = int(org_foot.split("Showing ")[1].split(" of ")[0]) - 1
 
         host = databaseLib.get_doc_at_index(pipeline, index)
 
@@ -788,22 +785,22 @@ async def sort(ctx: interactions.ComponentContext):
 
         # get the files attached to the message
         files = ctx.message.attachments
-        pipelineCP = []
+        pipeline_cp = []
         for file in files:
             if file.filename == "pipeline.ason":
                 url = file.url
                 async with aiohttp.ClientSession() as session, session.get(url) as resp:
                     pipeline = await resp.text()
-                pipelineCP = textLib.convert_string_to_json(pipeline)
+                pipeline_cp = textLib.convert_string_to_json(pipeline)
 
         logger.print(f"[main.sort] sort called")
 
         # get the pipeline
-        logger.print(f"[main.sort] pipeline: {pipelineCP}")
-        pipeline = pipelineCP.copy()
+        logger.print(f"[main.sort] pipeline: {pipeline_cp}")
+        pipeline = pipeline_cp.copy()
 
         # send a message with a string menu that express after 60s
-        stringMenu = interactions.StringSelectMenu(
+        string_menu = interactions.StringSelectMenu(
             interactions.StringSelectOption(
                 label="Player Count",
                 value="players",
@@ -839,7 +836,7 @@ async def sort(ctx: interactions.ComponentContext):
             ),
             components=[
                 interactions.ActionRow(
-                    stringMenu,
+                    string_menu,
                 ),
             ],
             ephemeral=True,
@@ -847,7 +844,7 @@ async def sort(ctx: interactions.ComponentContext):
 
         try:
             # wait for the response
-            menu = await ctx.bot.wait_for_component(timeout=60, components=stringMenu)
+            menu = await ctx.bot.wait_for_component(timeout=60, components=string_menu)
         except asyncio.TimeoutError:
             await msg.delete(context=ctx)
             return
@@ -855,19 +852,19 @@ async def sort(ctx: interactions.ComponentContext):
             # get the value
             value = menu.ctx.values[0]
             logger.print(f"[main.sort] sort method: {value}")
-            sortMethod = {}
+            sort_method = {}
 
             match value:
                 case "players":
-                    sortMethod = {"$sort": {"players.online": -1}}
+                    sort_method = {"$sort": {"players.online": -1}}
                 case "limit":
-                    sortMethod = {"$sort": {"players.max": -1}}
+                    sort_method = {"$sort": {"players.max": -1}}
                 case "version":
-                    sortMethod = {"$sort": {"version": -1}}
+                    sort_method = {"$sort": {"version": -1}}
                 case "last_scan":
-                    sortMethod = {"$sort": {"lastSeen": -1}}
+                    sort_method = {"$sort": {"lastSeen": -1}}
                 case "random":
-                    sortMethod = {"$sample": {"size": 1000}}
+                    sort_method = {"$sample": {"size": 1000}}
                 case _:
                     await ctx.send(
                         embed=messageLib.standardEmbed(
@@ -891,10 +888,10 @@ async def sort(ctx: interactions.ComponentContext):
             # loop through the pipeline and replace the sort method
             for i in range(len(pipeline)):
                 if "$sort" in pipeline[i] or "$sample" in pipeline[i]:
-                    pipeline[i] = sortMethod
+                    pipeline[i] = sort_method
                     break
             else:
-                pipeline.append(sortMethod)
+                pipeline.append(sort_method)
 
             # loop through the pipeline and remove the limit
             for i in range(len(pipeline)):
@@ -942,7 +939,7 @@ async def sort(ctx: interactions.ComponentContext):
 @interactions.component_callback("update")
 async def update(ctx: interactions.ComponentContext):
     try:
-        orgFoot = ctx.message.embeds[0].footer.text
+        org_foot = ctx.message.embeds[0].footer.text
         # get the files attached to the message
         files = ctx.message.attachments
         pipeline = []
@@ -967,7 +964,7 @@ async def update(ctx: interactions.ComponentContext):
         )
 
         # get the pipeline and index from the message
-        index = int(orgFoot.split("Showing ")[1].split(" of ")[0]) - 1
+        index = int(org_foot.split("Showing ")[1].split(" of ")[0]) - 1
         total = databaseLib.count(pipeline)
 
         msg = await msg.edit(
@@ -1141,7 +1138,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
         # test if 'client_id' and 'client_secret' are not None
         if client_id == "" or client_secret == "":
             # spawn a modal asking for client id and secret
-            clientId = interactions.ShortText(
+            client_id = interactions.ShortText(
                 label="Client ID",
                 placeholder="Client ID",
                 custom_id="clientId",
@@ -1157,7 +1154,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             )
 
             modal = interactions.Modal(
-                clientId, clientSecret,
+                client_id, clientSecret,
                 title="Auth",
             )
 
@@ -1201,7 +1198,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             )
             return
 
-        streams = await twitchLib.asyncGetStreamers(
+        streams = await twitchLib.async_get_streamers(
             client_id=client_id,
             client_secret=client_secret,
             lang=lang,
@@ -1328,23 +1325,23 @@ async def stats(ctx: interactions.SlashContext):
     await ctx.defer()
 
     try:
-        mainEmbed = messageLib.standardEmbed(
+        main_embed = messageLib.standardEmbed(
             title="Stats",
             description="General stats about the database",
             color=BLUE,
         )
 
-        msg = await ctx.send(embed=mainEmbed, )
+        msg = await ctx.send(embed=main_embed, )
 
         # get the stats
         totalServers = databaseLib.col.count_documents({})
 
-        mainEmbed.add_field(
+        main_embed.add_field(
             name="Total Servers",
             value=f"{totalServers:,}",
             inline=True,
         )
-        msg = await msg.edit(embed=mainEmbed, )
+        msg = await msg.edit(embed=main_embed, )
 
         # get the total player count, ignoring servers with over 150k players and less than 1 player
         pipeline = [
@@ -1353,12 +1350,12 @@ async def stats(ctx: interactions.SlashContext):
         ]
         totalPlayers = databaseLib.aggregate(pipeline)[0]["total"]
 
-        mainEmbed.add_field(
+        main_embed.add_field(
             name="Total Players",
             value=f"{totalPlayers:,}",
             inline=True,
         )
-        msg = await msg.edit(embed=mainEmbed, )
+        msg = await msg.edit(embed=main_embed, )
 
         # get the total number of players in players.sample
         pipeline = [
@@ -1367,12 +1364,12 @@ async def stats(ctx: interactions.SlashContext):
         ]
         totalSamplePlayers = databaseLib.aggregate(pipeline)[0]["total"]
 
-        mainEmbed.add_field(
+        main_embed.add_field(
             name="Total Logged Players",
             value=f"{totalSamplePlayers:,} ({round(totalSamplePlayers / totalPlayers * 100, 2)}%)",
             inline=True,
         )
-        msg = await msg.edit(embed=mainEmbed, )
+        msg = await msg.edit(embed=main_embed, )
 
         # get the five most common server version names
         pipeline = [
@@ -1383,7 +1380,7 @@ async def stats(ctx: interactions.SlashContext):
         ]
         topFiveVersions = list(databaseLib.aggregate(pipeline))
 
-        mainEmbed.add_field(
+        main_embed.add_field(
             name="Top Five Versions",
             value="```css\n" + "\n".join([
                 f"{i['_id']}: {round(i['count'] / totalServers * 100, 2)}%"
@@ -1391,7 +1388,7 @@ async def stats(ctx: interactions.SlashContext):
             ]) + "\n```",
             inline=True,
         )
-        msg = await msg.edit(embed=mainEmbed, )
+        msg = await msg.edit(embed=main_embed, )
 
         # get the five most common server version ids
         pipeline = [
@@ -1402,7 +1399,7 @@ async def stats(ctx: interactions.SlashContext):
         ]
         topFiveVersionIds = list(databaseLib.aggregate(pipeline))
 
-        mainEmbed.add_field(
+        main_embed.add_field(
             name="Top Five Version IDs",
             value="```css\n" + "\n".join([
                 f"{textLib.protocolStr(i['_id'])}: {round(i['count'] / totalServers * 100, 2)}%"
@@ -1410,7 +1407,7 @@ async def stats(ctx: interactions.SlashContext):
             ]) + "\n```",
             inline=True,
         )
-        await msg.edit(embed=mainEmbed, )
+        await msg.edit(embed=main_embed, )
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.delete(

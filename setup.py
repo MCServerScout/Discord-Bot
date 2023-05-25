@@ -29,7 +29,7 @@ async def install_requirements():
     print(f"[stderr]\n{stderr.decode()}")
 
 
-async def create_privVars():
+async def create_priv_vars():
     text = """#  Path: privVars.py
 DISCORD_TOKEN = ""
 DISCORD_WEBHOOK = ""
@@ -45,7 +45,7 @@ MONGO_URL = ""
 
 async def main():
     await install_requirements()
-    await create_privVars()
+    await create_priv_vars()
 
 
 if __name__ == "__main__":

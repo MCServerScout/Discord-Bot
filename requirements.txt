@@ -2,9 +2,10 @@ mcstatus>=10.0.3
 pymongo>=4.3.3
 aiohttp>=3.8.4
 asyncio>=3.4.3
-requests>=2.30.0
+requests==2.31.0
 cryptography>=40.0.2
 attrs>=23.1.0
 pyOpenSSL>=22.1.0
 ipinfo>=4.4
 timeout_decorator>=0.5.0
+interactions.py>=5.5

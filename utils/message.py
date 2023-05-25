@@ -111,7 +111,7 @@ class Message:
 
         return rows
 
-    async def asyncEmbed(
+    async def async_embed(
             self,
             pipeline: list | dict,
             index: int,
@@ -226,7 +226,7 @@ class Message:
                 # try and see if any of the players are live-streaming
                 if "sample" in data["players"]:
                     for player in data["players"]["sample"]:
-                        stream = await self.twitch.getStream(
+                        stream = await self.twitch.get_stream(
                             user=player["name"].lower()
                         )
                         if stream != {}:
@@ -259,7 +259,7 @@ class Message:
                 domain = f"**Hostname:** `{data['hostname']}`\n"
             embed = self.standardEmbed(
                 title=f"{isOnline} {data['ip']}:{data['port']}",
-                description=f"{domain}```ansi\n{self.text.colorAnsi(str(data['description']['text']))}\n```",
+                description=f"{domain}```ansi\n{self.text.color_ansi(str(data['description']['text']))}\n```",
                 color=(self.GREEN if isOnline == "🟢" else self.PINK)
                 if isOnline != "🟡"
                 else None,
@@ -276,7 +276,7 @@ class Message:
             # add the version
             embed.add_field(
                 name="Version",
-                value=f"{self.text.cFilter(data['version']['name'])} ({data['version']['protocol']})",
+                value=f"{self.text.c_filter(data['version']['name'])} ({data['version']['protocol']})",
                 inline=True,
             )
 
@@ -409,7 +409,7 @@ class Message:
             msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
-        stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=True)
+        stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)
         if stuff is None:
             await msg.edit(
                 embed=self.standardEmbed(
@@ -432,7 +432,7 @@ class Message:
         )
 
         # then call the asyncEmbed function again with slow
-        stuff = await self.asyncEmbed(pipeline=pipeline, index=index, fast=False)
+        stuff = await self.async_embed(pipeline=pipeline, index=index, fast=False)
         if stuff is None:
             await msg.edit(
                 embed=self.standardEmbed(

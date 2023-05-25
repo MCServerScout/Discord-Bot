@@ -16,7 +16,7 @@ class Text:
         self.logger = logger
 
     @staticmethod
-    def cFilter(text: str, trim: bool = True) -> str:
+    def c_filter(text: str, trim: bool = True) -> str:
         """Removes all color bits from a string
 
         Args:
@@ -43,7 +43,7 @@ class Text:
 
         return text
 
-    def ansiColor(self, text: str) -> str:
+    def ansi_color(self, text: str) -> str:
         """Changes color tags to those that work with markdown
 
         Args:
@@ -65,7 +65,7 @@ class Text:
         # 37: White  <- §f
 
         # use the ansi color codes
-        text = self.colorAnsi(text)
+        text = self.color_ansi(text)
 
         text = "```ansi\n" + text + "\n```"
 
@@ -82,7 +82,7 @@ class Text:
         return text
 
     @staticmethod
-    def colorAnsi(text: str) -> str:
+    def color_ansi(text: str) -> str:
         """Changes color tags to those that work with ansi code blocks
 
         Args:
@@ -99,23 +99,23 @@ class Text:
         # 35: Pink   <- §d
         # 36: Cyan   <- §b
         # 37: White  <- §f
-        colorChar = ""  # \u001b
+        color_char = ""  # \u001b
         ansi = {
-            "§0": colorChar + "[30m",
-            "§1": colorChar + "[34m",
-            "§2": colorChar + "[32m",
-            "§3": colorChar + "[36m",
-            "§4": colorChar + "[31m",
-            "§5": colorChar + "[35m",
-            "§6": colorChar + "[33m",
-            "§7": colorChar + "[30m",
-            "§9": colorChar + "[34m",
-            "§a": colorChar + "[32m",
-            "§b": colorChar + "[36m",
-            "§c": colorChar + "[31m",
-            "§d": colorChar + "[35m",
-            "§e": colorChar + "[33m",
-            "§f": colorChar + "[37m",
+            "§0": color_char + "[30m",
+            "§1": color_char + "[34m",
+            "§2": color_char + "[32m",
+            "§3": color_char + "[36m",
+            "§4": color_char + "[31m",
+            "§5": color_char + "[35m",
+            "§6": color_char + "[33m",
+            "§7": color_char + "[30m",
+            "§9": color_char + "[34m",
+            "§a": color_char + "[32m",
+            "§b": color_char + "[36m",
+            "§c": color_char + "[31m",
+            "§d": color_char + "[35m",
+            "§e": color_char + "[33m",
+            "§f": color_char + "[37m",
             "§l": "",  # text styles
             "§k": "",
             "§m": "",
@@ -133,7 +133,7 @@ class Text:
         return text
 
     @staticmethod
-    def colorMine(color: str) -> str:
+    def color_mine(color: str) -> str:
         # given a color like 'yellow' return the color code like '§e'
         color = color.lower()
 
@@ -308,7 +308,7 @@ class Text:
         if "extra" in motd:
             for ext in motd["extra"]:
                 if "color" in ext:
-                    text += self.colorMine(color=ext["color"]) + ext["text"]
+                    text += self.color_mine(color=ext["color"]) + ext["text"]
                 else:
                     text += ext["text"]
 

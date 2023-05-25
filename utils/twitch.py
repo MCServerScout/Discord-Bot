@@ -9,8 +9,8 @@ class Twitch:
         self.client_id = client_id
         self.client_secret = client_secret
 
-    async def asyncGetStreamers(
-        self, client_id: str, client_secret: str, lang: str = None
+    async def async_get_streamers(
+            self, client_id: str, client_secret: str, lang: str = None
     ) -> list:
         token_url = "https://id.twitch.tv/oauth2/token"
         streams_url = "https://api.twitch.tv/helix/streams"
@@ -43,7 +43,7 @@ class Twitch:
             params["language"] = lang
 
         async with aiohttp.ClientSession() as session, session.get(
-            streams_url, headers=headers, params=params
+                streams_url, headers=headers, params=params
         ) as response:
             data = await response.json()
             self.logger.info(
@@ -56,7 +56,7 @@ class Twitch:
 
         return []
 
-    async def getStream(self, user: str) -> dict:
+    async def get_stream(self, user: str) -> dict:
         # Get access token
         token_url = "https://id.twitch.tv/oauth2/token"
         streams_url = "https://api.twitch.tv/helix/streams"
@@ -82,7 +82,7 @@ class Twitch:
         }
 
         async with aiohttp.ClientSession() as session, session.get(
-            streams_url, headers=headers, params=params
+                streams_url, headers=headers, params=params
         ) as response:
             data = await response.json()
 

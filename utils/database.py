@@ -11,17 +11,17 @@ class Database:
     """A class to hold all the database functions and api calls"""
 
     def __init__(
-        self,
-        col: pymongo.collection.Collection,
-        logger: "Logger",
+            self,
+            col: pymongo.collection.Collection,
+            logger: "Logger",
     ):
         self.col = col
         self.logger = logger
 
     def get_doc_at_index(
-        self,
-        pipeline: list,
-        index: int = 0,
+            self,
+            pipeline: list,
+            index: int = 0,
     ) -> Optional[dict]:
         try:
             new_pipeline = pipeline.copy()
@@ -53,12 +53,12 @@ class Database:
             return None
 
     def aggregate(
-        self,
-        pipeline: list,
-        allowDiskUse: bool = True,
+            self,
+            pipeline: list,
+            allow_disk_use: bool = True,
     ) -> Optional[List[dict]]:
         try:
-            return list(self.col.aggregate(pipeline, allowDiskUse=allowDiskUse))
+            return list(self.col.aggregate(pipeline, allowDiskUse=allow_disk_use))
         except StopIteration:
             self.logger.error("[database.aggregate] " + traceback.format_exc())
             self.logger.error(
@@ -66,8 +66,8 @@ class Database:
             return None
 
     def find_one(
-        self,
-        query: dict,
+            self,
+            query: dict,
     ) -> Optional[dict]:
         try:
             return self.col.find_one(query)
@@ -78,8 +78,8 @@ class Database:
             return None
 
     def find(
-        self,
-        query: dict,
+            self,
+            query: dict,
     ) -> Optional[List[dict]]:
         try:
             return list(self.col.find(query))
@@ -89,10 +89,10 @@ class Database:
             return None
 
     def update_one(
-        self,
-        query: dict,
-        update: dict,
-        **kwargs,
+            self,
+            query: dict,
+            update: dict,
+            **kwargs,
     ) -> Optional[UpdateResult]:
         try:
             return self.col.update_one(query, update, **kwargs)
@@ -104,9 +104,9 @@ class Database:
             return None
 
     def update_many(
-        self,
-        query: dict,
-        update: dict,
+            self,
+            query: dict,
+            update: dict,
     ) -> Optional[UpdateResult]:
         try:
             return self.col.update_many(query, update)
@@ -118,8 +118,8 @@ class Database:
             return None
 
     def count(
-        self,
-        pipeline: list,
+            self,
+            pipeline: list,
     ):
         """Counts the number of documents in a pipeline"""
         try:

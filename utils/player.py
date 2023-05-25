@@ -24,7 +24,7 @@ class Player:
         self.server = server
         self.db = db
 
-    async def asyncCrackCheckAPI(self, host: str, port: str = "25565") -> bool:
+    async def async_crack_check_api(self, host: str, port: str = "25565") -> bool:
         """Checks if a server is cracked using the mcstatus.io API
 
         Args:
@@ -36,7 +36,7 @@ class Player:
             bool: True if the server is cracked, False if not
         """
         url = "https://api.mcstatus.io/v2/status/java/" + \
-            host + ":" + str(port)
+              host + ":" + str(port)
 
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
@@ -45,7 +45,7 @@ class Player:
             else:
                 return False
 
-    async def asyncPlayerHead(self, name: str) -> Optional[interactions.File]:
+    async def async_player_head(self, name: str) -> Optional[interactions.File]:
         """Downloads a player head from minotar.net
 
         Args:
@@ -67,11 +67,11 @@ class Player:
                 file=open("playerhead.png", "rb"),
             )
 
-    def getUUID(self, name: str) -> str:
-        return asyncio.run(self.asyncGetUUID(name))
+    def get_uuid(self, name: str) -> str:
+        return asyncio.run(self.async_get_uuid(name))
 
     @staticmethod
-    async def asyncGetUUID(name: str) -> str:
+    async def async_get_uuid(name: str) -> str:
         """Get the UUID of a player
 
         Args:
@@ -125,7 +125,7 @@ class Player:
         for name in db_names:
             player = {
                 "name": name,
-                "id": await self.asyncGetUUID(name),
+                "id": await self.async_get_uuid(name),
                 "online": name in status_names,
             }
             players.append(player)
@@ -135,7 +135,7 @@ class Player:
             if player not in db_names:
                 player = {
                     "name": player,
-                    "id": await self.asyncGetUUID(player),
+                    "id": await self.async_get_uuid(player),
                     "online": True,
                 }
                 players.append(player)
