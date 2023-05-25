@@ -1329,11 +1329,11 @@ async def stats(ctx: interactions.SlashContext):
             {"$unwind": "$players.sample"},
             {"$group": {"_id": None, "total": {"$sum": 1}}},
         ]
-        totalSamplePlayers = databaseLib.aggregate(pipeline)[0]["total"]
+        total_sample_players = databaseLib.aggregate(pipeline)[0]["total"]
 
         main_embed.add_field(
             name="Total Logged Players",
-            value=f"{totalSamplePlayers:,} ({round(totalSamplePlayers / total_players * 100, 2)}%)",
+            value=f"{total_sample_players:,} ({round(total_sample_players / total_players * 100, 2)}%)",
             inline=True,
         )
         msg = await msg.edit(embed=main_embed, )
