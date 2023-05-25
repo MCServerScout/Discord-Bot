@@ -108,9 +108,16 @@ def run():
 
 
 def main():
+    lastRun = 0
     while True:
         downloadZip()
         installRequirements()
+
+        if time.time() - lastRun < 60 * 5:
+            printAndLog("Restarted too soon, waiting 15 min")
+            time.sleep(60 * 15)
+        lastRun = time.time()
+
         err = run()
 
         if not err.startswith("0"):

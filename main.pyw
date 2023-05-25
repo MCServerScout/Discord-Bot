@@ -9,7 +9,7 @@ import traceback
 
 import aiohttp
 import interactions
-from interactions import slash_command, SlashCommandOption
+from interactions import SlashCommandOption, slash_command
 from pymongo import MongoClient
 
 import utils
@@ -783,7 +783,6 @@ async def jump(ctx: interactions.ComponentContext):
 # button to change the sort method
 @interactions.component_callback("sort")
 async def sort(ctx: interactions.ComponentContext):
-    msg = None
     try:
         org = ctx.message
 
