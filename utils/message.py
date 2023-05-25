@@ -82,7 +82,7 @@ class Message:
                 ),
                 interactions.Button(
                     style=interactions.ButtonStyle.PRIMARY,
-                    emoji="⤵️",
+                    label="Jump",
                     custom_id="jump",
                     disabled=disabled[2],
                 ),
@@ -90,7 +90,7 @@ class Message:
             interactions.ActionRow(
                 interactions.Button(
                     style=interactions.ButtonStyle.SECONDARY,
-                    emoji="👥",
+                    label="Players",
                     custom_id="players",
                     disabled=disabled[4],
                 ),
@@ -102,14 +102,14 @@ class Message:
                 ),
                 interactions.Button(
                     style=interactions.ButtonStyle.DANGER,
+                    label="Sort",
                     custom_id="sort",
-                    emoji="🔃",
                     disabled=disabled[5],
                 ),
                 interactions.Button(
                     style=interactions.ButtonStyle.DANGER,
+                    label="-Sort",
                     custom_id="reverse",
-                    emoji="🔀",
                     disabled=disabled[5],
                 ),
             ),
