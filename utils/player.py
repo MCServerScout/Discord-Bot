@@ -87,7 +87,7 @@ class Player:
             else:
                 return ""
 
-    async def asyncPlayerList(self, ip: str, port: int = 25565) -> Optional[list[dict]]:
+    async def async_player_list(self, ip: str, port: int = 25565) -> Optional[list[dict]]:
         """Gets a list of players on a server
 
         Args:

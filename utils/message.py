@@ -142,7 +142,7 @@ class Message:
 
                 if data is None or data == {}:
                     return {
-                        "embed": self.standardEmbed(
+                        "embed": self.standard_embed(
                             title="Error",
                             description="No server found",
                             color=self.YELLOW,
@@ -156,7 +156,7 @@ class Message:
                 if total_servers == 0:
                     self.logger.print("[message.asyncEmbed] No servers found")
                     return {
-                        "embed": self.standardEmbed(
+                        "embed": self.standard_embed(
                             title="Error",
                             description="No servers found",
                             color=self.YELLOW,
@@ -173,7 +173,7 @@ class Message:
                     self.logger.print(
                         "[message.asyncEmbed] No server found in db")
                     return {
-                        "embed": self.standardEmbed(
+                        "embed": self.standard_embed(
                             title="Error",
                             description="No server found",
                             color=self.YELLOW,
@@ -187,7 +187,7 @@ class Message:
                 data = self.db.get_doc_at_index(pipeline, index)
 
             # get the server status
-            isOnline = "🔴"
+            is_online = "🔴"
             data["cracked"] = None
             streams = []
             if type(pipeline) is dict and fast:
@@ -208,7 +208,7 @@ class Message:
                     if status is None:
                         # server is offline
                         data["cracked"] = None
-                        data["description"] = self.text.motdParse(
+                        data["description"] = self.text.motd_parse(
                             data["description"])
                     else:
                         # server is online
@@ -216,7 +216,7 @@ class Message:
 
                     # mark online if the server was lastSeen within 5 minutes
                     if data["lastSeen"] > time.time() - 300:
-                        isOnline = "🟢"
+                        is_online = "🟢"
                 except Exception as e:
                     self.logger.error("[message.asyncEmbed] Error: " + str(e))
                     self.logger.print(
@@ -233,11 +233,11 @@ class Message:
                             streams.append(stream)
             else:
                 # isonline is yellow
-                isOnline = "🟡"
-                data["description"] = self.text.motdParse(data["description"])
+                is_online = "🟡"
+                data["description"] = self.text.motd_parse(data["description"])
 
             # get the server icon
-            if isOnline == "🟢" and "favicon" in data.keys():
+            if is_online == "🟢" and "favicon" in data.keys():
                 bits = (
                     data["favicon"].split(",")[1]
                     if "," in data["favicon"]
@@ -253,15 +253,15 @@ class Message:
                     f2.write(f.read())
 
             # create the embed
-            data["description"] = self.text.motdParse(data["description"])
+            data["description"] = self.text.motd_parse(data["description"])
             domain = ""
             if "hostname" in data:
                 domain = f"**Hostname:** `{data['hostname']}`\n"
-            embed = self.standardEmbed(
-                title=f"{isOnline} {data['ip']}:{data['port']}",
+            embed = self.standard_embed(
+                title=f"{is_online} {data['ip']}:{data['port']}",
                 description=f"{domain}```ansi\n{self.text.color_ansi(str(data['description']['text']))}\n```",
-                color=(self.GREEN if isOnline == "🟢" else self.PINK)
-                if isOnline != "🟡"
+                color=(self.GREEN if is_online == "🟢" else self.PINK)
+                if is_online != "🟡"
                 else None,
             ).set_image(url="attachment://favicon.png")
 
@@ -269,7 +269,7 @@ class Message:
             embed.set_footer(
                 f"Showing {index + 1} of {total_servers} servers",
             )
-            embed.timestamp = self.text.timeNow()
+            embed.timestamp = self.text.time_now()
             with open("pipeline.ason", "w") as f:
                 f.write(self.text.convert_json_to_string(pipeline))
 
@@ -309,7 +309,7 @@ class Message:
             )
             embed.add_field(
                 name="Time since last scan",
-                value=self.text.timeAgo(stamp),
+                value=self.text.time_ago(stamp),
                 inline=True,
             )
 
@@ -362,7 +362,7 @@ class Message:
             )
             return None
 
-    def standardEmbed(
+    def standard_embed(
             self,
             title: str,
             description: str,
@@ -389,7 +389,7 @@ class Message:
                 title=title,
                 description=description,
                 color=color,
-                timestamp=self.text.timeNow(),
+                timestamp=self.text.time_now(),
             )
         except Exception as e:
             self.logger.error(f"[message.standardEmbed] {e}")
@@ -399,7 +399,7 @@ class Message:
             return interactions.Embed(
                 title=title,
                 description=description,
-                timestamp=self.text.timeNow(),
+                timestamp=self.text.time_now(),
             )
 
     async def asyncLoadServer(
@@ -412,7 +412,7 @@ class Message:
         stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)
         if stuff is None:
             await msg.edit(
-                embed=self.standardEmbed(
+                embed=self.standard_embed(
                     title="Error",
                     description="There was an error loading the server",
                     color=self.RED,
@@ -435,7 +435,7 @@ class Message:
         stuff = await self.async_embed(pipeline=pipeline, index=index, fast=False)
         if stuff is None:
             await msg.edit(
-                embed=self.standardEmbed(
+                embed=self.standard_embed(
                     title="Error",
                     description="There was an error loading the server",
                     color=self.RED,

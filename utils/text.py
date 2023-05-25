@@ -157,7 +157,7 @@ class Text:
             return ""
 
     @staticmethod
-    def timeNow():
+    def time_now():
         # return local time
         return datetime.datetime.now(
             datetime.timezone(
@@ -168,7 +168,7 @@ class Text:
         ).strftime("%Y-%m-%d %H:%M:%S")
 
     @staticmethod
-    def timeAgo(date: datetime.datetime) -> str:
+    def time_ago(date: datetime.datetime) -> str:
         """Returns a string of how long ago a date was
 
         Args:
@@ -205,7 +205,7 @@ class Text:
         return out
 
     @staticmethod
-    def protocolStr(protocol: int) -> str:
+    def protocol_str(protocol: int) -> str:
         """Returns a string of the protocol version
 
         Args:
@@ -295,7 +295,7 @@ class Text:
 
         return out
 
-    def motdParse(self, motd: dict) -> dict:
+    def motd_parse(self, motd: dict) -> dict:
         """Parses a motd dict to remove color codes
 
         Args:

@@ -70,13 +70,13 @@ class Server:
             # fetch info from ipinfo
             try:
                 if re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", host):
-                    geoData = self.ipinfoHandle.getDetails(status["ip"]).all
-                    geo["lat"] = float(geoData["latitude"])
-                    geo["lon"] = float(geoData["longitude"])
-                    geo["country"] = str(geoData["country"])
-                    geo["city"] = str(geoData["city"])
-                    if "hostname" in geoData:
-                        geo["hostname"] = str(geoData["hostname"])
+                    geo_data = self.ipinfoHandle.getDetails(status["ip"]).all
+                    geo["lat"] = float(geo_data["latitude"])
+                    geo["lon"] = float(geo_data["longitude"])
+                    geo["country"] = str(geo_data["country"])
+                    geo["city"] = str(geo_data["city"])
+                    if "hostname" in geo_data:
+                        geo["hostname"] = str(geo_data["hostname"])
             except Exception as err:
                 self.logger.warning(
                     f"[server.update] Failed to get geo for {host}")
@@ -92,15 +92,15 @@ class Server:
                         {"ip": status["ip"], "port": status["port"]})
                     is not None
             ):
-                dbVal = self.db.col.find_one(
+                db_val = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
                 )
-                status.update(dbVal)
-                status["description"] = self.text.motdParse(
+                status.update(db_val)
+                status["description"] = self.text.motd_parse(
                     status["description"])
-                status["cracked"] = dbVal["cracked"] if "cracked" in dbVal else False
+                status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
             else:
-                dbVal = None
+                db_val = None
 
             # get the status response
             status2 = self.status(host)
@@ -127,12 +127,12 @@ class Server:
             status["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
             status["hasFavicon"] = "favicon" in status
             status["hasForgeData"] = server_type.get_type() == "MODDED"
-            status["description"] = self.text.motdParse(status["description"])
+            status["description"] = self.text.motd_parse(status["description"])
 
-            if dbVal is not None:
+            if db_val is not None:
                 # append the dbVal sample to the status sample
-                if "sample" in dbVal["players"] and "sample" in status["players"]:
-                    for player in dbVal["players"]["sample"]:
+                if "sample" in db_val["players"] and "sample" in status["players"]:
+                    for player in db_val["players"]["sample"]:
                         if player not in status["players"]["sample"]:
                             status["players"]["sample"].append(player)
             else:
@@ -199,17 +199,17 @@ class Server:
             except socket.error:
                 self.logger.error("[server.status] Connection error")
                 return None
-            resID = response.read_varint()
+            res_id = response.read_varint()
 
-            if resID == -1:
+            if res_id == -1:
                 self.logger.error("[server.status] Connection error")
                 return None
-            elif resID != 0:
+            elif res_id != 0:
                 self.logger.error(
-                    "[server.status] Invalid packet ID received: " + str(resID)
+                    "[server.status] Invalid packet ID received: " + str(res_id)
                 )
                 return None
-            elif resID == 0:
+            elif res_id == 0:
                 length = response.read_varint()
                 data = response.read(length)
 

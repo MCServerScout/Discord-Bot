@@ -17,16 +17,16 @@ logging.basicConfig(
 )
 
 
-def printAndLog(*args, **kwargs):
+def print_and_log(*args, **kwargs):
     logging.info(*args, **kwargs)
     print(*args, **kwargs)
 
 
-zipURL = (
+zip_url = (
     "https://github.com/ServerScout-bust-cosmic-trespass/Discord-Bot/archive/refs/heads/master.zip"
 )
 
-runFile = "main.pyw"
+run_file = "main.pyw"
 
 
 def seconds_until_midnight_mountain():
@@ -39,25 +39,25 @@ def seconds_until_midnight_mountain():
     return seconds_until_midnight
 
 
-def downloadZip():
-    printAndLog("\n{}\nUpdating files".format("-" * 10))
-    zipFile = "main.zip"
-    if os.path.exists(zipFile):
-        os.remove(zipFile)
+def download_zip():
+    print_and_log("\n{}\nUpdating files".format("-" * 10))
+    zip_file = "main.zip"
+    if os.path.exists(zip_file):
+        os.remove(zip_file)
 
-    gitDir = "Discord-Bot-main"
-    if os.path.exists(gitDir):
-        # force and recursive remove of dir gitDir
-        subprocess.call(["rm", "-rf", gitDir])
+    git_dir = "Discord-Bot-main"
+    if os.path.exists(git_dir):
+        # force and recursive remove of dir git_dir
+        subprocess.call(["rm", "-rf", git_dir])
 
-    subprocess.call(["mkdir", gitDir])
+    subprocess.call(["mkdir", git_dir])
 
-    subprocess.call(["wget", zipURL, "-O", zipFile])
-    subprocess.call(["unzip", zipFile, "-d", gitDir])
+    subprocess.call(["wget", zip_url, "-O", zip_file])
+    subprocess.call(["unzip", zip_file, "-d", git_dir])
 
 
-def installRequirements():
-    printAndLog("\n{}\nInstalling reqs".format("-" * 10))
+def install_requirements():
+    print_and_log("\n{}\nInstalling reqs".format("-" * 10))
     subprocess.call(
         [
             "python3",
@@ -84,51 +84,51 @@ def installRequirements():
 
 
 def run():
-    printAndLog("\n{}\nRunning".format("-" * 10))
+    print_and_log("\n{}\nRunning".format("-" * 10))
     exitID = 0
     try:
         # time remaining until midnight
-        timeOut = seconds_until_midnight_mountain()
-        SCRIPT_DURATION = 60 * 60 * 1  # 1 hour
-        printAndLog("Time remaining until midnight: {} sec".format(timeOut))
+        time_out = seconds_until_midnight_mountain()
+        script_duration = 60 * 60 * 1  # 1 hour
+        print_and_log("Time remaining until midnight: {} sec".format(time_out))
 
-        if timeOut <= SCRIPT_DURATION:
-            timeOut = SCRIPT_DURATION
+        if time_out <= script_duration:
+            time_out = script_duration
         else:
-            timeOut -= SCRIPT_DURATION
+            time_out -= script_duration
         exitID = subprocess.call(
-            ["python3", "Discord-Bot-main/Discord-Bot-master/" + runFile],
-            timeout=timeOut,
+            ["python3", "Discord-Bot-main/Discord-Bot-master/" + run_file],
+            timeout=time_out,
         )
     except subprocess.TimeoutExpired:
         return "1 - Timeout"
     except Exception:
-        printAndLog(traceback.format_exc())
+        print_and_log(traceback.format_exc())
     return str(exitID) + " - Exited"
 
 
 def main():
     lastRun = 0
     while True:
-        downloadZip()
-        installRequirements()
+        download_zip()
+        install_requirements()
 
         if time.time() - lastRun < 60 * 5:
-            printAndLog("Restarted too soon, waiting 15 min")
+            print_and_log("Restarted too soon, waiting 15 min")
             time.sleep(60 * 15)
         lastRun = time.time()
 
         err = run()
 
         if not err.startswith("0"):
-            printAndLog(err)
+            print_and_log(err)
             try:
                 requests.post(DISCORD_WEBHOOK, json={"content": str(err)})
             except Exception:
-                printAndLog(traceback.format_exc())
+                print_and_log(traceback.format_exc())
         else:
-            printAndLog("Exited with code: {}, restarting".format(err))
-        printAndLog("\n{}\nRestarting  after 30 sec".format("-" * 10))
+            print_and_log("Exited with code: {}, restarting".format(err))
+        print_and_log("\n{}\nRestarting  after 30 sec".format("-" * 10))
         time.sleep(30)
 
 

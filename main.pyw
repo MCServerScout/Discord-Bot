@@ -89,7 +89,6 @@ async def get_pipe(msg: interactions.Message) -> Optional[Tuple[int, dict]]:
 
     # grab the index
     index = int(msg.embeds[0].footer.text.split("Showing ")[1].split(" of ")[0]) - 1
-    pipeline = None
 
     # grab the attachment
     for file in msg.attachments:
@@ -206,7 +205,7 @@ async def find(
         await ctx.defer()
 
         msg = await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Finding servers...",
                 description="This may take a while",
                 color=BLUE,
@@ -231,7 +230,7 @@ async def find(
 
             if uuid == "":
                 await msg.edit(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Error",
                         description=f"Player `{player}` not a valid player",
                         color=RED,
@@ -241,7 +240,7 @@ async def find(
                 return
             else:
                 msg = await msg.edit(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Finding servers...",
                         description="Looking for servers with " + player + " on them",
                         color=BLUE,
@@ -271,7 +270,7 @@ async def find(
             if not str(online_players).isdigit() and not online_players.startswith(
                     ">") and not online_players.startswith("<") and not online_players.startswith("="):
                 await msg.edit(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Error",
                         description=f"Online players `{online_players}` not a valid number",
                         color=RED,
@@ -290,7 +289,7 @@ async def find(
                 online_players = int(online_players)
             else:
                 await msg.edit(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Error",
                         description=f"Online players `{online_players}` not a valid number",
                         color=RED,
@@ -311,7 +310,7 @@ async def find(
                 re.compile(description)
             except re.error:
                 await msg.edit(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Error",
                         description=f"Description `{description}` not a valid regex",
                         color=RED,
@@ -341,7 +340,7 @@ async def find(
             if not str(logged_players).isdigit() and not logged_players.startswith(
                     ">") and not logged_players.startswith("<") and not logged_players.startswith("="):
                 await msg.edit(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Error",
                         description=f"Logged players `{logged_players}` not a valid number",
                         color=RED,
@@ -367,7 +366,7 @@ async def find(
                 )
             else:
                 await msg.edit(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Error",
                         description=f"Logged players `{logged_players}` not a valid number",
                         color=RED,
@@ -396,7 +395,7 @@ async def find(
                             exp = fr"{ip[0]}\.{ip[1]}\.{ip[2]}\.{ip[3]}"
                         case _:
                             await msg.edit(
-                                embed=messageLib.standardEmbed(
+                                embed=messageLib.standard_embed(
                                     title="Error",
                                     description=f"Mask `{mask}` not a valid mask",
                                     color=RED,
@@ -410,7 +409,7 @@ async def find(
                     )
                 else:
                     await msg.edit(
-                        embed=messageLib.standardEmbed(
+                        embed=messageLib.standard_embed(
                             title="Error",
                             description=f"Mask `{mask}` not a valid mask",
                             color=RED,
@@ -427,7 +426,7 @@ async def find(
 
         if total == 0:
             await msg.edit(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="No servers found",
                     description="Try again with different parameters",
                     color=RED,
@@ -438,7 +437,7 @@ async def find(
 
         # check how many servers match
         msg = await msg.edit(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Finding servers...",
                 description=f"Found {total} servers",
                 color=BLUE,
@@ -461,7 +460,7 @@ async def find(
             logger.error(f"[main.find] {err}")
             logger.print(f"[main.find] {traceback.format_exc()}")
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="An error occurred",
                     description="Please try again later",
                     color=RED,
@@ -483,7 +482,7 @@ async def next_page(ctx: interactions.ComponentContext):
         logger.print(f"[main.previous_page] next page called")
 
         msg = await ctx.edit_origin(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description="Loading...",
                 color=BLUE,
@@ -500,7 +499,7 @@ async def next_page(ctx: interactions.ComponentContext):
             index += 1
 
         msg = await msg.edit(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description=f"Loading server {index + 1} of {total}",
                 color=BLUE,
@@ -525,7 +524,7 @@ async def next_page(ctx: interactions.ComponentContext):
         logger.print(f"[main.next_page] Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to get the next page of servers",
                 color=RED,
@@ -546,7 +545,7 @@ async def previous_page(ctx: interactions.ComponentContext):
         logger.print(f"[main.previous_page] previous page called")
 
         msg = await ctx.edit_origin(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description="Loading...",
                 color=BLUE,
@@ -563,7 +562,7 @@ async def previous_page(ctx: interactions.ComponentContext):
             index = total - 1
 
         msg = await msg.edit(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description=f"Loading server {index + 1} of {total}",
                 color=BLUE,
@@ -588,7 +587,7 @@ async def previous_page(ctx: interactions.ComponentContext):
         logger.print(f"[main.previous_page] Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to get the previous page of servers",
                 color=RED,
@@ -609,11 +608,11 @@ async def players(ctx: interactions.ComponentContext):
 
         host = databaseLib.get_doc_at_index(pipeline, index)
 
-        player_list = await playerLib.asyncPlayerList(host["ip"], host["port"])
+        player_list = await playerLib.async_player_list(host["ip"], host["port"])
 
         if player_list is None:
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Error",
                     description="An error occurred while trying to get the players (server offline?)",
                     color=RED,
@@ -624,7 +623,7 @@ async def players(ctx: interactions.ComponentContext):
 
         logger.print(f"[main.players] Found {len(player_list)} players")
 
-        embed = messageLib.standardEmbed(
+        embed = messageLib.standard_embed(
             title=f"Players on {host['ip']}",
             description=f"Found {len(player_list)} players",
             color=BLUE,
@@ -644,7 +643,7 @@ async def players(ctx: interactions.ComponentContext):
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="An error occurred",
                     description="Wrong channel for this bot",
                     color=RED,
@@ -657,7 +656,7 @@ async def players(ctx: interactions.ComponentContext):
         logger.print(f"[main.players] Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to get the players",
                 color=RED,
@@ -711,7 +710,7 @@ async def jump(ctx: interactions.ComponentContext):
             if index < 1 or index > total or not str(index).isnumeric():
                 logger.warning(f"[main.jump] Invalid index: {index}")
                 await ctx.send(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Error",
                         description=f"Invalid index, must be between 1 and {total}",
                         color=RED,
@@ -721,7 +720,7 @@ async def jump(ctx: interactions.ComponentContext):
                 return
             else:
                 await modal_ctx.send(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Success",
                         description=f"Jumping to index {index}",
                         color=GREEN,
@@ -737,7 +736,7 @@ async def jump(ctx: interactions.ComponentContext):
             )
         except asyncio.TimeoutError:
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Error",
                     description="Timed out",
                     color=RED,
@@ -754,7 +753,7 @@ async def jump(ctx: interactions.ComponentContext):
         logger.error(f"[main.jump] {err}")
         logger.print(f"[main.jump] Full traceback: {traceback.format_exc()}")
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to jump to a specific index",
                 color=RED,
@@ -806,7 +805,7 @@ async def sort(ctx: interactions.ComponentContext):
         )
 
         msg = await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Sort",
                 description="Sort the servers by...",
                 color=BLUE,
@@ -844,7 +843,7 @@ async def sort(ctx: interactions.ComponentContext):
                     sort_method = {"$sample": {"size": 1000}}
                 case _:
                     await ctx.send(
-                        embed=messageLib.standardEmbed(
+                        embed=messageLib.standard_embed(
                             title="Error",
                             description="Invalid sort method",
                             color=RED,
@@ -854,7 +853,7 @@ async def sort(ctx: interactions.ComponentContext):
 
             await msg.delete(context=ctx)
             msg = await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Success",
                     description=f"Sorting by `{value}`",
                     color=GREEN,
@@ -892,7 +891,7 @@ async def sort(ctx: interactions.ComponentContext):
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="An error occurred",
                     description="Wrong channel for this bot",
                     color=RED,
@@ -903,7 +902,7 @@ async def sort(ctx: interactions.ComponentContext):
         logger.error(f"[main.sort] {err}")
         logger.print(f"[main.sort] Full traceback: {traceback.format_exc()}")
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to sort the servers",
                 color=RED,
@@ -923,7 +922,7 @@ async def update(ctx: interactions.ComponentContext):
         logger.print(f"[main.update] update page called")
 
         msg = await ctx.edit_origin(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description="Loading...",
                 color=BLUE,
@@ -936,7 +935,7 @@ async def update(ctx: interactions.ComponentContext):
         total = databaseLib.count(pipeline)
 
         msg = await msg.edit(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description=f"Loading server {index + 1} of {total}",
                 color=BLUE,
@@ -953,7 +952,7 @@ async def update(ctx: interactions.ComponentContext):
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="An error occurred",
                     description="Wrong channel for this bot",
                     color=RED,
@@ -966,7 +965,7 @@ async def update(ctx: interactions.ComponentContext):
         logger.print(f"[main.update] Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to update the message",
                 color=RED,
@@ -1014,7 +1013,7 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
         }
 
         msg = await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description="Loading server 1 of 1",
                 color=BLUE,
@@ -1027,7 +1026,7 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
             doc = serverLib.update(host=ip, port=port)
             if doc is None:
                 await ctx.send(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="An error occurred",
                         description="The server is offline",
                         color=RED,
@@ -1052,7 +1051,7 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="An error occurred",
                     description="Wrong channel for this bot",
                     color=RED,
@@ -1067,7 +1066,7 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
         logger.print(f"[main.ping] Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to ping the server",
                 color=RED,
@@ -1094,7 +1093,7 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
 async def streamers(ctx: interactions.SlashContext, lang: str = None):
     try:
         msg = await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description="Loading...",
                 color=BLUE,
@@ -1113,7 +1112,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
                 min_length=1,
                 max_length=100,
             )
-            clientSecret = interactions.ShortText(
+            client_secret = interactions.ShortText(
                 label="Client Secret",
                 placeholder="Client Secret",
                 custom_id="clientSecret",
@@ -1122,7 +1121,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             )
 
             modal = interactions.Modal(
-                client_id, clientSecret,
+                client_id, client_secret,
                 title="Auth",
             )
 
@@ -1134,7 +1133,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             except asyncio.TimeoutError:
                 logger.print(f"[main.streamers] Timed out")
                 await modal_ctx.send(
-                    embed=messageLib.standardEmbed(
+                    embed=messageLib.standard_embed(
                         title="Error",
                         description="Timed out",
                         color=RED,
@@ -1147,7 +1146,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
                 client_secret = modal_ctx.responses["clientSecret"]
 
             await modal_ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Success",
                     description="Got the client id and secret",
                     color=GREEN,
@@ -1157,7 +1156,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
 
         if (client_id == "" or client_secret == "") or (client_id is None or client_secret is None):
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Error",
                     description="Client ID or Client Secret is empty",
                     color=RED,
@@ -1174,7 +1173,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
 
         if streams is None or streams == []:
             await msg.edit(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Error",
                     description="No streams found",
                     color=RED,
@@ -1183,7 +1182,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             return
         else:
             msg = await msg.edit(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Loading...",
                     description="Found " + str(len(streams)) + " streams",
                     color=BLUE,
@@ -1214,7 +1213,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
         total = databaseLib.count(pipeline)
         logger.debug(f"[main.streamers] Got {total} servers: {names}")
         msg = await msg.edit(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Loading...",
                 description="Found " + str(total) + " servers in the database",
                 color=BLUE,
@@ -1237,7 +1236,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
 
         if total == 0:
             await msg.edit(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Error",
                     description="No servers found",
                     color=RED,
@@ -1246,7 +1245,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             return
         else:
             msg = await msg.edit(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="Loading...",
                     description="Loading 1 of " + str(total),
                     color=BLUE,
@@ -1261,7 +1260,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
-                embed=messageLib.standardEmbed(
+                embed=messageLib.standard_embed(
                     title="An error occurred",
                     description="Wrong channel for this bot",
                     color=RED,
@@ -1273,7 +1272,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
         logger.error(f"[main.streamers] {err}")
         logger.print(f"[main.streamers] Full traceback: {traceback.format_exc()}")
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to get the streamers",
                 color=RED,
@@ -1293,7 +1292,7 @@ async def stats(ctx: interactions.SlashContext):
     await ctx.defer()
 
     try:
-        main_embed = messageLib.standardEmbed(
+        main_embed = messageLib.standard_embed(
             title="Stats",
             description="General stats about the database",
             color=BLUE,
@@ -1302,11 +1301,11 @@ async def stats(ctx: interactions.SlashContext):
         msg = await ctx.send(embed=main_embed, )
 
         # get the stats
-        totalServers = databaseLib.col.count_documents({})
+        total_servers = databaseLib.col.count_documents({})
 
         main_embed.add_field(
             name="Total Servers",
-            value=f"{totalServers:,}",
+            value=f"{total_servers:,}",
             inline=True,
         )
         msg = await msg.edit(embed=main_embed, )
@@ -1351,7 +1350,7 @@ async def stats(ctx: interactions.SlashContext):
         main_embed.add_field(
             name="Top Five Versions",
             value="```css\n" + "\n".join([
-                f"{i['_id']}: {round(i['count'] / totalServers * 100, 2)}%"
+                f"{i['_id']}: {round(i['count'] / total_servers * 100, 2)}%"
                 for i in topFiveVersions
             ]) + "\n```",
             inline=True,
@@ -1370,7 +1369,7 @@ async def stats(ctx: interactions.SlashContext):
         main_embed.add_field(
             name="Top Five Version IDs",
             value="```css\n" + "\n".join([
-                f"{textLib.protocolStr(i['_id'])}: {round(i['count'] / totalServers * 100, 2)}%"
+                f"{textLib.protocol_str(i['_id'])}: {round(i['count'] / total_servers * 100, 2)}%"
                 for i in topFiveVersionIds
             ]) + "\n```",
             inline=True,
@@ -1386,7 +1385,7 @@ async def stats(ctx: interactions.SlashContext):
         logger.error(f"[main.stats] {err}")
         logger.print(f"[main.stats] Full traceback: {traceback.format_exc()}")
         await ctx.send(
-            embed=messageLib.standardEmbed(
+            embed=messageLib.standard_embed(
                 title="Error",
                 description="An error occurred while trying to get stats",
                 color=RED,
@@ -1402,7 +1401,7 @@ async def stats(ctx: interactions.SlashContext):
 )
 async def help_command(ctx: interactions.SlashContext):
     await ctx.send(
-        embed=messageLib.standardEmbed(
+        embed=messageLib.standard_embed(
             title="Help",
             description="Help",
             color=BLUE,
