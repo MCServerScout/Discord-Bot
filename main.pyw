@@ -378,7 +378,6 @@ async def find(
             pipeline[0]["$match"]["$and"].append({"cracked": cracked})
         if ip is not None:
             # test if the ip is a valid subnet mask like 10.0.0.0/24
-
             if "/" in ip:
                 mask = ip.split("/")[1]
                 ip = ip.split("/")[0]
@@ -420,6 +419,7 @@ async def find(
             else:
                 pipeline[0]["$match"]["$and"].append({"ip": {"$regex": f"^{ip}$", "$options": "i"}})
         if country is not None:
+            pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
             pipeline[0]["$match"]["$and"].append({"geo.country": {"$regex": f"^{country}$", "$options": "i"}})
 
         total = databaseLib.count(pipeline)

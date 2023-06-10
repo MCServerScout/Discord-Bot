@@ -7,16 +7,9 @@ will be adding more features as time goes on.
 
 ## TODO
 
-- [X] Access a database of the servers
-- [X] Have filters to sort through
-- [X] Sort through the servers
-  - [X] players online
-  - [X] max players
-  - [X] version id
-  - [X] random
-- [X] Get info about a selected server
-- [X] Get a player list
 - [ ] Make it work well
+- [ ] Make streamers only get servers with a player sample
+- [ ] Make streamers more consistent
 
 ## Commands
 

@@ -69,16 +69,6 @@ def install_requirements():
         ]
     )
     subprocess.call(
-        [
-            "python3",
-            "-m",
-            "pip",
-            "install",
-            "-U",
-            "discord-py-interactions>=5.3",
-        ]
-    )
-    subprocess.call(
         ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-master/privVars.py"]
     )
 

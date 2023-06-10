@@ -53,11 +53,6 @@ class EmailFileHandler(logging.FileHandler):
         super().emit(record)
 
 
-def clear():
-    with open("log.log", "w") as f:
-        f.write("")
-
-
 class Logger:
     def __init__(
             self, debug=False, level: int = logging.INFO, discord_webhook: str = None
@@ -86,34 +81,40 @@ class Logger:
         sys.stdout = self.out
         sys.stderr = self.out
 
+        self.clear()
+
     def info(self, message):
+        """Same level as print but no console output"""
         self.logger.info(message)
 
     def error(self, *message):
         msg = " ".join([str(arg) for arg in message])
-        sys.stdout = norm  # output to console
-        print(msg)
-        sys.stdout = self.out  # output to log.log
         self.logger.error(msg)
+        self.hook(msg)
+        self.print(msg, log=False)
 
-    def critical(self, message):
-        sys.stdout = norm
-        print(message)
-        sys.stdout = self.out
+    def critical(self, *message):
+        message = " ".join([str(arg) for arg in message])
         self.logger.critical(message)
-
         self.hook(message)
+        self.print(message, log=False)
 
     def debug(self, *args, **kwargs):
         self.logger.debug(" ".join([str(arg) for arg in args]))
         if self.DEBUG:
-            self.print(*args, **kwargs)
+            self.print(*args, **kwargs, log=False)
 
     def warning(self, message):
+        self.print(message, log=False)
+        self.logger.warning(message)
+
+    def war(self, message):
         self.logger.warning(message)
 
     def exception(self, message):
         self.logger.exception(message)
+        self.hook(message)
+        self.print(message, log=False)
 
     def read(self):
         text1, text2 = "", ""
@@ -134,12 +135,13 @@ class Logger:
 
         return text1 + "\n" + text2
 
-    def print(self, *args, **kwargs):
+    def print(self, *args, log=True, **kwargs):
         msg = " ".join([str(arg) for arg in args])
         sys.stdout = norm  # output to console
         print(msg, **kwargs)
-        sys.stdout = self.out  # output to log.log
-        self.info(msg)
+        if log:
+            sys.stdout = self.out  # output to log.log
+            self.info(msg)
 
     def hook(self, message: str):
         if asyncio.get_event_loop().is_running():
