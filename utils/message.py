@@ -212,7 +212,8 @@ class Message:
                     else:
                         # server is online
                         data.update(status)
-                        self.logger.info(f"[message.asyncEmbed] Got status {data}")
+                        self.logger.info(
+                            f"[message.asyncEmbed] Got status {data}")
 
                     # mark online if the server was lastSeen within 5 minutes
                     if data["lastSeen"] > time.time() - 300:
