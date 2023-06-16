@@ -223,6 +223,9 @@ class Server:
         except ConnectionRefusedError:
             self.logger.print("[server.status] Connection error (refused)")
             return None
+        except socket.gaierror:
+            self.logger.print("[server.status] Connection error (invalid host)")
+            return None
         except Exception as err:
             self.logger.warning(f"[server.status] {err}")
             self.logger.print(f"[server.status] {traceback.format_exc()}")

@@ -213,6 +213,7 @@ class Message:
                     else:
                         # server is online
                         data.update(status)
+                        self.logger.info(f"[message.asyncEmbed] Got status {data}")
 
                     # mark online if the server was lastSeen within 5 minutes
                     if data["lastSeen"] > time.time() - 300:
@@ -314,13 +315,12 @@ class Message:
             )
 
             # geolocation
-            if "geo" in data:
-                if ("country", "city") in data["geo"]:
-                    embed.add_field(
-                        name="Location",
-                        value=f":flag_{data['geo']['country'].lower()}: {data['geo']['city']}",
-                        inline=True,
-                    )
+            if "geo" in data.keys():
+                embed.add_field(
+                    name="Location",
+                    value=f":flag_{data['geo']['country'].lower()}: {data['geo']['city']}",
+                    inline=True,
+                )
 
             # add the streams
             if len(streams) > 0:
