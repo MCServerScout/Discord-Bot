@@ -77,13 +77,7 @@ The docs are in the following json format:
     "$oid": "1534978d9f542e403cfa5026"
   },
   "description": {
-    "extra": [
-      {
-        "color": "white",
-        "text": "A Minecraft Server"
-      }
-    ],
-    "text": ""
+    "text": "A Minecraft Server"
   },
   "enforcesSecureChat": null,
   "hasFavicon": false,
@@ -114,7 +108,8 @@ The docs are in the following json format:
     "lat": 0,
     "lon": 0,
     "city": "",
-    "country": ""
+    "country": "",
+    "hostname": ""
   }
 }
   ```

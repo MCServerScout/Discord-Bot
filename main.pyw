@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import datetime
 import re
 import sys
 import time
@@ -621,25 +622,38 @@ async def players(ctx: interactions.ComponentContext):
             )
             return
 
+        # remove players that have duplicate names
+        for player in player_list:
+            if player_list.count(player) > 1:
+                player_list.remove(player)
+
         logger.print(f"[main.players] Found {len(player_list)} players")
 
-        embed = messageLib.standard_embed(
-            title=f"Players on {host['ip']}",
-            description=f"Found {len(player_list)} players",
-            color=BLUE,
-        )
-        for player in player_list:
-            online = "🟢" if player["online"] else "🔴"
-            embed.add_field(
-                name=f'{online} `{player["name"]}`',
-                value=f'`{player["id"]}`',
-                inline=False,
-            )
+        # create a list of player lists that are 25 players long
+        player_list_list = [player_list[i:i + 25] for i in range(0, len(player_list), 25)]
 
-        await ctx.send(
-            embed=embed,
-            ephemeral=True,
-        )
+        for player_list in player_list_list:
+            embed = messageLib.standard_embed(
+                title=f"Players on {host['ip']}",
+                description=f"Found {len(player_list)} players",
+                color=BLUE,
+            )
+            for player in player_list:
+                online = "🟢" if player["online"] else "🔴"
+                if "lastSeen" in str(player):
+                    time_ago = textLib.time_ago(datetime.datetime.utcfromtimestamp(player["lastSeen"]))
+                else:
+                    time_ago = "Unknown"
+                embed.add_field(
+                    name=f'{online} `{player["name"]}`',
+                    value=f'`{player["id"]}` | Last Online: {time_ago}',
+                    inline=True,
+                )
+
+            await ctx.send(
+                embed=embed,
+                ephemeral=True,
+            )
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
