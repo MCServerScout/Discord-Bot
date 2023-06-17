@@ -3,8 +3,8 @@
 [![DeepSource](https://app.deepsource.com/gh/ServerScout-bust-cosmic-trespass/Discord-Bot.svg/?label=resolved+issues&show_trend=true&token=WBeh3kT2daCAxLlfI8PhPJsD)](https://app.deepsource.com/gh/ServerScout-bust-cosmic-trespass/Discord-Bot/?ref=repository-badge)
 [![Qodana](https://github.com/ServerScout-bust-cosmic-trespass/Discord-Bot/actions/workflows/code_quality.yml/badge.svg)](https://github.com/ServerScout-bust-cosmic-trespass/Discord-Bot/actions/workflows/code_quality.yml)
 
-This is a Discord bot that I made for my friends and I to use in our Discord server. It is a work in progress, and I
-will be adding more features as time goes on.
+This is a Discord bot that I made for my friends and me to use in our Discord server.
+It is a work in progress, and I will be adding more features as time goes on.
 
 ## TODO
 
@@ -132,4 +132,4 @@ This project is licensed under the GNU Affero General Public License v3.0. See t
 ## Q/A
 
 * Am I sus?
-  
+  * Maybe
