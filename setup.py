@@ -45,7 +45,6 @@ IP_INFO_TOKEN = "..."  # ipinfo.io token
 # scanner settings
 max_threads = 10
 max_pps = 1000
-
 """
     if not os.path.exists("privVars.py"):
         with open("privVars.py", "w") as f:
@@ -58,6 +57,7 @@ max_pps = 1000
 async def main():
     await install_requirements()
     await create_priv_vars()
+    print("Setup complete, please edit `privVars.py` before running the scanner.")
 
 
 if __name__ == "__main__":

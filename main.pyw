@@ -20,7 +20,7 @@ from pymongo.errors import ServerSelectionTimeoutError
 import utils
 
 DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name, client_id, client_secret, IP_INFO_TOKEN \
-    = "", "", "", "", "", "", "", ""
+    = ("..." * 8)
 DEBUG = False
 try:
     from privVars import *
@@ -28,10 +28,10 @@ except ImportError:
     MONGO_URL = ""
     TOKEN = "..."
 
-if MONGO_URL == "":
+if MONGO_URL == "...":
     print("Please add your mongo url to 'privVars.py'")
     sys.exit("Config error in privVars.py, please fix before rerunning")
-if DISCORD_TOKEN == "":
+if DISCORD_TOKEN == "...":
     print("Please add your bot token to 'privVars.py'")
     sys.exit("Config error in privVars.py, please fix before rerunning")
 
@@ -41,8 +41,8 @@ if DISCORD_TOKEN == "":
 # test the db connection
 try:
     client = MongoClient(MONGO_URL)
-    db = client['MCSS' if db_name == "" else db_name]
-    col = db["scannedServers" if col_name == "" else col_name]
+    db = client['MCSS' if db_name == "..." else db_name]
+    col = db["scannedServers" if col_name == "..." else col_name]
 
     col.count_documents({})
 except ServerSelectionTimeoutError:
