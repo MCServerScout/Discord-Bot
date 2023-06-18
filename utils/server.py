@@ -131,7 +131,7 @@ class Server:
             status["hasFavicon"] = "favicon" in status
             status["hasForgeData"] = server_type.get_type() == "MODDED"
             status["description"] = self.text.motd_parse(status["description"])
-            if "sample" in status["players"].keys():
+            if "sample" in status["players"]:
                 for player in status["players"]["sample"]:
                     player["lastSeen"] = int(
                         datetime.datetime.utcnow().timestamp())
