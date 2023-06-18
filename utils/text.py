@@ -183,6 +183,7 @@ class Text:
         if datetime.timedelta(seconds=30) > diff:
             return "now"
 
+        years = diff.days // 365
         months = diff.days // 30
         days = diff.days % 30
         hours = diff.seconds // 3600
@@ -201,6 +202,8 @@ class Text:
             out += f"{minutes} minute{'s' if minutes > 1 else ''}, "
         if seconds:
             out += f"{seconds} second{'s' if seconds > 1 else ''}"
+        if years:
+            out += f"Long long ago..."
 
         return out
 
