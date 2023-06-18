@@ -34,11 +34,11 @@ class Server:
             return self._type
 
     def __init__(
-            self,
-            db: "Database",
-            logger: "Logger",
-            text: "Text",
-            ipinfo_token: str,
+        self,
+        db: "Database",
+        logger: "Logger",
+        text: "Text",
+        ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -46,10 +46,10 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     def update(
-            self,
-            host: str,
-            fast: bool = False,
-            port: int = 25565,
+        self,
+        host: str,
+        fast: bool = False,
+        port: int = 25565,
     ) -> Optional[Mapping[str, Any]]:
         """
         Update a server and return a doc, returns either, None or Mapping[str, Any]
@@ -91,9 +91,9 @@ class Server:
 
             # if the server is in the db, then get the db doc
             if (
-                    self.db.col.find_one(
-                        {"ip": status["ip"], "port": status["port"]})
-                    is not None
+                self.db.col.find_one(
+                    {"ip": status["ip"], "port": status["port"]})
+                is not None
             ):
                 db_val = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
@@ -133,7 +133,8 @@ class Server:
             status["description"] = self.text.motd_parse(status["description"])
             if "sample" in status["players"].keys():
                 for player in status["players"]["sample"]:
-                    player["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
+                    player["lastSeen"] = int(
+                        datetime.datetime.utcnow().timestamp())
 
             if db_val is not None:
                 # append the dbVal sample to the status sample
@@ -161,10 +162,10 @@ class Server:
                 return None
 
     def status(
-            self,
-            ip: str,
-            port: int = 25565,
-            version: int = 47,
+        self,
+        ip: str,
+        port: int = 25565,
+        version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -239,11 +240,11 @@ class Server:
             return None
 
     def join(
-            self,
-            ip: str,
-            port: int,
-            version: int = 47,
-            player_username: str = "Pilot1783",
+        self,
+        ip: str,
+        port: int,
+        version: int = 47,
+        player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))
