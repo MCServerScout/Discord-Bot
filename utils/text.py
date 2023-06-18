@@ -203,7 +203,7 @@ class Text:
         if seconds:
             out += f"{seconds} second{'s' if seconds > 1 else ''}"
         if years:
-            out = f"Long long ago..."
+            out = "Long long ago..."
 
         return out
 

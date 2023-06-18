@@ -42,12 +42,12 @@ class StreamToLogger:
 class EmailFileHandler(logging.FileHandler):
     def emit(self, record):
         if (
-            "To sign in, use a web browser to open the page" in record.getMessage()
-            or "email_modal" in record.getMessage()
-            or "heartbeat" in record.getMessage().lower()
-            or "Added " in record.getMessage()
-            or "Sending data to websocket: {" in record.getMessage()
-            or "event.ctx.responses" in record.getMessage()
+                "To sign in, use a web browser to open the page" in record.getMessage()
+                or "email_modal" in record.getMessage()
+                or "heartbeat" in record.getMessage().lower()
+                or "Added " in record.getMessage()
+                or "Sending data to websocket: {" in record.getMessage()
+                or "event.ctx.responses" in record.getMessage()
         ):
             return
         super().emit(record)
@@ -55,7 +55,7 @@ class EmailFileHandler(logging.FileHandler):
 
 class Logger:
     def __init__(
-        self, debug=False, level: int = logging.INFO, discord_webhook: str = None
+            self, debug=False, level: int = logging.INFO, discord_webhook: str = None
     ):
         """Initializes the logger class
 
@@ -63,7 +63,7 @@ class Logger:
             debug (bool, optional): Show debugging. Defaults to False.
         """
         self.DEBUG = debug
-        self.logger = logging
+        self.logging = logging
         self.webhook = discord_webhook
 
         logging.basicConfig(
@@ -85,34 +85,34 @@ class Logger:
 
     def info(self, message):
         """Same level as print but no console output"""
-        self.logger.info(message)
+        self.logging.info(message)
 
     def error(self, *message):
         msg = " ".join([str(arg) for arg in message])
-        self.logger.error(msg)
+        self.logging.error(msg)
         self.hook(msg)
         self.print(msg, log=False)
 
     def critical(self, *message):
         message = " ".join([str(arg) for arg in message])
-        self.logger.critical(message)
+        self.logging.critical(message)
         self.hook(message)
         self.print(message, log=False)
 
     def debug(self, *args, **kwargs):
-        self.logger.debug(" ".join([str(arg) for arg in args]))
+        self.logging.debug(" ".join([str(arg) for arg in args]))
         if self.DEBUG:
             self.print(*args, **kwargs, log=False)
 
     def warning(self, message):
         self.print(message, log=False)
-        self.logger.warning(message)
+        self.logging.warning(message)
 
     def war(self, message):
-        self.logger.warning(message)
+        self.logging.warning(message)
 
     def exception(self, message):
-        self.logger.exception(message)
+        self.logging.exception(message)
         self.hook(message)
         self.print(message, log=False)
 
@@ -152,10 +152,10 @@ class Logger:
     async def async_hook(self, message: str):
         if self.webhook is not None and self.webhook != "":
             async with aiohttp.ClientSession() as session, session.post(
-                self.webhook,
-                json={
-                    "content": message,
-                },
+                    self.webhook,
+                    json={
+                        "content": message,
+                    },
             ) as resp:
                 if resp.status != 204:
                     self.error(f"Failed to send message to webhook: {message}")
