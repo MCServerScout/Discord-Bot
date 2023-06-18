@@ -31,9 +31,21 @@ async def install_requirements():
 
 async def create_priv_vars():
     text = """#  Path: privVars.py
-DISCORD_TOKEN = ""
-DISCORD_WEBHOOK = ""
-MONGO_URL = ""
+# any variable with a default value is optional, while those with '...' are required
+DISCORD_TOKEN = "..."
+DISCORD_WEBHOOK = "..."
+MONGO_URL = "..."
+# db_name = "MCSS"  # optional
+# col_name = "scannedServers"  # optional
+client_id = "..."  # twitch client id
+client_secret = "..."  # twitch client secret
+# DEBUG = False  # optional
+IP_INFO_TOKEN = "..."  # ipinfo.io token
+
+# scanner settings
+max_threads = 10
+max_pps = 1000
+
 """
     if not os.path.exists("privVars.py"):
         with open("privVars.py", "w") as f:

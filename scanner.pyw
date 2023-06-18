@@ -73,9 +73,6 @@ for i in range(0, 256):
         ips.append(f"{i}.{j}.0.0/16")
 random.shuffle(ips)
 
-# ips = ips[:10]
-# ips[0] = "5.9.177.0/24"
-
 logger.print("IP list created:", len(ips))
 
 # TODO
