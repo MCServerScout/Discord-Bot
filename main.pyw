@@ -19,8 +19,10 @@ from pymongo.errors import ServerSelectionTimeoutError
 
 import utils
 
-DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, col_name, client_id, client_secret, IP_INFO_TOKEN \
-    = ("..." * 8)
+DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, \
+    col_name, client_id, client_secret, IP_INFO_TOKEN \
+    = ["..." for _ in range(8)]
+
 DEBUG = False
 try:
     from privVars import *
