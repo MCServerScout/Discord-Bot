@@ -76,6 +76,7 @@ bot = interactions.Client(
         name="Sussing out servers",
     ),
     logger=logger,
+    intents=interactions.Intents.DEFAULT,
 )
 
 RED = 0xFF0000  # error

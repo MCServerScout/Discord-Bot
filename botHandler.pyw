@@ -103,9 +103,12 @@ def main():
         download_zip()
         install_requirements()
 
-        if time.time() - last_run < 60 * 5:
+        if time.time() - last_run < 60 * 5:  # 5 min
             print_and_log("Restarted too soon, waiting 15 min")
             time.sleep(60 * 15)
+        elif time.time() - last_run < 60 * 15:  # 15 min
+            print_and_log("Someone royally messed up, waiting 60 min")
+            time.sleep(60 * 60)
         last_run = time.time()
 
         err = run()

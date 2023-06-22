@@ -11,6 +11,7 @@ It is a work in progress, and I will be adding more features as time goes on.
 - [ ] Make it work well
 - [ ] Make streamers only get servers with a player sample
 - [ ] Make streamers more consistent
+- [ ] Auto merge dev-builds into master every monday
 
 ## Commands
 
