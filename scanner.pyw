@@ -1,5 +1,6 @@
 # setup
 import json
+import queue
 import random
 import sys
 import threading
@@ -70,15 +71,18 @@ if sys.platform != "linux":
 ips = []
 for i in range(0, 256):
     for j in range(0, 256):
-        ips.append(f"{i}.{j}.0.0/16")
+        for k in range(0, 256):
+            ips.append(f"{i}.{j}.{k}.0/24")
 random.shuffle(ips)
+
+# ips = ["5.9.177.0/24", "5.9.83.0/24"]  # test ips
 
 logger.print("IP list created:", len(ips))
 
 # TODO
 # * Make an async gen: https://stackoverflow.com/questions/41359350/how-to-create-an-async-generator-in-python
 
-que = []
+que = queue.Queue()
 
 
 # func that will use masscan to add any servers that are online, respond to a port within 25560-25575 and are minecraft servers
@@ -99,17 +103,18 @@ def scan_range(ip_range):
             for port in host:
                 if port['status'] == "open":
                     logger.print(f"Found open port {port['port']} on {ip}")
-                    que.append(ip + ":" + str(port['port']))
-        logger.print(f"Que length: {len(que)}: {que}")
+                    que.put(ip + ":" + str(port['port']))
+        logger.print(f"Que length: {que.qsize()}")
     except Exception as err:
         logger.error(f"Error scanning {ip_range}: {err}")
         logger.print(traceback.format_exc())
+        raise err
 
 
 def scan_starter(ip_list):
     logger.print("Starting scans")
     # creates all the threads that run the scan_range function
-    pool = ThreadPool(processes=10)
+    pool = ThreadPool(processes=max_threads)
     pool.map(scan_range, ip_list)
 
 
@@ -121,12 +126,12 @@ def test_starter(logger_func):
     logger_func.print("Starting tests")
     global STOP, que
     while not STOP:
-        if len(que) > 0:
-            ip = que.pop(0)
+        if que.qsize() > 0:
+            ip = que.get()
             logger_func.print(f"Testing {ip}")
             test_server(ip, 25565)
         else:
-            logger.warning("No ips in que, sleeping")
+            # logger.warning("No ips in que, sleeping")
             time.sleep(30)
 
 
