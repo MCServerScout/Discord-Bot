@@ -1,0 +1,39 @@
+name: Create Pull Request
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Run every Monday at 00:00 UTC
+
+jobs:
+  create_pull_request:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Git
+        run: |
+          git config --global user.name 'pilot1782'
+          git config --global user.email '34791564a@gmail.com'
+
+      - name: Create and switch to 'dev-builds' branch if not already exist
+        run: |
+          git fetch origin
+          if ! git show-ref --quiet refs/heads/dev-builds; then
+            git checkout -b dev-builds origin/master
+          else
+            git checkout dev-builds
+          fi
+
+      - name: Merge 'dev-builds' into 'master'
+        run: |
+          git fetch origin
+          git checkout master
+          git merge --no-ff dev-builds
+          git push origin master
+
+      - name: Create new 'dev-builds' branch
+        run: |
+          git checkout -b dev-builds-$(date +'%Y%m%d') master
+          git push origin dev-builds-$(date +'%Y%m%d')
