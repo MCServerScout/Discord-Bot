@@ -92,7 +92,8 @@ The docs are in the following json format:
     "sample": [
       {
         "id": "c0a80001-0000-0000-0000-000000000000",
-        "name": "Player"
+        "name": "Player",
+        "lastSeen": 1234567890
       }
     ]
   },

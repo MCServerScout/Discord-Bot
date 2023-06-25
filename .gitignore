@@ -10,3 +10,4 @@ log.log
 /pipeline.ason
 scanner.ipynb
 /node_modules/
+/package-lock.json

@@ -90,21 +90,22 @@ def scan_range(ip_range):
     global que, logger
     try:
         # step one, get a range of online ips
-        logger.print(f"Scanning {ip_range}")
+        if DEBUG:
+            logger.print(f"Scanning {ip_range}")
         scanner = masscan.PortScanner()
         scanner.scan(ip_range, ports="25560-25575", arguments="--rate=" + str(max_pps // max_threads))
 
         hosts = json.loads(scanner.scan_result)["scan"]
-        logger.print(f"Scan complete for {ip_range}")
         host_ips = hosts.keys()
-        logger.print(f"Found {len(host_ips)} ips in {ip_range}")
+        if DEBUG:
+            logger.print(f"Found {len(host_ips)} hosts in {ip_range}")
+
         for ip in host_ips:
             host = hosts[ip]
             for port in host:
                 if port['status'] == "open":
                     logger.print(f"Found open port {port['port']} on {ip}")
                     que.put(ip + ":" + str(port['port']))
-        logger.print(f"Que length: {que.qsize()}")
     except Exception as err:
         logger.error(f"Error scanning {ip_range}: {err}")
         logger.print(traceback.format_exc())
@@ -118,7 +119,10 @@ def scan_starter(ip_list):
     pool.map(scan_range, ip_list)
 
 
-def test_server(ip: str, port: int):
+def test_server(ip: str):
+    if DEBUG:
+        logger.print(f"Testing {ip}")
+    ip, port = ip.split(":")
     serverLib.update(host=ip, port=port, fast=False)
 
 
@@ -128,10 +132,10 @@ def test_starter(logger_func):
     while not STOP:
         if que.qsize() > 0:
             ip = que.get()
-            logger_func.print(f"Testing {ip}")
-            test_server(ip, 25565)
+            test_server(ip)
         else:
-            # logger.warning("No ips in que, sleeping")
+            if DEBUG:
+                logger.warning("No ips in que, sleeping")
             time.sleep(30)
 
 
