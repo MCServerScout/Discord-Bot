@@ -79,7 +79,7 @@ def run():
     try:
         # time remaining until midnight
         time_out = seconds_until_midnight_mountain()
-        script_duration = 60 * 60 * 1  # 1 hour
+        script_duration = 60 * 60 * 24  # 24 hours
         print_and_log("Time remaining until midnight: {} sec".format(time_out))
 
         if time_out <= script_duration:

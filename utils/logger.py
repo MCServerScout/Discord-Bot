@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 import logging
 import sys
 
@@ -42,12 +43,12 @@ class StreamToLogger:
 class EmailFileHandler(logging.FileHandler):
     def emit(self, record):
         if (
-            "To sign in, use a web browser to open the page" in record.getMessage()
-            or "email_modal" in record.getMessage()
-            or "heartbeat" in record.getMessage().lower()
-            or "Added " in record.getMessage()
-            or "Sending data to websocket: {" in record.getMessage()
-            or "event.ctx.responses" in record.getMessage()
+                "To sign in, use a web browser to open the page" in record.getMessage()
+                or "email_modal" in record.getMessage()
+                or "heartbeat" in record.getMessage().lower()
+                or "Added " in record.getMessage()
+                or "Sending data to websocket: {" in record.getMessage()
+                or "event.ctx.responses" in record.getMessage()
         ):
             return
         super().emit(record)
@@ -55,7 +56,7 @@ class EmailFileHandler(logging.FileHandler):
 
 class Logger:
     def __init__(
-        self, debug=False, level: int = logging.INFO, discord_webhook: str = None
+            self, debug=False, level: int = logging.INFO, discord_webhook: str = None
     ):
         """Initializes the logger class
 
@@ -85,16 +86,19 @@ class Logger:
 
     def info(self, message):
         """Same level as print but no console output"""
+        message = f"[{inspect.stack()[1][3]}] {message}"
         self.logging.info(message)
 
     def error(self, *message):
-        msg = " ".join([str(arg) for arg in message])
-        self.logging.error(msg)
-        self.hook(msg)
-        self.print(msg, log=False)
+        message = " ".join([str(arg) for arg in message])
+        message = f"[{inspect.stack()[1][3]}] {message}"
+        self.logging.error(message)
+        self.hook(message)
+        self.print(message, log=False)
 
     def critical(self, *message):
         message = " ".join([str(arg) for arg in message])
+        message = f"[{inspect.stack()[1][3]}] {message}"
         self.logging.critical(message)
         self.hook(message)
         self.print(message, log=False)
@@ -105,13 +109,16 @@ class Logger:
             self.print(*args, **kwargs, log=False)
 
     def warning(self, message):
+        message = f"[{inspect.stack()[1][3]}] {message}"
         self.print(message, log=False)
         self.logging.warning(message)
 
     def war(self, message):
+        message = f"[{inspect.stack()[1][3]}] {message}"
         self.logging.warning(message)
 
     def exception(self, message):
+        message = f"[{inspect.stack()[1][3]}] {message}"
         self.logging.exception(message)
         self.hook(message)
         self.print(message, log=False)
@@ -137,6 +144,7 @@ class Logger:
 
     def print(self, *args, log=True, **kwargs):
         msg = " ".join([str(arg) for arg in args])
+        msg = f"[{inspect.stack()[1][3]}] {msg}"
         sys.stdout = norm  # output to console
         print(msg, **kwargs)
         if log:
@@ -147,15 +155,18 @@ class Logger:
         try:
             asyncio.ensure_future(self.async_hook(message))
         except RuntimeError:
-            asyncio.run(self.async_hook(message))
+            # create a new loop and run the coroutine
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(self.async_hook(message))
 
     async def async_hook(self, message: str):
         if self.webhook is not None and self.webhook != "":
             async with aiohttp.ClientSession() as session, session.post(
-                self.webhook,
-                json={
-                    "content": message,
-                },
+                    self.webhook,
+                    json={
+                        "content": message,
+                    },
             ) as resp:
                 if resp.status != 204:
                     self.error(f"Failed to send message to webhook: {message}")

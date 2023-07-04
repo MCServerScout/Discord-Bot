@@ -207,8 +207,7 @@ class Text:
 
         return out
 
-    @staticmethod
-    def protocol_str(protocol: int) -> str:
+    def protocol_str(self, protocol: int) -> str:
         """Returns a string of the protocol version
 
         Args:
@@ -295,6 +294,11 @@ class Text:
                 out += "19.3"
             case 762:
                 out += "19.4"
+            case 763:
+                out += "20.1"
+            case _:
+                out += "?.?"
+                self.logger.warning(f"Unknown protocol version: {protocol}")
 
         return out
 

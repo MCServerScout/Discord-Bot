@@ -1321,21 +1321,22 @@ async def stats(ctx: interactions.SlashContext):
         total_servers = databaseLib.col.count_documents({})
 
         main_embed.add_field(
-            name="Total Servers",
+            name="Servers",
             value=f"{total_servers:,}",
             inline=True,
         )
         msg = await msg.edit(embed=main_embed, )
 
-        # get the total player count, ignoring servers with over 150k players and less than 1 player
+        # get the total player count, ignoring servers with over 150k players and less than 1 player, and the version name is not Unknown, or UNKNOWN or null
         pipeline = [
-            {"$match": {"players.online": {"$lt": 150000, "$gt": 0}}},
+            {"$match": {"$and": [{"players.online": {"$lt": 150000}}, {"players.online": {"$gt": 0}},
+                                 {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}}]}},
             {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
         ]
         total_players = databaseLib.aggregate(pipeline)[0]["total"]
 
         main_embed.add_field(
-            name="Total Players",
+            name="Players",
             value=f"{total_players:,}",
             inline=True,
         )
@@ -1349,15 +1350,62 @@ async def stats(ctx: interactions.SlashContext):
         total_sample_players = databaseLib.aggregate(pipeline)[0]["total"]
 
         main_embed.add_field(
-            name="Total Logged Players",
+            name="Logged Players",
             value=f"{total_sample_players:,} ({round(total_sample_players / total_players * 100, 2)}%)",
             inline=True,
         )
         msg = await msg.edit(embed=main_embed, )
 
+        # get the number of players which do not have a player id of "00000000-0000-0000-0000-000000000000"
+        pipeline = [
+            {"$match": {"players.sample.id": {"$ne": "00000000-0000-0000-0000-000000000000"}}},
+            {"$group": {"_id": None, "total": {"$sum": 1}}},
+        ]
+        total_real_players = databaseLib.aggregate(pipeline)[0]["total"]
+
+        main_embed.add_field(
+            name="Real Players",
+            value=f"{total_real_players:,} ({round(total_real_players / total_sample_players * 100, 2)}%)",
+            inline=True,
+        )
+        msg = await msg.edit(embed=main_embed, )
+
+        # get the number of players which have a player id of "00000000-0000-0000-0000-000000000000"
+        pipeline = [
+            {"$match": {"players.sample.id": "00000000-0000-0000-0000-000000000000"}},
+            {"$group": {"_id": None, "total": {"$sum": 1}}},
+        ]
+        total_fake_players = databaseLib.aggregate(pipeline)[0]["total"]
+
+        main_embed.add_field(
+            name="Fake Players",
+            value=f"{total_fake_players:,} ({round(total_fake_players / total_sample_players * 100, 2)}%)",
+            inline=True,
+        )
+        msg = await msg.edit(embed=main_embed, )
+
+        # top three orgs
+        pipeline = [
+            {"$match": {"org": {"$ne": None}}},
+            {"$group": {"_id": "$org", "count": {"$sum": 1}}},
+            {"$sort": {"count": -1}},
+            {"$limit": 3},
+        ]
+        top_three_orgs = list(databaseLib.aggregate(pipeline))
+
+        main_embed.add_field(
+            name="Top Three Orgs",
+            value="```css\n" + "\n".join([
+                f"{i['_id']}: {round(i['count'] / total_servers * 100, 2)}%"
+                for i in top_three_orgs
+            ]) + "\n```",
+            inline=True,
+        )
+
         # get the five most common server version names
         pipeline = [
-            {"$match": {"version.name": {"$ne": None}}},
+            {"$match": {"$and": [{"players.online": {"$lt": 150000}}, {"players.online": {"$gt": 0}},
+                                 {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}}]}},
             {"$group": {"_id": "$version.name", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
             {"$limit": 5},
@@ -1376,7 +1424,8 @@ async def stats(ctx: interactions.SlashContext):
 
         # get the five most common server version ids
         pipeline = [
-            {"$match": {"version.protocol": {"$ne": None}}},
+            {"$match": {"$and": [{"players.online": {"$lt": 150000}}, {"players.online": {"$gt": 0}},
+                                 {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}}]}},
             {"$group": {"_id": "$version.protocol", "count": {"$sum": 1}}},
             {"$sort": {"count": -1}},
             {"$limit": 5},
