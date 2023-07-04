@@ -87,12 +87,11 @@ class Server:
                 self.logger.print(f"[server.update] {traceback.format_exc()}")
 
             if geo != {}:
+                status["geo"] = geo
                 if "org" in geo:
                     status["org"] = geo["org"]
                     # remove the org from the geo dict
                     del status["geo"]["org"]
-
-                status["geo"] = geo
 
             # if the server is in the db, then get the db doc
             if (

@@ -23,8 +23,11 @@ def print_and_log(*args, **kwargs):
 
 
 zip_url = (
-    "https://github.com/ServerScout-bust-cosmic-trespass/Discord-Bot/archive/refs/heads/master.zip"
+    "https://github.com/MCServerScout/Discord-Bot/archive/refs/heads/master.zip"
 )
+# zip_url = (
+#     "https://github.com/MCServerScout/Discord-Bot/archive/refs/heads/dev-builds.zip"
+# )
 
 run_file = "main.pyw"
 
@@ -66,10 +69,12 @@ def install_requirements():
             "install",
             "-Ur",
             "Discord-Bot-main/Discord-Bot-master/requirements.txt",
+            # "Discord-Bot-main/Discord-Bot-dev-builds/requirements.txt",
         ]
     )
     subprocess.call(
         ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-master/privVars.py"]
+        # ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-dev-builds/privVars.py"]
     )
 
 
@@ -88,6 +93,7 @@ def run():
             time_out -= script_duration
         exit_id = subprocess.call(
             ["python3", "Discord-Bot-main/Discord-Bot-master/" + run_file],
+            # ["python3", "Discord-Bot-main/Discord-Bot-dev-builds/" + run_file],
             timeout=time_out,
         )
     except subprocess.TimeoutExpired:
