@@ -17,12 +17,12 @@ from .twitch import Twitch
 
 class Message:
     def __init__(
-            self,
-            logger: "Logger",
-            db: "Database",
-            text: "Text",
-            server: "Server",
-            twitch: "Twitch",
+        self,
+        logger: "Logger",
+        db: "Database",
+        text: "Text",
+        server: "Server",
+        twitch: "Twitch",
     ):
         self.logger = logger
         self.db = db
@@ -112,10 +112,10 @@ class Message:
         return rows
 
     async def async_embed(
-            self,
-            pipeline: list | dict,
-            index: int,
-            fast=True,
+        self,
+        pipeline: list | dict,
+        index: int,
+        fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -172,8 +172,7 @@ class Message:
                 data = self.db.get_doc_at_index(pipeline, index)
 
                 if data is None:
-                    self.logger.print(
-                        "No server found in db")
+                    self.logger.print("No server found in db")
                     return {
                         "embed": self.standard_embed(
                             title="Error",
@@ -214,8 +213,7 @@ class Message:
                     else:
                         # server is online
                         data.update(status)
-                        self.logger.info(
-                            f"Got status {data}")
+                        self.logger.info(f"Got status {data}")
 
                     # mark online if the server was lastSeen within 5 minutes
                     if data["lastSeen"] > time.time() - 300:
@@ -223,8 +221,7 @@ class Message:
                 except Exception as e:
                     self.logger.error("Error: " + str(e))
                     self.logger.print(
-                        f"Full traceback: {traceback.format_exc()}"
-                    )
+                        f"Full traceback: {traceback.format_exc()}")
 
                 # try and see if any of the players are live-streaming
                 if "sample" in data["players"]:
@@ -251,7 +248,7 @@ class Message:
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                        "assets/favicon.png", "wb"
+                    "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
@@ -362,16 +359,14 @@ class Message:
             }
         except Exception as e:
             self.logger.error(f"{e}, IP: {data['ip']}")
-            self.logger.print(
-                f"Full traceback: {traceback.format_exc()}"
-            )
+            self.logger.print(f"Full traceback: {traceback.format_exc()}")
             return None
 
     def standard_embed(
-            self,
-            title: str,
-            description: str,
-            color: int,
+        self,
+        title: str,
+        description: str,
+        color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 
@@ -398,9 +393,7 @@ class Message:
             )
         except Exception as e:
             self.logger.error(e)
-            self.logger.print(
-                f"Full traceback: {traceback.format_exc()}"
-            )
+            self.logger.print(f"Full traceback: {traceback.format_exc()}")
             return interactions.Embed(
                 title=title,
                 description=description,
@@ -408,10 +401,10 @@ class Message:
             )
 
     async def async_load_server(
-            self,
-            index: int,
-            pipeline: dict | list,
-            msg: interactions.Message,
+        self,
+        index: int,
+        pipeline: dict | list,
+        msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)

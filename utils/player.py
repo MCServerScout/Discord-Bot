@@ -37,7 +37,7 @@ class Player:
             bool: True if the server is cracked, False if not
         """
         url = "https://api.mcstatus.io/v2/status/java/" + \
-              host + ":" + str(port)
+            host + ":" + str(port)
 
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
@@ -89,7 +89,7 @@ class Player:
                 return ""
 
     async def async_player_list(
-            self, ip: str, port: int = 25565
+        self, ip: str, port: int = 25565
     ) -> Optional[list[dict]]:
         """Gets a list of players on a server
 
@@ -103,14 +103,11 @@ class Player:
         data = self.server.update(host=ip, port=port)
 
         if data is None:
-            self.logger.print(
-                f"Server {ip}:{port} not found in database"
-            )
+            self.logger.print(f"Server {ip}:{port} not found in database")
             return None
 
         if "sample" not in data["players"]:
-            self.logger.print(
-                f"Server {ip}:{port} has no players")
+            self.logger.print(f"Server {ip}:{port} has no players")
             return None
 
         self.logger.print(
@@ -124,8 +121,8 @@ class Player:
 
             # mark the player as online if they were in the server less than 2 minutes ago
             if (
-                    datetime.datetime.utcnow()
-                    - datetime.datetime.fromtimestamp(player["lastSeen"])
+                datetime.datetime.utcnow()
+                - datetime.datetime.fromtimestamp(player["lastSeen"])
             ).total_seconds() < 120:
                 player["online"] = True
             else:
