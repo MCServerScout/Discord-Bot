@@ -20,8 +20,8 @@ from pymongo.errors import ServerSelectionTimeoutError
 import utils
 
 DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, \
-    col_name, client_id, client_secret, IP_INFO_TOKEN \
-    = ["..." for _ in range(8)]
+    col_name, client_id, client_secret, IP_INFO_TOKEN, cstats \
+    = ["..." for _ in range(9)]
 
 DEBUG = False
 try:
@@ -1444,6 +1444,14 @@ async def stats(ctx: interactions.SlashContext):
                 for i in top_five_version_ids
             ]) + "\n```",
             inline=True,
+        )
+        msg = await msg.edit(embed=main_embed, )
+
+        # add the custom text
+        main_embed.add_field(
+            name="Custom Text",
+            value=cstats,
+            inline=False,
         )
         await msg.edit(embed=main_embed, )
     except Exception as err:
