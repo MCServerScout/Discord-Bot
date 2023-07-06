@@ -41,13 +41,12 @@ class Database:
                 return self.col.find_one(next(result)["doc"])
             except StopIteration:
                 self.logger.error(
-                    "[database.get_doc_at_index] Index out of range")
+                    "Index out of range")
                 return None
         except StopIteration:
+            self.logger.error(traceback.format_exc())
             self.logger.error(
-                "[database.get_doc_at_index] " + traceback.format_exc())
-            self.logger.error(
-                f"[database.get_doc_at_index] Error getting document at index: {pipeline}"
+                f"Error getting document at index: {pipeline}"
             )
 
             return None
@@ -60,9 +59,9 @@ class Database:
         try:
             return list(self.col.aggregate(pipeline, allowDiskUse=allow_disk_use))
         except StopIteration:
-            self.logger.error("[database.aggregate] " + traceback.format_exc())
+            self.logger.error(traceback.format_exc())
             self.logger.error(
-                f"[database.aggregate] Error aggregating: {pipeline}")
+                f"Error aggregating: {pipeline}")
             return None
 
     def find_one(
@@ -72,9 +71,9 @@ class Database:
         try:
             return self.col.find_one(query)
         except StopIteration:
-            self.logger.error("[database.find_one] " + traceback.format_exc())
+            self.logger.error(traceback.format_exc())
             self.logger.error(
-                f"[database.find_one] Error finding one: {query}")
+                f"Error finding one: {query}")
             return None
 
     def find(
@@ -84,8 +83,8 @@ class Database:
         try:
             return list(self.col.find(query))
         except StopIteration:
-            self.logger.error("[database.find] " + traceback.format_exc())
-            self.logger.error(f"[database.find] Error finding: {query}")
+            self.logger.error(traceback.format_exc())
+            self.logger.error(f"Error finding: {query}")
             return None
 
     def update_one(
@@ -97,10 +96,9 @@ class Database:
         try:
             return self.col.update_one(query, update, **kwargs)
         except StopIteration:
-            self.logger.error("[database.update_one] " +
-                              traceback.format_exc())
+            self.logger.error(traceback.format_exc())
             self.logger.error(
-                f"[database.update_one] Error updating one: {query}")
+                f"Error updating one: {query}")
             return None
 
     def update_many(
@@ -111,10 +109,9 @@ class Database:
         try:
             return self.col.update_many(query, update)
         except StopIteration:
-            self.logger.error("[database.update_many] " +
-                              traceback.format_exc())
+            self.logger.error(traceback.format_exc())
             self.logger.error(
-                f"[database.update_many] Error updating many: {query}")
+                f"Error updating many: {query}")
             return None
 
     def count(
@@ -136,9 +133,8 @@ class Database:
             except StopIteration:
                 return 0
         except StopIteration:
-            self.logger.error("[database.countPipeline] " +
-                              traceback.format_exc())
+            self.logger.error(traceback.format_exc())
             self.logger.error(
-                f"[database.countPipeline] Error counting pipeline: {pipeline}"
+                f"Error counting pipeline: {pipeline}"
             )
             return 0

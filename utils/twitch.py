@@ -94,7 +94,7 @@ class Twitch:
                 return stream
 
             self.logger.info(
-                f"[twitch.getStream] Found stream: {stream['user_name']} - {stream['title']}"
+                f"Found stream: {stream['user_name']} - {stream['title']}"
             )
             stream = {
                 "name": stream["user_login"],
