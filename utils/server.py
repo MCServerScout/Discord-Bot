@@ -34,11 +34,11 @@ class Server:
             return self._type
 
     def __init__(
-        self,
-        db: "Database",
-        logger: "Logger",
-        text: "Text",
-        ipinfo_token: str,
+            self,
+            db: "Database",
+            logger: "Logger",
+            text: "Text",
+            ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -46,10 +46,10 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     def update(
-        self,
-        host: str,
-        fast: bool = False,
-        port: int = 25565,
+            self,
+            host: str,
+            fast: bool = False,
+            port: int = 25565,
     ) -> Optional[Mapping[str, Any]]:
         """
         Update a server and return a doc, returns either, None or Mapping[str, Any]
@@ -82,9 +82,9 @@ class Server:
                         geo["org"] = str(geo_data["org"])
             except Exception as err:
                 self.logger.warning(
-                    f"[server.update] Failed to get geo for {host}")
-                self.logger.print(f"[server.update] {err}")
-                self.logger.print(f"[server.update] {traceback.format_exc()}")
+                    f"Failed to get geo for {host}")
+                self.logger.print(err)
+                self.logger.print(f"{traceback.format_exc()}")
 
             if geo != {}:
                 status["geo"] = geo
@@ -95,9 +95,9 @@ class Server:
 
             # if the server is in the db, then get the db doc
             if (
-                self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]})
-                is not None
+                    self.db.col.find_one(
+                        {"ip": status["ip"], "port": status["port"]})
+                    is not None
             ):
                 db_val = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
@@ -114,7 +114,7 @@ class Server:
 
             if status2 is None:
                 self.logger.warning(
-                    f"[server.update] Failed to get status for {host}")
+                    f"Failed to get status for {host}")
                 self.update_db(status) if status is not None else None
                 return status
             else:
@@ -149,14 +149,14 @@ class Server:
                             status["players"]["sample"].append(player)
             else:
                 self.logger.warning(
-                    f"[server.update] Failed to get dbVal for {host}, making new entry"
+                    f"Failed to get dbVal for {host}, making new entry"
                 )
             self.update_db(status)
 
             return status
         except Exception as err:
-            self.logger.warning(f"[server.update] {err}")
-            self.logger.print(f"[server.update] {traceback.format_exc()}")
+            self.logger.warning(err)
+            self.logger.print(f"{traceback.format_exc()}")
 
             self.update_db(status) if status is not None else None
 
@@ -166,10 +166,10 @@ class Server:
                 return None
 
     def status(
-        self,
-        ip: str,
-        port: int = 25565,
-        version: int = 47,
+            self,
+            ip: str,
+            port: int = 25565,
+            version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -209,16 +209,16 @@ class Server:
             try:
                 response = connection.read_buffer()
             except socket.error:
-                self.logger.error("[server.status] Connection error")
+                self.logger.error("Connection error")
                 return None
             res_id = response.read_varint()
 
             if res_id == -1:
-                self.logger.error("[server.status] Connection error")
+                self.logger.error("Connection error")
                 return None
             elif res_id != 0:
                 self.logger.error(
-                    "[server.status] Invalid packet ID received: " +
+                    "Invalid packet ID received: " +
                     str(res_id)
                 )
                 return None
@@ -229,26 +229,26 @@ class Server:
                 data = json.loads(data.decode("utf8"))
                 return data
         except TimeoutError:
-            self.logger.print("[server.status] Connection error (timeout)")
+            self.logger.print("Connection error (timeout)")
             return None
         except ConnectionRefusedError:
-            self.logger.print("[server.status] Connection error (refused)")
+            self.logger.print("Connection error (refused)")
             return None
         except socket.gaierror:
             self.logger.print(
-                "[server.status] Connection error (invalid host)")
+                "Connection error (invalid host)")
             return None
         except Exception as err:
-            self.logger.warning(f"[server.status] {err}")
-            self.logger.print(f"[server.status] {traceback.format_exc()}")
+            self.logger.warning(err)
+            self.logger.print(f"{traceback.format_exc()}")
             return None
 
     def join(
-        self,
-        ip: str,
-        port: int,
-        version: int = 47,
-        player_username: str = "Pilot1783",
+            self,
+            ip: str,
+            port: int,
+            version: int = 47,
+            player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))
@@ -275,66 +275,66 @@ class Server:
             response = connection.read_buffer()
             _id: int = response.read_varint()
             if _id == 2:
-                self.logger.print("[server.join] Logged in successfully")
+                self.logger.print("Logged in successfully")
                 return self.ServerType(ip, version, "CRACKED")
             elif _id == 0:
                 reason = response.read_utf()
                 modded = "Forge" in reason
                 if modded:
-                    self.logger.print("[server.join] Modded server")
+                    self.logger.print("Modded server")
                 else:
-                    self.logger.print("[server.join] Vanilla server")
+                    self.logger.print("Vanilla server")
                 return self.ServerType(
                     ip, version, "VANILLA" if not modded else "MODDED"
                 )
             elif _id == 3:
-                self.logger.print("[server.join] Setting compression")
+                self.logger.print("Setting compression")
                 compression_threshold = response.read_varint()
                 self.logger.print(
-                    f"[server.join] Compression threshold: {compression_threshold}"
+                    f"Compression threshold: {compression_threshold}"
                 )
 
                 response = connection.read_buffer()
                 _id: int = response.read_varint()
             if _id == 1:
-                self.logger.print("[server.join] Logged in successfully")
+                self.logger.print("Logged in successfully")
 
                 return self.ServerType(ip, version, "CRACKED")
             elif _id == 0:
                 reason = response.read_utf()
                 modded = "Forge" in reason
                 if modded:
-                    self.logger.print("[server.join] Modded server")
+                    self.logger.print("Modded server")
                 else:
-                    self.logger.print("[server.join] Vanilla server")
+                    self.logger.print("Vanilla server")
                 return self.ServerType(
                     ip, version, "VANILLA" if not modded else "MODDED"
                 )
             else:
                 self.logger.warning(
-                    "[server.join] Unknown response: " + str(_id))
+                    "Unknown response: " + str(_id))
                 try:
                     reason = response.read_utf()
                 except TimeoutError:
                     return self.ServerType(ip, version, "OFFLINE")
 
-                self.logger.debug("[server.join] Reason: " + reason)
+                self.logger.debug("Reason: " + reason)
                 return self.ServerType(ip, version, "UNKNOWN")
         except TimeoutError:
-            self.logger.print("[server.join] Connection error (timeout)")
+            self.logger.print("Connection error (timeout)")
             return self.ServerType(ip, version, "OFFLINE")
         except ConnectionRefusedError:
-            self.logger.print("[server.join] Connection refused")
+            self.logger.print("Connection refused")
             return self.ServerType(ip, version, "OFFLINE")
         except ConnectionResetError:
-            self.logger.print("[server.join] Connection reset")
+            self.logger.print("Connection reset")
             return self.ServerType(ip, version, "OFFLINE")
         except OSError:
-            self.logger.print("[server.join] Server did not respond")
+            self.logger.print("Server did not respond")
             return self.ServerType(ip, version, "UNKNOWN")
         except Exception as err:
-            self.logger.error(f"[server.join] {err}")
-            self.logger.print(f"[server.join] {traceback.format_exc()}")
+            self.logger.error(err)
+            self.logger.print(f"{traceback.format_exc()}")
             return self.ServerType(ip, version, "OFFLINE")
 
     @staticmethod
@@ -389,5 +389,5 @@ class Server:
                 upsert=True,
             )
         except Exception as err:
-            self.logger.error(f"[server._updateDB] {err}")
-            self.logger.print(f"[server._updateDB] {traceback.format_exc()}")
+            self.logger.error(err)
+            self.logger.print(f"{traceback.format_exc()}")

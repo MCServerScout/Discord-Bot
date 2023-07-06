@@ -17,12 +17,12 @@ from .twitch import Twitch
 
 class Message:
     def __init__(
-        self,
-        logger: "Logger",
-        db: "Database",
-        text: "Text",
-        server: "Server",
-        twitch: "Twitch",
+            self,
+            logger: "Logger",
+            db: "Database",
+            text: "Text",
+            server: "Server",
+            twitch: "Twitch",
     ):
         self.logger = logger
         self.db = db
@@ -112,10 +112,10 @@ class Message:
         return rows
 
     async def async_embed(
-        self,
-        pipeline: list | dict,
-        index: int,
-        fast=True,
+            self,
+            pipeline: list | dict,
+            index: int,
+            fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -134,7 +134,7 @@ class Message:
         data = {"ip": "n/a"}
         try:
             if type(pipeline) is dict:
-                self.logger.print("[message.asyncEmbed] Server data provided")
+                self.logger.print("Server data provided")
                 # server is not in db, and we got the server data
                 data = pipeline
                 pipeline = {
@@ -156,7 +156,7 @@ class Message:
                 total_servers = self.db.count(pipeline)
 
                 if total_servers == 0:
-                    self.logger.print("[message.asyncEmbed] No servers found")
+                    self.logger.print("No servers found")
                     return {
                         "embed": self.standard_embed(
                             title="Error",
@@ -173,7 +173,7 @@ class Message:
 
                 if data is None:
                     self.logger.print(
-                        "[message.asyncEmbed] No server found in db")
+                        "No server found in db")
                     return {
                         "embed": self.standard_embed(
                             title="Error",
@@ -215,15 +215,15 @@ class Message:
                         # server is online
                         data.update(status)
                         self.logger.info(
-                            f"[message.asyncEmbed] Got status {data}")
+                            f"Got status {data}")
 
                     # mark online if the server was lastSeen within 5 minutes
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
                 except Exception as e:
-                    self.logger.error("[message.asyncEmbed] Error: " + str(e))
+                    self.logger.error("Error: " + str(e))
                     self.logger.print(
-                        f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}"
+                        f"Full traceback: {traceback.format_exc()}"
                     )
 
                 # try and see if any of the players are live-streaming
@@ -251,7 +251,7 @@ class Message:
             else:
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                    "assets/favicon.png", "wb"
+                        "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
@@ -361,17 +361,17 @@ class Message:
                 ),
             }
         except Exception as e:
-            self.logger.error(f"[message.asyncEmbed] {e}, IP: {data['ip']}")
+            self.logger.error(f"{e}, IP: {data['ip']}")
             self.logger.print(
-                f"[message.asyncEmbed] Full traceback: {traceback.format_exc()}"
+                f"Full traceback: {traceback.format_exc()}"
             )
             return None
 
     def standard_embed(
-        self,
-        title: str,
-        description: str,
-        color: int,
+            self,
+            title: str,
+            description: str,
+            color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 
@@ -397,9 +397,9 @@ class Message:
                 timestamp=self.text.time_now(),
             )
         except Exception as e:
-            self.logger.error(f"[message.standardEmbed] {e}")
+            self.logger.error(e)
             self.logger.print(
-                f"[message.standardEmbed] Full traceback: {traceback.format_exc()}"
+                f"Full traceback: {traceback.format_exc()}"
             )
             return interactions.Embed(
                 title=title,
@@ -408,10 +408,10 @@ class Message:
             )
 
     async def async_load_server(
-        self,
-        index: int,
-        pipeline: dict | list,
-        msg: interactions.Message,
+            self,
+            index: int,
+            pipeline: dict | list,
+            msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)

@@ -41,6 +41,7 @@ if DISCORD_TOKEN == "...":
 # ---------------------------------------------
 
 # test the db connection
+print("Connecting to database...")
 try:
     client = MongoClient(MONGO_URL)
     db = client['MCSS' if db_name == "..." else db_name]
@@ -51,6 +52,8 @@ except ServerSelectionTimeoutError:
     print("Error connecting to database")
     print(traceback.format_exc())
     sys.exit("Config error in privVars.py, please fix before rerunning")
+else:
+    print("Connected to database")
 
 utils = utils.Utils(
     col,
@@ -461,8 +464,8 @@ async def find(
             )
             return
         else:
-            logger.error(f"[main.find] {err}")
-            logger.print(f"[main.find] {traceback.format_exc()}")
+            logger.error(err)
+            logger.print(traceback.format_exc())
             await ctx.send(
                 embed=messageLib.standard_embed(
                     title="An error occurred",
@@ -483,7 +486,7 @@ async def next_page(ctx: interactions.ComponentContext):
 
         await ctx.defer(edit_origin=True)
 
-        logger.print(f"[main.previous_page] next page called")
+        logger.print(f"next page called")
 
         msg = await ctx.edit_origin(
             embed=messageLib.standard_embed(
@@ -524,8 +527,8 @@ async def next_page(ctx: interactions.ComponentContext):
             )
             return
 
-        logger.error(f"[main.next_page] {err}")
-        logger.print(f"[main.next_page] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
             embed=messageLib.standard_embed(
@@ -546,7 +549,7 @@ async def previous_page(ctx: interactions.ComponentContext):
         index, pipeline = await get_pipe(org)
         await ctx.defer(edit_origin=True)
 
-        logger.print(f"[main.previous_page] previous page called")
+        logger.print(f"previous page called")
 
         msg = await ctx.edit_origin(
             embed=messageLib.standard_embed(
@@ -587,8 +590,8 @@ async def previous_page(ctx: interactions.ComponentContext):
             )
             return
 
-        logger.error(f"[main.previous_page] {err}")
-        logger.print(f"[main.previous_page] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
             embed=messageLib.standard_embed(
@@ -608,7 +611,7 @@ async def players(ctx: interactions.ComponentContext):
         index, pipeline = await get_pipe(org)
         await ctx.defer(ephemeral=True)
 
-        logger.print(f"[main.players] players called")
+        logger.print(f"players called")
 
         host = databaseLib.get_doc_at_index(pipeline, index)
 
@@ -630,7 +633,7 @@ async def players(ctx: interactions.ComponentContext):
             if player_list.count(player) > 1:
                 player_list.remove(player)
 
-        logger.print(f"[main.players] Found {len(player_list)} players")
+        logger.print(f"Found {len(player_list)} players")
 
         # create a list of player lists that are 25 players long
         player_list_list = [player_list[i:i + 25] for i in range(0, len(player_list), 25)]
@@ -669,8 +672,8 @@ async def players(ctx: interactions.ComponentContext):
             )
             return
 
-        logger.error(f"[main.players] {err}")
-        logger.print(f"[main.players] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
             embed=messageLib.standard_embed(
@@ -690,7 +693,7 @@ async def jump(ctx: interactions.ComponentContext):
     try:
         org = ctx.message
 
-        logger.print(f"[main.jump] jump called")
+        logger.print(f"jump called")
         # get the files attached to the message
         index, pipeline = await get_pipe(org)
 
@@ -725,7 +728,7 @@ async def jump(ctx: interactions.ComponentContext):
 
             # check if the index is valid
             if index < 1 or index > total or not str(index).isnumeric():
-                logger.warning(f"[main.jump] Invalid index: {index}")
+                logger.warning(f"Invalid index: {index}")
                 await ctx.send(
                     embed=messageLib.standard_embed(
                         title="Error",
@@ -767,8 +770,8 @@ async def jump(ctx: interactions.ComponentContext):
             )
             return
 
-        logger.error(f"[main.jump] {err}")
-        logger.print(f"[main.jump] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
         await ctx.send(
             embed=messageLib.standard_embed(
                 title="Error",
@@ -787,10 +790,10 @@ async def sort(ctx: interactions.ComponentContext):
 
         index, pipeline = await get_pipe(org)
 
-        logger.print(f"[main.sort] sort called")
+        logger.print(f"sort called")
 
         # get the pipeline
-        logger.print(f"[main.sort] pipeline: {pipeline}")
+        logger.print(f"pipeline: {pipeline}")
 
         # send a message with a string menu that express after 60s
         string_menu = interactions.StringSelectMenu(
@@ -844,7 +847,7 @@ async def sort(ctx: interactions.ComponentContext):
         else:
             # get the value
             value = menu.ctx.values[0]
-            logger.print(f"[main.sort] sort method: {value}")
+            logger.print(f"sort method: {value}")
             sort_method = {}
 
             match value:
@@ -904,7 +907,7 @@ async def sort(ctx: interactions.ComponentContext):
 
             await msg.delete(context=ctx)
     except AttributeError:
-        logger.print(f"[main.sort] AttributeError")
+        logger.print(f"AttributeError")
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
@@ -916,8 +919,8 @@ async def sort(ctx: interactions.ComponentContext):
                 ephemeral=True,
             )
             return
-        logger.error(f"[main.sort] {err}")
-        logger.print(f"[main.sort] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
         await ctx.send(
             embed=messageLib.standard_embed(
                 title="Error",
@@ -936,7 +939,7 @@ async def update(ctx: interactions.ComponentContext):
         index, pipeline = await get_pipe(org)
         await ctx.defer(edit_origin=True)
 
-        logger.print(f"[main.update] update page called")
+        logger.print(f"update page called")
 
         msg = await ctx.edit_origin(
             embed=messageLib.standard_embed(
@@ -978,8 +981,8 @@ async def update(ctx: interactions.ComponentContext):
             )
             return
 
-        logger.error(f"[main.update] {err}")
-        logger.print(f"[main.update] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
             embed=messageLib.standard_embed(
@@ -1079,8 +1082,8 @@ async def ping(ctx: interactions.SlashContext, ip: str, port: int = None):
                 message=msg,
             )
             return
-        logger.error(f"[main.ping] {err}")
-        logger.print(f"[main.ping] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
 
         await ctx.send(
             embed=messageLib.standard_embed(
@@ -1148,7 +1151,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             try:
                 modal_ctx = await ctx.bot.wait_for_modal(timeout=90, modal=modal)
             except asyncio.TimeoutError:
-                logger.print(f"[main.streamers] Timed out")
+                logger.print(f"Timed out")
                 await modal_ctx.send(
                     embed=messageLib.standard_embed(
                         title="Error",
@@ -1228,7 +1231,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
         ]
 
         total = databaseLib.count(pipeline)
-        logger.debug(f"[main.streamers] Got {total} servers: {names}")
+        logger.debug(f"Got {total} servers: {names}")
         msg = await msg.edit(
             embed=messageLib.standard_embed(
                 title="Loading...",
@@ -1286,8 +1289,8 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
             )
             return
 
-        logger.error(f"[main.streamers] {err}")
-        logger.print(f"[main.streamers] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
         await ctx.send(
             embed=messageLib.standard_embed(
                 title="Error",
@@ -1309,6 +1312,7 @@ async def stats(ctx: interactions.SlashContext):
     await ctx.defer()
 
     try:
+        logger.debug(f"Getting stats")
         main_embed = messageLib.standard_embed(
             title="Stats",
             description="General stats about the database",
@@ -1401,6 +1405,7 @@ async def stats(ctx: interactions.SlashContext):
             ]) + "\n```",
             inline=True,
         )
+        msg = await msg.edit(embed=main_embed, )
 
         # get the five most common server version names
         pipeline = [
@@ -1448,8 +1453,8 @@ async def stats(ctx: interactions.SlashContext):
             )
             return
 
-        logger.error(f"[main.stats] {err}")
-        logger.print(f"[main.stats] Full traceback: {traceback.format_exc()}")
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
         await ctx.send(
             embed=messageLib.standard_embed(
                 title="Error",
@@ -1507,7 +1512,7 @@ async def help_command(ctx: interactions.SlashContext):
 @interactions.listen()
 async def on_ready():
     user = await bot.fetch_user(bot.user.id)
-    logger.critical(f"[main.on_ready] Logged in as {user.username}#{user.discriminator}")
+    logger.critical(f"Logged in as {user.username}#{user.discriminator}")
 
 
 # -----------------------------------------------------------------------------
@@ -1526,15 +1531,15 @@ if __name__ == "__main__":
     try:
         bot.start()
     except KeyboardInterrupt:
-        logger.print("[main] Keyboard interrupt, stopping bot")
+        logger.print("Keyboard interrupt, stopping bot")
         asyncio.run(bot.close())
     except Exception as e:
         if "Error: The Websocket closed with code: 1000" in str(e):
-            logger.print("[main] Websocket closed, restarting bot")
+            logger.print("Websocket closed, restarting bot")
 
             time.sleep(5)
             asyncio.run(bot.close())
         else:
-            logger.critical(f"[main] {e}")
-            logger.print("[main] Stopping bot")
+            logger.critical(e)
+            logger.print("Stopping bot")
             asyncio.run(bot.close())
