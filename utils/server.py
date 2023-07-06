@@ -34,11 +34,11 @@ class Server:
             return self._type
 
     def __init__(
-            self,
-            db: "Database",
-            logger: "Logger",
-            text: "Text",
-            ipinfo_token: str,
+        self,
+        db: "Database",
+        logger: "Logger",
+        text: "Text",
+        ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -46,10 +46,10 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     def update(
-            self,
-            host: str,
-            fast: bool = False,
-            port: int = 25565,
+        self,
+        host: str,
+        fast: bool = False,
+        port: int = 25565,
     ) -> Optional[Mapping[str, Any]]:
         """
         Update a server and return a doc, returns either, None or Mapping[str, Any]
@@ -81,8 +81,7 @@ class Server:
                     if "org" in geo_data:
                         geo["org"] = str(geo_data["org"])
             except Exception as err:
-                self.logger.warning(
-                    f"Failed to get geo for {host}")
+                self.logger.warning(f"Failed to get geo for {host}")
                 self.logger.print(err)
                 self.logger.print(f"{traceback.format_exc()}")
 
@@ -95,9 +94,9 @@ class Server:
 
             # if the server is in the db, then get the db doc
             if (
-                    self.db.col.find_one(
-                        {"ip": status["ip"], "port": status["port"]})
-                    is not None
+                self.db.col.find_one(
+                    {"ip": status["ip"], "port": status["port"]})
+                is not None
             ):
                 db_val = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
@@ -113,8 +112,7 @@ class Server:
             status2 = self.status(host)
 
             if status2 is None:
-                self.logger.warning(
-                    f"Failed to get status for {host}")
+                self.logger.warning(f"Failed to get status for {host}")
                 self.update_db(status) if status is not None else None
                 return status
             else:
@@ -149,8 +147,7 @@ class Server:
                             status["players"]["sample"].append(player)
             else:
                 self.logger.warning(
-                    f"Failed to get dbVal for {host}, making new entry"
-                )
+                    f"Failed to get dbVal for {host}, making new entry")
             self.update_db(status)
 
             return status
@@ -166,10 +163,10 @@ class Server:
                 return None
 
     def status(
-            self,
-            ip: str,
-            port: int = 25565,
-            version: int = 47,
+        self,
+        ip: str,
+        port: int = 25565,
+        version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -217,10 +214,7 @@ class Server:
                 self.logger.error("Connection error")
                 return None
             elif res_id != 0:
-                self.logger.error(
-                    "Invalid packet ID received: " +
-                    str(res_id)
-                )
+                self.logger.error("Invalid packet ID received: " + str(res_id))
                 return None
             elif res_id == 0:
                 length = response.read_varint()
@@ -235,8 +229,7 @@ class Server:
             self.logger.print("Connection error (refused)")
             return None
         except socket.gaierror:
-            self.logger.print(
-                "Connection error (invalid host)")
+            self.logger.print("Connection error (invalid host)")
             return None
         except Exception as err:
             self.logger.warning(err)
@@ -244,11 +237,11 @@ class Server:
             return None
 
     def join(
-            self,
-            ip: str,
-            port: int,
-            version: int = 47,
-            player_username: str = "Pilot1783",
+        self,
+        ip: str,
+        port: int,
+        version: int = 47,
+        player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))
@@ -291,8 +284,7 @@ class Server:
                 self.logger.print("Setting compression")
                 compression_threshold = response.read_varint()
                 self.logger.print(
-                    f"Compression threshold: {compression_threshold}"
-                )
+                    f"Compression threshold: {compression_threshold}")
 
                 response = connection.read_buffer()
                 _id: int = response.read_varint()
@@ -311,8 +303,7 @@ class Server:
                     ip, version, "VANILLA" if not modded else "MODDED"
                 )
             else:
-                self.logger.warning(
-                    "Unknown response: " + str(_id))
+                self.logger.warning("Unknown response: " + str(_id))
                 try:
                     reason = response.read_utf()
                 except TimeoutError:
