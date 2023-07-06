@@ -6,4 +6,3 @@ requests>=2.31.0
 cryptography>=41.0.1
 ipinfo>=4.4
 schedule>=1.2.0
-utils>=1.0.1

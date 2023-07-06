@@ -17,7 +17,7 @@ from interactions import SlashCommandOption, slash_command
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
-import utils
+import pyutils
 
 DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, \
     col_name, client_id, client_secret, IP_INFO_TOKEN, cstats \
@@ -55,7 +55,7 @@ except ServerSelectionTimeoutError:
 else:
     print("Connected to database")
 
-utils = utils.Utils(
+utils = pyutils.Utils(
     col,
     debug=DEBUG,
     discord_webhook=DISCORD_WEBHOOK,
