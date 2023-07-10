@@ -11,7 +11,7 @@ from multiprocessing.pool import ThreadPool
 import masscan
 from pymongo import MongoClient
 
-import utils
+import pyutils
 
 DISCORD_WEBHOOK, MONGO_URL, db_name, col_name, client_id, client_secret, IP_INFO_TOKEN = "", "", "", "", "", "", ""
 max_threads, max_pps = 10, 1000
@@ -42,7 +42,7 @@ except Exception as e:
     print(traceback.format_exc())
     sys.exit("Config error in privVars.py, please fix before rerunning")
 
-utils = utils.Utils(
+utils = pyutils.Utils(
     col,
     debug=DEBUG,
     discord_webhook=DISCORD_WEBHOOK,

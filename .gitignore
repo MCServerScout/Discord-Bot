@@ -1,7 +1,7 @@
 privVars.py
 .venv/*
 __pycache__/*
-utils/__pycache__/*
+pyutils/__pycache__/*
 .idea/*
 log.log
 /out.log
