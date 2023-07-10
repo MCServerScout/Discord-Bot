@@ -76,10 +76,11 @@ bot = interactions.Client(
     status=interactions.Status.IDLE,
     activity=interactions.Activity(
         type=interactions.ActivityType.GAME,
-        name="Sussing out servers",
+        name=f"Pulled in {'{:,}'.format(col.count_documents({}))} servers"
     ),
     logger=logger,
     intents=interactions.Intents.DEFAULT,
+    disable_dm_commands=True,
 )
 
 RED = 0xFF0000  # error
