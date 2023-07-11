@@ -70,10 +70,10 @@ This command will show you a list of all the commands and how to use them.
 The docs are in the following json format:
 
 <details>
-  <summary>Click to show example doc</summary>
+<summary>Click to show example doc</summary>
 
-  ```json
-  {
+```json
+{
   "_id": {
     "$oid": "1534978d9f542e403cfa5026"
   },

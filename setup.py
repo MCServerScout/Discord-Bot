@@ -13,7 +13,7 @@ async def install_requirements():
         print("Python 3.10+ is required.")
         sys.exit("Python 3.10+ is required.")
 
-    req_url = "https://raw.githubusercontent.com/ServerScout-bust-cosmic-trespass/Discord-Bot/master/requirements.txt"
+    req_url = "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/requirements.txt"
     print("Downloading requirements.txt")
     async with aiohttp.ClientSession() as session, session.get(req_url) as resp:
         with open("requirements.txt", "wb") as f:
@@ -26,10 +26,9 @@ async def install_requirements():
     )
     stdout, stderr = await proc.communicate()
     print(f"[stdout]\n{stdout.decode()}")
-    print(f"[stderr]\n{stderr.decode()}")
 
 
-async def create_priv_vars():
+async def create_files():
     text = """#  Path: privVars.py
 # any variable with a default value is optional, while those with '...' are required
 DISCORD_TOKEN = "..."
@@ -41,6 +40,7 @@ client_id = "..."  # twitch client id
 client_secret = "..."  # twitch client secret
 # DEBUG = False  # optional
 IP_INFO_TOKEN = "..."  # ipinfo.io token
+# cstats = ""  # optional, custom text added to the stats message
 
 # scanner settings
 max_threads = 10
@@ -53,10 +53,29 @@ max_pps = 1000
     else:
         print("privVars.py already exists")
 
+    # create and populate the assets folder
+    if not os.path.exists("assets"):
+        os.mkdir("assets")
+        print("Created assets folder")
+    else:
+        print("assets folder already exists")
+
+    # populate the assets folder with the default images
+    if not os.path.exists("assets/DefFavicon.png"):
+        async with aiohttp.ClientSession() as session, session.get(
+                "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/assets/DefFavicon.png") as resp:
+            with open("assets/DefFavicon.png", "wb") as f:
+                f.write(await resp.read())
+    if not os.path.exists("assets/loading.png"):
+        async with aiohttp.ClientSession() as session, session.get(
+                "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/assets/loading.png") as resp:
+            with open("assets/loading.png", "wb") as f:
+                f.write(await resp.read())
+
 
 async def main():
     await install_requirements()
-    await create_priv_vars()
+    await create_files()
     print("Setup complete, please edit `privVars.py` before running the scanner.")
 
 

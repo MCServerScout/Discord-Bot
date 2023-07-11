@@ -47,7 +47,8 @@ try:
     db = client['MCSS' if db_name == "..." else db_name]
     col = db["scannedServers" if col_name == "..." else col_name]
 
-    col.count_documents({})
+    num_docs = col.count_documents({})
+    num_docs = str(num_docs)[0:2] + "0" * (len(str(num_docs)) - 2)
 except ServerSelectionTimeoutError:
     print("Error connecting to database")
     print(traceback.format_exc())
@@ -76,7 +77,7 @@ bot = interactions.Client(
     status=interactions.Status.IDLE,
     activity=interactions.Activity(
         type=interactions.ActivityType.GAME,
-        name="Sussing out servers",
+        name="Trolling through {} servers".format(num_docs),
     ),
     logger=logger,
     intents=interactions.Intents.DEFAULT,
@@ -1447,13 +1448,14 @@ async def stats(ctx: interactions.SlashContext):
         )
         msg = await msg.edit(embed=main_embed, )
 
-        # add the custom text
-        main_embed.add_field(
-            name="Custom Text",
-            value=cstats,
-            inline=False,
-        )
-        await msg.edit(embed=main_embed, )
+        if cstats not in ["", "...", None]:
+            # add the custom text
+            main_embed.add_field(
+                name="Custom Text",
+                value=cstats,
+                inline=False,
+            )
+            await msg.edit(embed=main_embed, )
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.delete(
@@ -1521,10 +1523,6 @@ async def help_command(ctx: interactions.SlashContext):
 async def on_ready():
     user = await bot.fetch_user(bot.user.id)
     logger.critical(f"Logged in as {user.username}#{user.discriminator}")
-
-
-# -----------------------------------------------------------------------------
-# bot apps
 
 
 # -----------------------------------------------------------------------------
