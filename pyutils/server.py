@@ -34,11 +34,11 @@ class Server:
             return self._type
 
     def __init__(
-        self,
-        db: "Database",
-        logger: "Logger",
-        text: "Text",
-        ipinfo_token: str,
+            self,
+            db: "Database",
+            logger: "Logger",
+            text: "Text",
+            ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -46,10 +46,10 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     def update(
-        self,
-        host: str,
-        fast: bool = False,
-        port: int = 25565,
+            self,
+            host: str,
+            fast: bool = False,
+            port: int = 25565,
     ) -> Optional[Mapping[str, Any]]:
         """
         Update a server and return a doc, returns either, None or Mapping[str, Any]
@@ -94,14 +94,15 @@ class Server:
 
             # if the server is in the db, then get the db doc
             if (
-                self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]})
-                is not None
+                    self.db.col.find_one(
+                        {"ip": status["ip"], "port": status["port"]})
+                    is not None
             ):
-                db_val = self.db.col.find_one(
+                db_val = dict(self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
-                )
-                status.update(db_val)
+                ))
+                db_val.update(status)
+                status = db_val
                 status["description"] = self.text.motd_parse(
                     status["description"])
                 status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
@@ -144,7 +145,7 @@ class Server:
                     for player in db_val["players"]["sample"]:
                         if player["name"] not in str(status["players"]["sample"]):
                             player["lastSeen"] = int(0)
-                            status["players"]["sample"].append(player)
+                            list(status["players"]["sample"]).append(player)
             else:
                 self.logger.warning(
                     f"Failed to get dbVal for {host}, making new entry")
@@ -163,10 +164,10 @@ class Server:
                 return None
 
     def status(
-        self,
-        ip: str,
-        port: int = 25565,
-        version: int = 47,
+            self,
+            ip: str,
+            port: int = 25565,
+            version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -237,11 +238,11 @@ class Server:
             return None
 
     def join(
-        self,
-        ip: str,
-        port: int,
-        version: int = 47,
-        player_username: str = "Pilot1783",
+            self,
+            ip: str,
+            port: int,
+            version: int = 47,
+            player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))

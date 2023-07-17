@@ -1326,7 +1326,7 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
     options=[
         SlashCommandOption(
             name="file",
-            description="The file to scan",
+            description="The file of delimited IP subnets",
             type=interactions.OptionType.ATTACHMENT,
             required=True,
         ),
@@ -1347,6 +1347,10 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
                 interactions.SlashCommandChoice(
                     name="space",
                     value=" ",
+                ),
+                interactions.SlashCommandChoice(
+                    name="line break",
+                    value="\n",
                 ),
             ]
         )
