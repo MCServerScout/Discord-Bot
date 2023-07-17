@@ -1651,6 +1651,11 @@ async def help_command(ctx: interactions.SlashContext):
             inline=False,
         )
         .add_field(
+            name="`/scan`",
+            value="Scan a list of ip ranges",
+            inline=False,
+        )
+        .add_field(
             name="`/stats`",
             value="Get stats about the database",
             inline=False,
