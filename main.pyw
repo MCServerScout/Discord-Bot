@@ -5,15 +5,18 @@
 
 import asyncio
 import datetime
+import os
 import re
 import sys
 import time
 import traceback
+from threading import Thread
 from typing import Optional, Tuple
 
 import aiohttp
 import interactions
 from interactions import SlashCommandOption, slash_command
+from interactions.ext.paginators import Paginator
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 
@@ -47,7 +50,8 @@ try:
     db = client['MCSS' if db_name == "..." else db_name]
     col = db["scannedServers" if col_name == "..." else col_name]
 
-    col.count_documents({})
+    num_docs = col.count_documents({})
+    num_docs = str(num_docs)[0:2] + "0" * (len(str(num_docs)) - 2)
 except ServerSelectionTimeoutError:
     print("Error connecting to database")
     print(traceback.format_exc())
@@ -76,7 +80,7 @@ bot = interactions.Client(
     status=interactions.Status.IDLE,
     activity=interactions.Activity(
         type=interactions.ActivityType.GAME,
-        name=f"Pulled in {'{:,}'.format(col.count_documents({}))} servers"
+        name="Trolling through {} servers".format(num_docs),
     ),
     logger=logger,
     intents=interactions.Intents.DEFAULT,
@@ -638,6 +642,7 @@ async def players(ctx: interactions.ComponentContext):
 
         # create a list of player lists that are 25 players long
         player_list_list = [player_list[i:i + 25] for i in range(0, len(player_list), 25)]
+        pages = []
 
         for player_list in player_list_list:
             embed = messageLib.standard_embed(
@@ -657,10 +662,10 @@ async def players(ctx: interactions.ComponentContext):
                     inline=True,
                 )
 
-            await ctx.send(
-                embed=embed,
-                ephemeral=True,
-            )
+            pages.append(embed)
+
+        pag = Paginator.create_from_embeds(ctx.bot, *pages, timeout=60)
+        await pag.send(ctx)
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.send(
@@ -934,15 +939,26 @@ async def sort(ctx: interactions.ComponentContext):
 
 # button to update the message
 @interactions.component_callback("update")
-async def update(ctx: interactions.ComponentContext):
+async def update_command(ctx: interactions.ComponentContext):
+    await update(ctx)
+
+
+async def update(ctx: interactions.ComponentContext | interactions.ContextMenuContext):
     try:
-        org = ctx.message
+        org = ctx.message if type(ctx) is interactions.ComponentContext else ctx.target
+
+        logger.print(f"update page called for {org.id}")
         index, pipeline = await get_pipe(org)
-        await ctx.defer(edit_origin=True)
+        await ctx.defer(edit_origin=True) if type(ctx) is interactions.ComponentContext else ctx.send(
+            embed=messageLib.standard_embed(
+                title="Loading...",
+                description="Loading...",
+                color=BLUE,
+            ),
+            ephemeral=True,
+        )
 
-        logger.print(f"update page called")
-
-        msg = await ctx.edit_origin(
+        msg = await org.edit(
             embed=messageLib.standard_embed(
                 title="Loading...",
                 description="Loading...",
@@ -1303,6 +1319,139 @@ async def streamers(ctx: interactions.SlashContext, lang: str = None):
         return
 
 
+# command to upload a character-separated file of ip subnets
+@slash_command(
+    name="scan",
+    description="Scan a list of IP subnets",
+    options=[
+        SlashCommandOption(
+            name="file",
+            description="The file to scan",
+            type=interactions.OptionType.ATTACHMENT,
+            required=True,
+        ),
+        SlashCommandOption(
+            name="delimiter",
+            description="The delimiter to use",
+            type=interactions.OptionType.STRING,
+            required=True,
+            choices=[
+                interactions.SlashCommandChoice(
+                    name="comma",
+                    value=",",
+                ),
+                interactions.SlashCommandChoice(
+                    name="semicolon",
+                    value=";",
+                ),
+                interactions.SlashCommandChoice(
+                    name="space",
+                    value=" ",
+                ),
+            ]
+        )
+    ],
+)
+async def scan(ctx: interactions.SlashContext, file: interactions.Attachment, delimiter: str):
+    try:
+        await ctx.defer(ephemeral=True)
+
+        # make sure the bot is running on linux
+        if os.name != "posix":
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Error",
+                    description="This command only works on Linux hosts",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Loading...",
+                description="Loading the scanner with the provided ranges",
+                color=GREEN,
+            ),
+            ephemeral=True,
+        )
+
+        # load the file
+        async with aiohttp.ClientSession() as session:
+            async with session.get(file.url) as resp:
+                data = await resp.read()
+                lines = data.decode("utf-8").split("\n")
+        # remove the newlines
+        lines = delimiter.join(lines)
+        lines = lines.split(delimiter)
+        lines = [line.strip() for line in lines]
+
+        # loop through each range and make sure it's a valid mask
+        for line in lines:
+            pattern = r"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}\/(1[0-9]|2[0-9]|3[0-2])$"
+            if re.match(pattern, line) is None:
+                await ctx.send(
+                    embed=messageLib.standard_embed(
+                        title="Error",
+                        description="Invalid subnet: " + line,
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+        # send the user how many ranges we're scanning
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Loading...",
+                description="Scanning " + str(len(lines)) + " ranges",
+                color=GREEN,
+            ),
+            ephemeral=True,
+        )
+
+        def _scan(ip_ranges):
+            from pyutils.scanner import Scanner
+            scan_func = Scanner(logger_func=logger, serverLib=serverLib)
+            scan_func.start(ip_ranges=ip_ranges)
+
+        try:
+            from pyutils.scanner import Scanner
+        except ImportError:
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Error",
+                    description="Scanner import error",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+        else:
+            scanner = Thread(target=_scan, args=(lines,))
+            scanner.start()
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Success",
+                    description="Started the scanner",
+                    color=GREEN,
+                ),
+                ephemeral=True,
+            )
+    except Exception as err:
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Error",
+                description="An error occurred while trying to scan the file",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+        return
+
+
 # command to get stats about the server
 @slash_command(
     name="stats",
@@ -1448,13 +1597,14 @@ async def stats(ctx: interactions.SlashContext):
         )
         msg = await msg.edit(embed=main_embed, )
 
-        # add the custom text
-        main_embed.add_field(
-            name="Custom Text",
-            value=cstats,
-            inline=False,
-        )
-        await msg.edit(embed=main_embed, )
+        if cstats not in ["", "...", None]:
+            # add the custom text
+            main_embed.add_field(
+                name="Custom Text",
+                value=cstats,
+                inline=False,
+            )
+            await msg.edit(embed=main_embed, )
     except Exception as err:
         if "403|Forbidden" in str(err):
             await ctx.delete(
@@ -1502,6 +1652,11 @@ async def help_command(ctx: interactions.SlashContext):
             inline=False,
         )
         .add_field(
+            name="`/scan`",
+            value="Scan a list of ip ranges",
+            inline=False,
+        )
+        .add_field(
             name="`/stats`",
             value="Get stats about the database",
             inline=False,
@@ -1526,6 +1681,22 @@ async def on_ready():
 
 # -----------------------------------------------------------------------------
 # bot apps
+
+@interactions.message_context_menu(name="Refresh")
+async def refresh(ctx: interactions.ContextMenuContext):
+    if ctx.target is None or ctx.target.embeds is None:
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Error",
+                description="This message does not have an embed",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+    else:
+        logger.print(f"Found {len(ctx.target.attachments)} embeds in message {ctx.target.id}: {ctx.target.attachments}")
+        # run the update command
+        await update(ctx)
 
 
 # -----------------------------------------------------------------------------

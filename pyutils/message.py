@@ -210,7 +210,9 @@ class Message:
                         data["cracked"] = None
                         data["description"] = self.text.motd_parse(
                             data["description"])
+                        self.logger.debug("Server is offline")
                     else:
+                        self.logger.debug("Server is online")
                         # server is online
                         data.update(status)
                         self.logger.info(f"Got status {data}")
@@ -224,8 +226,12 @@ class Message:
                         f"Full traceback: {traceback.format_exc()}")
 
                 # try and see if any of the players are live-streaming
-                if "sample" in data["players"]:
+                if "sample" in data["players"] and len(data["players"]["sample"]) < 25:
+                    self.logger.debug("Checking for streams")
                     for player in data["players"]["sample"]:
+                        self.logger.debug(
+                            f"Checking if {player['name']} is streaming ({data['players']['sample'].index(player) + 1}/{len(data['players']['sample'])})"
+                        )
                         stream = await self.twitch.get_stream(
                             user=player["name"].lower()
                         )
@@ -238,6 +244,7 @@ class Message:
 
             # get the server icon
             if is_online == "🟢" and "favicon" in data.keys():
+                self.logger.debug("Adding favicon")
                 bits = (
                     data["favicon"].split(",")[1]
                     if "," in data["favicon"]
@@ -246,6 +253,7 @@ class Message:
                 with open("assets/favicon.png", "wb") as f:
                     f.write(base64.b64decode(bits))
             else:
+                self.logger.debug("Adding default favicon")
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
                     "assets/favicon.png", "wb"
@@ -253,13 +261,14 @@ class Message:
                     f2.write(f.read())
 
             # create the embed
+            self.logger.debug("Creating embed")
             data["description"] = self.text.motd_parse(data["description"])
             domain = ""
             if "hostname" in data:
                 domain = f"**Hostname:** `{data['hostname']}`\n"
             embed = self.standard_embed(
                 title=f"{is_online} {data['ip']}:{data['port']}",
-                description=f"{domain}```ansi\n{self.text.color_ansi(str(data['description']['text']))}\n```",
+                description=f"{domain}\n```ansi\n{self.text.color_ansi(str(data['description']['text']))}\n```",
                 color=(self.GREEN if is_online == "🟢" else self.PINK)
                 if is_online != "🟡"
                 else None,
