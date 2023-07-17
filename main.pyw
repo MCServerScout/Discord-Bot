@@ -84,6 +84,7 @@ bot = interactions.Client(
     ),
     logger=logger,
     intents=interactions.Intents.DEFAULT,
+    disable_dm_commands=True,
 )
 
 RED = 0xFF0000  # error
