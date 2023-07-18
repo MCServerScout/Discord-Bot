@@ -17,12 +17,12 @@ from .twitch import Twitch
 
 class Message:
     def __init__(
-        self,
-        logger: "Logger",
-        db: "Database",
-        text: "Text",
-        server: "Server",
-        twitch: "Twitch",
+            self,
+            logger: "Logger",
+            db: "Database",
+            text: "Text",
+            server: "Server",
+            twitch: "Twitch",
     ):
         self.logger = logger
         self.db = db
@@ -112,10 +112,10 @@ class Message:
         return rows
 
     async def async_embed(
-        self,
-        pipeline: list | dict,
-        index: int,
-        fast=True,
+            self,
+            pipeline: list | dict,
+            index: int,
+            fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -226,17 +226,20 @@ class Message:
                         f"Full traceback: {traceback.format_exc()}")
 
                 # try and see if any of the players are live-streaming
-                if "sample" in data["players"] and len(data["players"]["sample"]) < 25:
+                if "sample" in data["players"]:
                     self.logger.debug("Checking for streams")
                     for player in data["players"]["sample"]:
-                        self.logger.debug(
-                            f"Checking if {player['name']} is streaming ({data['players']['sample'].index(player) + 1}/{len(data['players']['sample'])})"
-                        )
-                        stream = await self.twitch.get_stream(
-                            user=player["name"].lower()
-                        )
-                        if stream != {}:
-                            streams.append(stream)
+                        if player["lastSeen"] - time.time() < 180:  # 3 minutes
+                            self.logger.debug(
+                                f"Checking if {player['name']} is streaming ({data['players']['sample'].index(player) + 1}/{len(data['players']['sample'])})"
+                            )
+                            stream = await self.twitch.get_stream(
+                                user=player["name"].lower()
+                            )
+                            if stream != {}:
+                                streams.append(stream)
+                    else:
+                        self.logger.debug("No streams found")
             else:
                 # isonline is yellow
                 is_online = "🟡"
@@ -256,7 +259,7 @@ class Message:
                 self.logger.debug("Adding default favicon")
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                    "assets/favicon.png", "wb"
+                        "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
@@ -311,6 +314,20 @@ class Message:
                 else "No",
                 inline=True,
             )
+
+            # hostname/org
+            if "geo" in data.keys() and "hostname" in data["geo"].keys():
+                embed.add_field(
+                    name="Hostname",
+                    value=data["hostname"],
+                    inline=True,
+                )
+            if "org" in data.keys():
+                embed.add_field(
+                    name="Organisation",
+                    value=data["org"],
+                    inline=True,
+                )
 
             # last online
             stamp: datetime.datetime = datetime.datetime.utcfromtimestamp(
@@ -372,10 +389,10 @@ class Message:
             return None
 
     def standard_embed(
-        self,
-        title: str,
-        description: str,
-        color: int,
+            self,
+            title: str,
+            description: str,
+            color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 
@@ -410,10 +427,10 @@ class Message:
             )
 
     async def async_load_server(
-        self,
-        index: int,
-        pipeline: dict | list,
-        msg: interactions.Message,
+            self,
+            index: int,
+            pipeline: dict | list,
+            msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)

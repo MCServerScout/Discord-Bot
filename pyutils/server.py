@@ -98,11 +98,10 @@ class Server:
                         {"ip": status["ip"], "port": status["port"]})
                     is not None
             ):
-                db_val = dict(self.db.col.find_one(
+                db_val = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
-                ))
-                db_val.update(status)
-                status = db_val
+                )
+                status.update(db_val)
                 status["description"] = self.text.motd_parse(
                     status["description"])
                 status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
