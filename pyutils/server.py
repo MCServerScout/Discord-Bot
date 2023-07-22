@@ -117,6 +117,7 @@ class Server:
                 return status
             else:
                 status.update(status2)
+                self.logger.info(f"Got status for {host}: {status}")
 
             server_type = (
                 self.join(ip=host, port=port,
@@ -221,6 +222,7 @@ class Server:
                 data = response.read(length)
 
                 data = json.loads(data.decode("utf8"))
+                self.logger.debug(json.dumps(data, indent=4))
                 return data
         except TimeoutError:
             self.logger.print("Connection error (timeout)")
@@ -361,10 +363,11 @@ class Server:
         Args:
             data (dict): The data to update the database with
         """
-        if "favicon" in data:
-            del data["favicon"]
+        data2 = data.copy()
+        if "favicon" in data2:
+            del data2["favicon"]
 
-        threading.Thread(target=self._update_db, args=(data,)).start()
+        threading.Thread(target=self._update_db, args=(data2,)).start()
 
     def _update_db(self, data: dict):
         """Updates the database with the given data
