@@ -63,12 +63,14 @@ max_pps = 1000
     # populate the assets folder with the default images
     if not os.path.exists("assets/DefFavicon.png"):
         async with aiohttp.ClientSession() as session, session.get(
-                "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/assets/DefFavicon.png") as resp:
+            "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/assets/DefFavicon.png"
+        ) as resp:
             with open("assets/DefFavicon.png", "wb") as f:
                 f.write(await resp.read())
     if not os.path.exists("assets/loading.png"):
         async with aiohttp.ClientSession() as session, session.get(
-                "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/assets/loading.png") as resp:
+            "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/assets/loading.png"
+        ) as resp:
             with open("assets/loading.png", "wb") as f:
                 f.write(await resp.read())
 

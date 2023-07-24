@@ -29,7 +29,11 @@ class Scanner:
             # step one, get a range of online ips
             self.logger.debug(f"Scanning {ip_range}")
             scanner = masscan.PortScanner()
-            scanner.scan(ip_range, ports="25560-25575", arguments="--rate=" + str(self.max_pps // self.max_threads))
+            scanner.scan(
+                ip_range,
+                ports="25560-25575",
+                arguments="--rate=" + str(self.max_pps // self.max_threads),
+            )
 
             hosts = json.loads(scanner.scan_result)["scan"]
             host_ips = hosts.keys()
@@ -38,9 +42,10 @@ class Scanner:
             for ip in host_ips:
                 host = hosts[ip]
                 for port in host:
-                    if port['status'] == "open":
-                        self.logger.print(f"Found open port {port['port']} on {ip}")
-                        self.que.put(ip + ":" + str(port['port']))
+                    if port["status"] == "open":
+                        self.logger.print(
+                            f"Found open port {port['port']} on {ip}")
+                        self.que.put(ip + ":" + str(port["port"]))
         except Exception as err:
             self.logger.error(f"Error scanning {ip_range}: {err}")
             self.logger.print(traceback.format_exc())
