@@ -1011,6 +1011,84 @@ async def update(ctx: interactions.ComponentContext | interactions.ContextMenuCo
         )
 
 
+# button to show mods
+@interactions.component_callback("mods")
+async def mods(ctx: interactions.ComponentContext):
+    try:
+        org = ctx.message
+
+        index, pipeline = await get_pipe(org)
+
+        logger.print(f"mods called")
+
+        await ctx.defer(ephemeral=True)
+
+        # get the pipeline
+        logger.print(f"pipeline: {pipeline}")
+
+        host = databaseLib.get_doc_at_index(pipeline, index)
+
+        if "mods" not in host.keys():
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Error",
+                    description="No mods found",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        mod_list = host["mods"]
+
+        # create a paginator
+        pages = []
+        for mod in mod_list:
+            logger.print(mod)
+            embed = messageLib.standard_embed(
+                title=mod["name"],
+                description=f"Version: {mod['version']}\nModID: {mod['id']}\nRequired: {mod['required']}",
+                color=BLUE,
+            )
+            pages.append(embed)
+
+        if pages:
+            pag = Paginator.create_from_embeds(ctx.bot, *pages, timeout=60)
+            await pag.send(ctx)
+        else:
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Error",
+                    description="No mods found",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+    except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
+
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Error",
+                description="An error occurred while trying to get the players",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+
+
 # other commands
 # -----------------------------------------------------------------------------
 
@@ -1597,6 +1675,48 @@ async def stats(ctx: interactions.SlashContext):
                 f"{textLib.protocol_str(i['_id'])}: {round(i['count'] / total_servers * 100, 2)}%"
                 for i in top_five_version_ids
             ]) + "\n```",
+            inline=True,
+        )
+        msg = await msg.edit(embed=main_embed, )
+
+        # get the percent of servers which are cracked (cracked == True)
+        pipeline = [
+            {"$match": {"cracked": True}},
+            {"$group": {"_id": None, "count": {"$sum": 1}}},
+        ]
+        cracked = list(databaseLib.aggregate(pipeline))
+
+        main_embed.add_field(
+            name="Cracked",
+            value=textLib.percent_bar(cracked[0]['count'], total_servers),
+            inline=True,
+        )
+        msg = await msg.edit(embed=main_embed, )
+
+        # get the percent of servers which have favicons (hasFavicon == True)
+        pipeline = [
+            {"$match": {"hasFavicon": True}},
+            {"$group": {"_id": None, "count": {"$sum": 1}}},
+        ]
+        has_favicon = list(databaseLib.aggregate(pipeline))
+
+        main_embed.add_field(
+            name="Has Favicon",
+            value=textLib.percent_bar(has_favicon[0]['count'], total_servers),
+            inline=True,
+        )
+        msg = await msg.edit(embed=main_embed, )
+
+        # get the percent of servers which have forge mods (hasForgeData == True)
+        pipeline = [
+            {"$match": {"hasForgeData": True}},
+            {"$group": {"_id": None, "count": {"$sum": 1}}},
+        ]
+        has_forge_data = list(databaseLib.aggregate(pipeline))
+
+        main_embed.add_field(
+            name="Has Forge Data",
+            value=textLib.percent_bar(has_forge_data[0]['count'], total_servers),
             inline=True,
         )
         msg = await msg.edit(embed=main_embed, )

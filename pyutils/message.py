@@ -49,7 +49,7 @@ class Message:
                 interactions.ActionRow(): Next, Previous, Jump to, Update
                 interactions.ActionRow(): Show Players
                 interactions.StringSelectMenu(): Sort
-                interactions.Button(): Join
+                interactions.Button(): Mods
             ]
         """
         if len(args) != 7:
@@ -105,6 +105,14 @@ class Message:
                     label="Sort",
                     custom_id="sort",
                     disabled=disabled[5],
+                ),
+            ),
+            interactions.ActionRow(
+                interactions.Button(
+                    style=interactions.ButtonStyle.SECONDARY,
+                    label="Mods",
+                    custom_id="mods",
+                    disabled=disabled[6],
                 ),
             ),
         ]
@@ -310,8 +318,7 @@ class Message:
             embed.add_field(
                 name="Modded",
                 value="Yes"
-                if data["hasForgeData"] or "modpackData" in data.keys()
-                else "No",
+                if data["hasForgeData"] or "modpackData" in data.keys() else "No",
                 inline=True,
             )
 
@@ -370,7 +377,7 @@ class Message:
                     "sample" not in data["players"]
                     or type(pipeline) is dict,  # players
                     total_servers <= 1,  # sort
-                    True,  # join
+                    not data["hasForgeData"],  # mods
                 )
                 if not fast
                 else self.buttons(

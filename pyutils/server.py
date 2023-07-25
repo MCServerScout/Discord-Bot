@@ -139,6 +139,20 @@ class Server:
                     player["lastSeen"] = int(
                         datetime.datetime.utcnow().timestamp())
 
+            if "forgeData" in status:
+                mod_channels = status["forgeData"]["channels"]
+                mod_ids = [i["modId"] for i in status["forgeData"]["mods"]]
+                del status["forgeData"]
+                mods = []
+                for mod in mod_channels:
+                    name = " (".join(mod["res"].split(":")) + ")"
+                    version = mod["version"]
+                    req = mod["required"]
+                    _id = mod_ids[mod_channels.index(mod)]
+
+                    mods.append({"name": name, "version": version, "required": req, "id": _id})
+                status["mods"] = mods
+
             if db_val is not None:
                 # append the dbVal sample to the status sample
                 if "sample" in db_val["players"] and "sample" in status["players"]:
@@ -222,7 +236,6 @@ class Server:
                 data = response.read(length)
 
                 data = json.loads(data.decode("utf8"))
-                self.logger.debug(json.dumps(data, indent=4))
                 return data
         except TimeoutError:
             self.logger.print("Connection error (timeout)")
