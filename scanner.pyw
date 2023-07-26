@@ -75,4 +75,4 @@ logger.print("IP list created:", len(ips))
 if __name__ == "__main__":
     scanner = Scanner(logger, max_thread_count=max_threads, max_ping_rate=max_pps, serverLib=serverLib)
     # ips = ["0.0.0.0/1"]
-    scanner.start(ips)
+    scanner.start(ip_ranges=ips)
