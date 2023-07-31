@@ -9,9 +9,6 @@ It is a work in progress, and I will be adding more features as time goes on.
 ## TODO
 
 - [ ] Make it work well
-- [ ] Make streamers only get servers with a player sample
-- [ ] Make streamers more consistent
-- [ ] Auto merge dev-builds into master every monday
 
 ## Commands
 
@@ -36,6 +33,13 @@ This command gives stats about the database
 `/streamers`
 
 This command will show you a list of all the streamers that are currently streaming on a server in the database.
+
+### Scanner
+
+`/scan <file> <dilimiter>`
+
+This command will take a file of ip ranges (10.0.0.0/32, 127.0.0.0/24, ...) separated by a delimiter (`,` ` ` `;`) and
+scan them for servers.
 
 ### Ping
 

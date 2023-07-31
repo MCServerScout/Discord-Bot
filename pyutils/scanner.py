@@ -20,7 +20,10 @@ class Scanner:
     def stop(self):
         self.STOP = True
 
-    def start(self, ip_ranges):
+    def start(self, *, ip_ranges=None):
+        if not ip_ranges:
+            self.logger.error("No ip ranges provided")
+            return
         threading.Thread(target=self.test_starter, args=(self.logger,)).start()
         self.scan_starter(ip_ranges)
 

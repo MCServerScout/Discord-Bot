@@ -34,11 +34,11 @@ class Server:
             return self._type
 
     def __init__(
-        self,
-        db: "Database",
-        logger: "Logger",
-        text: "Text",
-        ipinfo_token: str,
+            self,
+            db: "Database",
+            logger: "Logger",
+            text: "Text",
+            ipinfo_token: str,
     ):
         self.db = db
         self.logger = logger
@@ -46,10 +46,10 @@ class Server:
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
     def update(
-        self,
-        host: str,
-        fast: bool = False,
-        port: int = 25565,
+            self,
+            host: str,
+            fast: bool = False,
+            port: int = 25565,
     ) -> Optional[Mapping[str, Any]]:
         """
         Update a server and return a doc, returns either, None or Mapping[str, Any]
@@ -94,9 +94,9 @@ class Server:
 
             # if the server is in the db, then get the db doc
             if (
-                self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]})
-                is not None
+                    self.db.col.find_one(
+                        {"ip": status["ip"], "port": status["port"]})
+                    is not None
             ):
                 db_val = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
@@ -117,6 +117,7 @@ class Server:
                 return status
             else:
                 status.update(status2)
+                self.logger.info(f"Got status for {host}: {status}")
 
             server_type = (
                 self.join(ip=host, port=port,
@@ -138,13 +139,27 @@ class Server:
                     player["lastSeen"] = int(
                         datetime.datetime.utcnow().timestamp())
 
+            if "forgeData" in status:
+                mod_channels = status["forgeData"]["channels"]
+                mod_ids = [i["modId"] for i in status["forgeData"]["mods"]]
+                del status["forgeData"]
+                mods = []
+                for mod in mod_channels:
+                    name = " (".join(mod["res"].split(":")) + ")"
+                    version = mod["version"]
+                    req = mod["required"]
+                    _id = mod_ids[mod_channels.index(mod)]
+
+                    mods.append({"name": name, "version": version, "required": req, "id": _id})
+                status["mods"] = mods
+
             if db_val is not None:
                 # append the dbVal sample to the status sample
                 if "sample" in db_val["players"] and "sample" in status["players"]:
                     for player in db_val["players"]["sample"]:
                         if player["name"] not in str(status["players"]["sample"]):
                             player["lastSeen"] = int(0)
-                            status["players"]["sample"].append(player)
+                            list(status["players"]["sample"]).append(player)
             else:
                 self.logger.warning(
                     f"Failed to get dbVal for {host}, making new entry")
@@ -163,10 +178,10 @@ class Server:
                 return None
 
     def status(
-        self,
-        ip: str,
-        port: int = 25565,
-        version: int = 47,
+            self,
+            ip: str,
+            port: int = 25565,
+            version: int = 47,
     ) -> Optional[dict]:
         """Returns a status response dict
 
@@ -237,11 +252,11 @@ class Server:
             return None
 
     def join(
-        self,
-        ip: str,
-        port: int,
-        version: int = 47,
-        player_username: str = "Pilot1783",
+            self,
+            ip: str,
+            port: int,
+            version: int = 47,
+            player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
             connection = TCPSocketConnection((ip, port))
@@ -361,10 +376,11 @@ class Server:
         Args:
             data (dict): The data to update the database with
         """
-        if "favicon" in data:
-            del data["favicon"]
+        data2 = data.copy()
+        if "favicon" in data2:
+            del data2["favicon"]
 
-        threading.Thread(target=self._update_db, args=(data,)).start()
+        threading.Thread(target=self._update_db, args=(data2,)).start()
 
     def _update_db(self, data: dict):
         """Updates the database with the given data

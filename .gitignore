@@ -12,3 +12,4 @@ scanner.ipynb
 /node_modules/
 /package-lock.json
 sync.py
+/botHandler.log
