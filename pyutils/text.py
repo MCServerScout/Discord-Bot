@@ -381,7 +381,7 @@ class Text:
         return out
 
     @staticmethod
-    def percent_bar(iteration, total, prefix='', suffix='', length=15, fill='█'):
+    def percent_bar(iteration, total, prefix="", suffix="", length=15, fill="█"):
         """
         Call in a loop to create terminal progress bar
         @params:
@@ -395,7 +395,9 @@ class Text:
             printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
         """
         decimals = 2
-        percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+        percent = ("{0:." + str(decimals) + "f}").format(
+            100 * (iteration / float(total))
+        )
         filledLength = int(length * iteration // total)
-        bar = fill * filledLength + '-' * (length - filledLength)
-        return f'\r{prefix} |{bar}| {percent}% {suffix}'
+        bar = fill * filledLength + "-" * (length - filledLength)
+        return f"\r{prefix} |{bar}| {percent}% {suffix}"
