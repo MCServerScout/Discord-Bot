@@ -17,12 +17,12 @@ from .twitch import Twitch
 
 class Message:
     def __init__(
-            self,
-            logger: "Logger",
-            db: "Database",
-            text: "Text",
-            server: "Server",
-            twitch: "Twitch",
+        self,
+        logger: "Logger",
+        db: "Database",
+        text: "Text",
+        server: "Server",
+        twitch: "Twitch",
     ):
         self.logger = logger
         self.db = db
@@ -120,10 +120,10 @@ class Message:
         return rows
 
     async def async_embed(
-            self,
-            pipeline: list | dict,
-            index: int,
-            fast=True,
+        self,
+        pipeline: list | dict,
+        index: int,
+        fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -267,7 +267,7 @@ class Message:
                 self.logger.debug("Adding default favicon")
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                        "assets/favicon.png", "wb"
+                    "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
@@ -318,7 +318,8 @@ class Message:
             embed.add_field(
                 name="Modded",
                 value="Yes"
-                if data["hasForgeData"] or "modpackData" in data.keys() else "No",
+                if data["hasForgeData"] or "modpackData" in data.keys()
+                else "No",
                 inline=True,
             )
 
@@ -396,10 +397,10 @@ class Message:
             return None
 
     def standard_embed(
-            self,
-            title: str,
-            description: str,
-            color: int,
+        self,
+        title: str,
+        description: str,
+        color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 
@@ -434,10 +435,10 @@ class Message:
             )
 
     async def async_load_server(
-            self,
-            index: int,
-            pipeline: dict | list,
-            msg: interactions.Message,
+        self,
+        index: int,
+        pipeline: dict | list,
+        msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)
