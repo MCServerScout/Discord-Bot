@@ -17,12 +17,12 @@ from .twitch import Twitch
 
 class Message:
     def __init__(
-        self,
-        logger: "Logger",
-        db: "Database",
-        text: "Text",
-        server: "Server",
-        twitch: "Twitch",
+            self,
+            logger: "Logger",
+            db: "Database",
+            text: "Text",
+            server: "Server",
+            twitch: "Twitch",
     ):
         self.logger = logger
         self.db = db
@@ -52,16 +52,8 @@ class Message:
                 interactions.Button(): Mods
             ]
         """
-        if len(args) != 7:
-            disabled = [
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-                True,
-            ]
+        if len(args) != 8:
+            disabled = list([True] * 8)
         else:
             disabled = list(args)
 
@@ -114,16 +106,22 @@ class Message:
                     custom_id="mods",
                     disabled=disabled[6],
                 ),
+                interactions.Button(
+                    style=interactions.ButtonStyle.DANGER,
+                    label="Join",
+                    custom_id="join",
+                    disabled=disabled[7],
+                ),
             ),
         ]
 
         return rows
 
     async def async_embed(
-        self,
-        pipeline: list | dict,
-        index: int,
-        fast=True,
+            self,
+            pipeline: list | dict,
+            index: int,
+            fast=True,
     ) -> Optional[dict]:
         """Return an embed
 
@@ -267,7 +265,7 @@ class Message:
                 self.logger.debug("Adding default favicon")
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
                 with open("assets/DefFavicon.png", "rb") as f, open(
-                    "assets/favicon.png", "wb"
+                        "assets/favicon.png", "wb"
                 ) as f2:
                     f2.write(f.read())
 
@@ -379,17 +377,10 @@ class Message:
                     or type(pipeline) is dict,  # players
                     total_servers <= 1,  # sort
                     not data["hasForgeData"],  # mods
+                    data["lastSeen"] <= time.time() - 300,  # join
                 )
                 if not fast
-                else self.buttons(
-                    True,
-                    True,
-                    True,
-                    True,
-                    True,
-                    True,
-                    True,
-                ),
+                else self.buttons(),
             }
         except Exception as e:
             self.logger.error(f"{e}, IP: {data['ip']}")
@@ -397,10 +388,10 @@ class Message:
             return None
 
     def standard_embed(
-        self,
-        title: str,
-        description: str,
-        color: int,
+            self,
+            title: str,
+            description: str,
+            color: int,
     ) -> interactions.Embed:
         """Return a standard embed
 
@@ -435,10 +426,10 @@ class Message:
             )
 
     async def async_load_server(
-        self,
-        index: int,
-        pipeline: dict | list,
-        msg: interactions.Message,
+            self,
+            index: int,
+            pipeline: dict | list,
+            msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
         stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)

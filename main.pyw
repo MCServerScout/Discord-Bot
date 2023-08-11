@@ -5,6 +5,7 @@
 
 import asyncio
 import datetime
+import json
 import os
 import re
 import sys
@@ -23,8 +24,9 @@ from pymongo.errors import ServerSelectionTimeoutError
 import pyutils
 
 DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, \
-    col_name, client_id, client_secret, IP_INFO_TOKEN, cstats \
-    = ["..." for _ in range(9)]
+    col_name, client_id, client_secret, IP_INFO_TOKEN, \
+    cstats, azure_client_id, azure_redirect_uri \
+    = ["..." for _ in range(11)]
 
 DEBUG = False
 try:
@@ -74,6 +76,7 @@ messageLib = utils.message
 twitchLib = utils.twitch
 textLib = utils.text
 serverLib = utils.server
+mcLib = utils.mc
 
 bot = interactions.Client(
     token=DISCORD_TOKEN,

@@ -50,7 +50,7 @@ class EmailFileHandler(logging.FileHandler):
                 or "Added " in record.getMessage()
                 or "Sending data to websocket: {" in record.getMessage()
                 or "event.ctx.responses" in record.getMessage()
-                or re.match(r"^/(POST|PATCH)::https://discord.com/api/v\d{1,2}/\S+\s[1-5][0-9]{2}$/gm",
+                or re.match(r"(POST|PATCH)::https://discord.com/api/v\d{1,2}/\S+\s[1-5][0-9]{2}",
                             record.getMessage()) is not None
         ):
             return
