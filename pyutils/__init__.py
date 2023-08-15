@@ -3,6 +3,7 @@ import pymongo
 from .database import Database
 from .logger import Logger
 from .message import Message
+from .minecraft import Minecraft
 from .player import Player
 from .server import Server
 from .text import Text
@@ -13,15 +14,15 @@ class Utils:
     """A class to hold all the pyutils classes"""
 
     def __init__(
-        self,
-        col: pymongo.collection.Collection,
-        discord_webhook: str,
-        log: Logger = None,
-        debug: bool = True,
-        level: int = 20,
-        client_id: str = None,
-        client_secret: str = None,
-        info_token: str = None,
+            self,
+            col: pymongo.collection.Collection,
+            discord_webhook: str,
+            log: Logger = None,
+            debug: bool = True,
+            level: int = 20,
+            client_id: str = None,
+            client_secret: str = None,
+            info_token: str = None,
     ):
         """Initializes the pyutils class
 
@@ -65,4 +66,10 @@ class Utils:
             text=self.text,
             server=self.server,
             twitch=self.twitch,
+        )
+
+        self.mc = Minecraft(
+            logger=self.logger,
+            player=self.player,
+            server=self.server,
         )

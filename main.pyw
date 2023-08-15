@@ -5,6 +5,7 @@
 
 import asyncio
 import datetime
+import json
 import os
 import re
 import sys
@@ -23,8 +24,9 @@ from pymongo.errors import ServerSelectionTimeoutError
 import pyutils
 
 DISCORD_WEBHOOK, DISCORD_TOKEN, MONGO_URL, db_name, \
-    col_name, client_id, client_secret, IP_INFO_TOKEN, cstats \
-    = ["..." for _ in range(9)]
+    col_name, client_id, client_secret, IP_INFO_TOKEN, \
+    cstats, azure_client_id, azure_redirect_uri \
+    = ["..." for _ in range(11)]
 
 DEBUG = False
 try:
@@ -74,6 +76,7 @@ messageLib = utils.message
 twitchLib = utils.twitch
 textLib = utils.text
 serverLib = utils.server
+mcLib = utils.mc
 
 bot = interactions.Client(
     token=DISCORD_TOKEN,
@@ -1086,6 +1089,248 @@ async def mods(ctx: interactions.ComponentContext):
                 color=RED,
             ),
             ephemeral=True,
+        )
+
+
+# button to try and join the server
+@interactions.component_callback("join")
+async def join(ctx: interactions.ComponentContext):
+    # get the user tag
+    user = ctx.message.interaction._user_id
+    user = ctx.bot.get_user(user)
+    logger.print(f"user: {user}")
+
+    # 504758496370360330
+    if user != "@pilot1782":
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Error",
+                description="You are not allowed to use this feature, it's in alpha rn",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+    try:
+        # step one get the server info
+        org = ctx.message
+        org_file = org.attachments[0]
+        with open("pipeline.ason", "w") as f:
+            async with aiohttp.ClientSession() as session, session.get(org_file.url) as resp:
+                pipeline = await resp.text()
+            f.write(pipeline)
+
+        index, pipeline = await get_pipe(org)
+
+        logger.print(f"join called")
+
+        await ctx.defer(ephemeral=True)
+
+        # get the pipeline
+        logger.print(f"pipeline: {pipeline}")
+
+        host = databaseLib.get_doc_at_index(pipeline, index)
+
+        # step two is the server online
+        host = serverLib.update(host=host["ip"], fast=False, port=host["port"])
+
+        if host["lastSeen"] < time.time() - 60:
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Error",
+                    description="Server is offline",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        # step three it's joinin' time
+        # get the activation code url
+        url = mcLib.get_activation_code_url(clientID=azure_client_id, redirect_uri=azure_redirect_uri)
+
+        # send the url
+        embed = messageLib.standard_embed(
+            title="Sign in to Microsoft to join",
+            description=f"Open [this link]({url}) to sign in to Microsoft and join the server, then click the `Submit` button below and paste the provided code",
+            color=BLUE,
+        )
+        embed.set_footer(text='org_id ' + str(org.id))
+        await ctx.send(
+            embed=embed,
+            components=[interactions.Button(label="Submit", custom_id="submit", style=interactions.ButtonStyle.DANGER)],
+            ephemeral=True,
+        )
+    except Exception as err:
+        if "403|Forbidden" in str(err):
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="An error occurred",
+                    description="Wrong channel for this bot",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
+
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Error",
+                description="An error occurred while trying to get the players",
+                color=RED,
+            ),
+            ephemeral=True,
+        )
+
+
+# button to try and join the server for realziez
+@interactions.component_callback("submit")
+async def submit(ctx: interactions.ComponentContext):
+    try:
+        org = ctx.message
+        org_org_id = org.embeds[0].footer.text.split(' ')[1]
+        org = ctx.channel.get_message(org_org_id)
+        logger.print(f"org: {org}")
+
+        logger.print(f"submit called")
+        # get the files attached to the message
+        index, pipeline = await get_pipe(org)
+
+        # create the text input
+        text_input = interactions.ShortText(
+            label="Activation Code",
+            placeholder="A.A0_AA0.0.aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            min_length=40,
+            max_length=55,
+            custom_id="code",
+            required=True,
+        )
+
+        # create a modal
+        modal = interactions.Modal(
+            text_input,
+            title="Activation Code",
+        )
+
+        # send the modal
+        await ctx.send_modal(modal)
+
+        # wait for the modal to be submitted
+        try:
+            # wait for the response
+            modal_ctx = await ctx.bot.wait_for_modal(modal=modal, timeout=60)
+
+            # get the response
+            code = modal_ctx.responses["code"]
+        except asyncio.TimeoutError:
+            await ctx.edit_origin(
+                embed=messageLib.standard_embed(
+                    title="Error",
+                    description="Timed out",
+                    color=RED,
+                ),
+                components=[],
+            )
+            return
+        else:
+            await modal_ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Success",
+                    description="Code received",
+                    color=GREEN,
+                ),
+                ephemeral=True,
+            )
+
+        # try and get the minecraft token
+        try:
+            res = await mcLib.get_minecraft_token(clientID=azure_client_id,
+                                                  redirect_uri=azure_redirect_uri,
+                                                  act_code=code, )
+
+            if res["type"] == "error":
+                logger.error(res["error"])
+                await ctx.send(
+                    embed=messageLib.standard_embed(
+                        title="Error",
+                        description="An error occurred while trying to get the token",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+            else:
+                uuid = res["uuid"]
+                name = res["name"]
+                token = res["minecraft_token"]
+
+            # try and delete the original message
+            try:
+                await org.delete(context=ctx)
+            except Exception:
+                pass
+
+            mod_msg = await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Joining...",
+                    description=f"Joining the server with the player:\nName: {name}\nUUID: {uuid}",
+                    color=BLUE,
+                ),
+                ephemeral=True,
+            )
+        except Exception as err:
+            await ctx.send(
+                embed=messageLib.standard_embed(
+                    title="Error",
+                    description="An error occurred while trying to get the token",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        # try and join the server
+        host = databaseLib.get_doc_at_index(pipeline, index)
+        res = mcLib.join(
+            ip=host["ip"],
+            port=host["port"],
+            player_username=name,
+            version=host["version"]["protocol"],
+            mine_token=token,
+        )
+
+        # try and delete the original message
+        try:
+            await mod_msg.delete(context=ctx)
+        except Exception:
+            pass
+
+        # send the res as a json file after removing the favicon if it's there
+        if "favicon" in res:
+            del res["favicon"]
+
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Joining...",
+                description=f"Joining the server with the player:\nName: {name}\nUUID: {uuid}",
+                color=BLUE,
+            ),
+            file=interactions.File(json.dumps(res, indent=4), "join.json"),
+            ephemeral=True,
+        )
+    except Exception as err:
+        logger.error(err)
+        logger.print(f"Full traceback: {traceback.format_exc()}")
+
+        await ctx.send(
+            embed=messageLib.standard_embed(
+                title="Error",
+                description="An error occurred while trying to join the server",
+                color=RED,
+            ),
+            components=[],
         )
 
 
