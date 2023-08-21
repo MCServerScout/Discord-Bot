@@ -22,12 +22,17 @@ def print_and_log(*args, **kwargs):
     print(*args, **kwargs)
 
 
-zip_url = (
-    "https://github.com/MCServerScout/Discord-Bot/archive/refs/heads/master.zip"
-)
-# zip_url = (
-#     "https://github.com/MCServerScout/Discord-Bot/archive/refs/heads/dev-builds.zip"
-# )
+# dev=1, master=0
+dev = 1
+
+if not dev:
+    zip_url = (
+        "https://github.com/MCServerScout/Discord-Bot/archive/refs/heads/master.zip"
+    )
+else:
+    zip_url = (
+        "https://github.com/MCServerScout/Discord-Bot/archive/refs/heads/dev-builds.zip"
+    )
 
 run_file = "main.pyw"
 
@@ -68,13 +73,13 @@ def install_requirements():
             "pip",
             "install",
             "-Ur",
-            "Discord-Bot-main/Discord-Bot-master/requirements.txt",
-            # "Discord-Bot-main/Discord-Bot-dev-builds/requirements.txt",
+            "Discord-Bot-main/Discord-Bot-master/requirements.txt" if not dev
+            else "Discord-Bot-main/Discord-Bot-dev-builds/requirements.txt",
         ]
     )
     subprocess.call(
-        ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-master/privVars.py"]
-        # ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-dev-builds/privVars.py"]
+        ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-master/privVars.py"] if not dev
+        else ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-dev-builds/privVars.py"]
     )
 
 
@@ -92,8 +97,8 @@ def run():
         else:
             time_out -= script_duration
         exit_id = subprocess.call(
-            ["python3", "Discord-Bot-main/Discord-Bot-master/" + run_file],
-            # ["python3", "Discord-Bot-main/Discord-Bot-dev-builds/" + run_file],
+            ["python3", "Discord-Bot-main/Discord-Bot-master/" + run_file] if not dev
+            else ["python3", "Discord-Bot-main/Discord-Bot-dev-builds/" + run_file],
             timeout=time_out,
         )
     except subprocess.TimeoutExpired:

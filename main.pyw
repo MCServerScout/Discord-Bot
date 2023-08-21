@@ -282,8 +282,11 @@ async def find(
         if max_players is not None:
             pipeline[0]["$match"]["$and"].append({"players.max": max_players})
         if online_players is not None:
-            if not str(online_players).isdigit() and not online_players.startswith(
-                    ">") and not online_players.startswith("<") and not online_players.startswith("="):
+            if not online_players.isdigit() \
+                    and not online_players.startswith(">") \
+                    and not online_players.startswith("<") \
+                    and not online_players.startswith("=") \
+                    and "-" not in online_players:
                 await msg.edit(
                     embed=messageLib.standard_embed(
                         title="Error",
@@ -300,7 +303,10 @@ async def find(
                 online_players = {"$lt": int(online_players[1:])}
             elif online_players.startswith("="):
                 online_players = int(online_players[1:])
-            elif str(online_players).isdigit():
+            elif len(online_players.split("-")) == 2:
+                online_players = {"$gte": int(online_players.split("-")[0]),
+                                  "$lte": int(online_players.split("-")[1])}
+            elif online_players.isdigit():
                 online_players = int(online_players)
             else:
                 await msg.edit(
@@ -352,8 +358,11 @@ async def find(
             pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
         if logged_players is not None:
             pipeline[0]["$match"]["$and"].append({"players.sample": {"$exists": True}})
-            if not str(logged_players).isdigit() and not logged_players.startswith(
-                    ">") and not logged_players.startswith("<") and not logged_players.startswith("="):
+            if not logged_players.isdigit() \
+                    and not logged_players.startswith(">") \
+                    and not logged_players.startswith("<") \
+                    and not logged_players.startswith("=") \
+                    and "-" not in logged_players:
                 await msg.edit(
                     embed=messageLib.standard_embed(
                         title="Error",
@@ -375,6 +384,11 @@ async def find(
                 pipeline[0]["$match"]["$and"].append(
                     {"players.sample": {"$size": int(logged_players[1:])}}
                 )
+            elif len(logged_players.split("-")) == 2:
+                pipeline[0]["$match"]["$and"].extend([
+                    {f"players.sample.{logged_players.split('-')[0]}": {"$exists": True}},
+                    {f"players.sample.{logged_players.split('-')[1]}": {"$exists": True}},
+                ])
             elif logged_players.isdigit():
                 pipeline[0]["$match"]["$and"].append(
                     {"players.sample.length": int(logged_players)}
@@ -1096,20 +1110,22 @@ async def mods(ctx: interactions.ComponentContext):
 @interactions.component_callback("join")
 async def join(ctx: interactions.ComponentContext):
     # get the user tag
-    user = ctx.message.interaction._user_id
-    user = ctx.bot.get_user(user)
-    logger.print(f"user: {user}")
+    user_id = ctx.author.id
+    user = await ctx.bot.fetch_user(user_id)
+
+    logger.print(f"join called by {[user]}.")
 
     # 504758496370360330
-    if user != "@pilot1782":
+    if user.id != 504758496370360330:
         await ctx.send(
             embed=messageLib.standard_embed(
                 title="Error",
-                description="You are not allowed to use this feature, it's in alpha rn",
+                description="You are not allowed to use this feature, as it is in alpha testing.",
                 color=RED,
             ),
             ephemeral=True,
         )
+        return
     try:
         # step one get the server info
         org = ctx.message
@@ -1144,7 +1160,7 @@ async def join(ctx: interactions.ComponentContext):
             )
             return
 
-        # step three it's joinin' time
+        # step three it's joining time
         # get the activation code url
         url = mcLib.get_activation_code_url(clientID=azure_client_id, redirect_uri=azure_redirect_uri)
 
@@ -1281,6 +1297,7 @@ async def submit(ctx: interactions.ComponentContext):
                 ephemeral=True,
             )
         except Exception as err:
+            logger.error(err)
             await ctx.send(
                 embed=messageLib.standard_embed(
                     title="Error",
@@ -1808,7 +1825,8 @@ async def stats(ctx: interactions.SlashContext):
         )
         msg = await msg.edit(embed=main_embed, )
 
-        # get the total player count, ignoring servers with over 150k players and less than 1 player, and the version name is not Unknown, or UNKNOWN or null
+        # get the total player count, ignoring servers with over 150k players and less than one player,
+        # and the version name is not Unknown, or UNKNOWN or null
         pipeline = [
             {"$match": {"$and": [{"players.online": {"$lt": 150000}}, {"players.online": {"$gt": 0}},
                                  {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}}]}},
