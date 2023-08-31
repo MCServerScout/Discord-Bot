@@ -129,6 +129,8 @@ kwargs = {
     "cstats": cstats,
     "azure_client_id": azure_client_id,
     "azure_redirect_uri": azure_redirect_uri,
+    "client_id": client_id,
+    "client_secret": client_secret,
 }
 for ext in exts:
     try:

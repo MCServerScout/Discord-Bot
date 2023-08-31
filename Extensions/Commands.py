@@ -36,6 +36,8 @@ class Commands(Extension):
         cstats,
         azure_client_id,
         azure_redirect_uri,
+        client_id,
+        client_secret,
         **kwargs,
     ):
         super().__init__()
@@ -52,6 +54,8 @@ class Commands(Extension):
         self.cstats = cstats
         self.azure_client_id = azure_client_id
         self.azure_redirect_uri = azure_redirect_uri
+        self.client_id = client_id
+        self.client_secret = client_secret
 
     @slash_command(
         name="find",
@@ -610,10 +614,8 @@ class Commands(Extension):
                 ),
             )
 
-            global client_id, client_secret
-
             # test if 'client_id' and 'client_secret' are not None
-            if client_id == "" or client_secret == "":
+            if self.client_id == "" or self.client_secret == "":
                 # spawn a modal asking for client id and secret
                 client_id = ShortText(
                     label="Client ID",
@@ -665,8 +667,8 @@ class Commands(Extension):
                     ephemeral=True,
                 )
 
-            if (client_id == "" or client_secret == "") or (
-                client_id is None or client_secret is None
+            if (self.client_id == "" or self.client_secret == "") or (
+                self.client_id is None or self.client_secret is None
             ):
                 await ctx.send(
                     embed=self.messageLib.standard_embed(
@@ -679,8 +681,8 @@ class Commands(Extension):
                 return
 
             streams = await self.twitchLib.async_get_streamers(
-                client_id=client_id,
-                client_secret=client_secret,
+                client_id=self.client_id,
+                client_secret=self.client_secret,
                 lang=lang,
             )
 
