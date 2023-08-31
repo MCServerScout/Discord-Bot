@@ -7,6 +7,7 @@ from typing import List, Optional, Tuple
 
 import aiohttp
 import interactions
+from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
 
 from Extensions.Colors import *
@@ -133,12 +134,12 @@ class Message:
             }
         """
 
-        data = {"ip": "n/a"}
+        data = {"ip": "n/a", "description": {"text": "n/a"}}
         try:
             if type(pipeline) is dict:
                 self.logger.print("Server data provided")
                 # server is not in db, and we got the server data
-                data = pipeline
+                data = self.text.update_dict(data, pipeline)
                 pipeline = {
                     "your mother": "large",
                 }
@@ -171,7 +172,9 @@ class Message:
                 if index >= total_servers:
                     index = 0
 
-                data = self.db.get_doc_at_index(pipeline, index)
+                data = self.text.update_dict(
+                    data, self.db.get_doc_at_index(pipeline, index)
+                )
 
                 if data is None:
                     self.logger.print("No server found in db")
@@ -244,7 +247,10 @@ class Message:
             else:
                 # isonline is yellow
                 is_online = "🟡"
-                data["description"] = self.text.motd_parse(data["description"])
+                if "description" in data.keys():
+                    data["description"] = self.text.motd_parse(data["description"])
+                else:
+                    data["description"] = {"text": "n/a"}
 
             # get the server icon
             if is_online == "🟢" and "favicon" in data.keys():
@@ -284,7 +290,7 @@ class Message:
             )
             embed.timestamp = self.text.time_now()
             with open("pipeline.ason", "w") as f:
-                f.write(self.text.convert_json_to_string(pipeline))
+                f.write(json_util.dumps(pipeline))
 
             # add the version
             embed.add_field(
@@ -378,6 +384,10 @@ class Message:
                 if not fast
                 else self.buttons(),
             }
+        except KeyError as e:
+            self.logger.error(f"KeyError: {e}, IP: {data['ip']}, data: {data}")
+            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            return None
         except Exception as e:
             self.logger.error(f"{e}, IP: {data['ip']}")
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
@@ -494,9 +504,7 @@ class Message:
                     pipeline = await resp.text()
 
                 return index, (
-                    self.text.convert_string_to_json(pipeline)
-                    if pipeline is not None
-                    else None
+                    json_util.loads(pipeline) if pipeline is not None else None
                 )
 
         return None

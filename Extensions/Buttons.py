@@ -201,42 +201,32 @@ class Buttons(Extension):
                 )
                 return
 
-            # remove players that have duplicate names
-            for player in player_list:
-                if player_list.count(player) > 1:
-                    player_list.remove(player)
-
             self.logger.print(f"Found {len(player_list)} players")
 
-            # create a list of player lists that are 25 players long
-            player_list_list = [
-                player_list[i : i + 25] for i in range(0, len(player_list), 25)
+            player_groups = [
+                list(player_list[i : i + 10]) for i in range(0, len(player_list), 10)
             ]
-            pages = []
 
-            for player_list in player_list_list:
-                embed = self.messageLib.standard_embed(
-                    title=f"Players on {host}",
-                    description=f"Found {len(player_list)} players",
+            players = []
+            for player_group in player_groups:
+                mbd = self.messageLib.standard_embed(
+                    title="Players",
+                    description=f"Players on page: {len(player_group)}",
                     color=BLUE,
                 )
-                for player in player_list:
-                    online = "🟢" if player["online"] else "🔴"
-                    if "lastSeen" in str(player):
-                        time_ago = self.textLib.time_ago(
-                            datetime.datetime.utcfromtimestamp(player["lastSeen"])
-                        )
-                    else:
-                        time_ago = "Unknown"
-                    embed.add_field(
-                        name=f'{online} `{player["name"]}`',
-                        value=f'`{player["id"]}` | Last Online: {time_ago}',
-                        inline=True,
+                for player in player_group:
+                    title = player.name
+                    if player.lastSeen != 0:
+                        title += f" ({datetime.datetime.fromtimestamp(player.lastSeen).strftime('%Y-%m-%d %H:%M')})"
+                    mbd.add_field(
+                        name=title,
+                        value=f"UUID: `{player.id}`",
+                        inline=False,
                     )
+                players.append(mbd)
+            self.logger.debug("Total pages: " + str(len(players)))
 
-                pages.append(embed)
-
-            pag = Paginator.create_from_embeds(ctx.bot, *pages, timeout=60)
+            pag = Paginator.create_from_embeds(ctx.bot, *players, timeout=60)
             await pag.send(ctx)
         except Exception as err:
             if "403|Forbidden" in str(err):

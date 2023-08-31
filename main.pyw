@@ -82,6 +82,7 @@ utils = pyutils.Utils(
     client_id=client_id,
     client_secret=client_secret,
     info_token=IP_INFO_TOKEN,
+    ssdk = (sentry_sdk,)
 )
 logger = utils.logger
 databaseLib = utils.database
@@ -162,7 +163,11 @@ if __name__ == "__main__":
     """
 
     try:
-        bot.start()
+        if SENTRY_URI:
+            with sentry_sdk.start_transaction(op="bot loop"):
+                bot.start()
+        else:
+            bot.start()
     except KeyboardInterrupt:
         logger.print("Keyboard interrupt, stopping bot")
         asyncio.run(bot.close())

@@ -1,4 +1,5 @@
 import pymongo
+import sentry_sdk
 
 from .database import Database
 from .logger import Logger
@@ -23,6 +24,8 @@ class Utils:
         client_id: str = None,
         client_secret: str = None,
         info_token: str = None,
+        sentry_dsn: str = None,
+        ssdk: "sentry_sdk" = None,
     ):
         """Initializes the pyutils class
 
@@ -37,7 +40,11 @@ class Utils:
         self.logLevel = level
         if log is None:
             self.logger = Logger(
-                debug=debug, level=self.logLevel, discord_webhook=discord_webhook
+                debug=debug,
+                level=self.logLevel,
+                discord_webhook=discord_webhook,
+                sentry_dsn=sentry_dsn,
+                ssdk=ssdk,
             )
         else:
             self.logger = log
@@ -58,8 +65,7 @@ class Utils:
             ipinfo_token=info_token,
         )
 
-        self.player = Player(logger=self.logger,
-                             server=self.server, db=self.database)
+        self.player = Player(logger=self.logger, server=self.server, db=self.database)
         self.message = Message(
             logger=self.logger,
             db=self.database,

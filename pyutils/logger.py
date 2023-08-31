@@ -5,6 +5,7 @@ import re
 import sys
 
 import aiohttp
+import sentry_sdk
 import unicodedata
 
 norm = sys.stdout
@@ -68,7 +69,12 @@ class EmailFileHandler(logging.FileHandler):
 
 class Logger:
     def __init__(
-        self, debug=False, level: int = logging.INFO, discord_webhook: str = None
+        self,
+        debug=False,
+        level: int = logging.INFO,
+        discord_webhook: str = None,
+        sentry_dsn: str = None,
+        ssdk: sentry_sdk = None,
     ):
         """Initializes the logger class
 
@@ -97,6 +103,18 @@ class Logger:
 
         if self.DEBUG:
             self.logging.info("Debugging enabled")
+
+        if sentry_dsn is not None and ssdk is None:
+            sentry_sdk.init(
+                dsn=sentry_dsn,
+                traces_sample_rate=1.0,
+                profiles_sample_rate=0.6,
+            )
+            self.sentry_sdk = sentry_sdk
+        elif ssdk is not None:
+            self.sentry_sdk = ssdk
+        else:
+            self.sentry_sdk = None
 
     @staticmethod
     def stack_trace(stack):

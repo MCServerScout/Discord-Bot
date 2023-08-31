@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 from typing import Optional
 
 import aiohttp
@@ -99,7 +98,7 @@ class Player:
         Returns:
             str: list of players
         """
-        data = self.server.update(host=ip, port=port)
+        data = self.server.update(host=ip, port=port, fast=True)
 
         if data is None:
             self.logger.print(f"Server {ip}:{port} not found in database")
@@ -117,16 +116,7 @@ class Player:
         for player in data["players"]["sample"]:
             if "lastSeen" not in player:
                 player["lastSeen"] = 0
-
-            # mark the player as online if they were in the server less than 2 minutes ago
-            if (
-                datetime.datetime.utcnow()
-                - datetime.datetime.fromtimestamp(player["lastSeen"])
-            ).total_seconds() < 120:
-                player["online"] = True
-            else:
-                player["online"] = False
-            players.append(player)
+            players.append(self.server.Player(**player))
 
         if len(players) == 0:
             return None

@@ -1,9 +1,7 @@
 import datetime
-import json
 import re
 
 import unicodedata
-from bson import ObjectId
 
 
 class Text:
@@ -341,46 +339,6 @@ class Text:
         }
 
     @staticmethod
-    def convert_string_to_json(string):
-        # prefixes
-        string = (
-            string.replace("'", '"')
-            .replace("ObjectId(", '{"$oid": ')
-            .replace(")", "}")
-            .replace("True", "true")
-            .replace("False", "false")
-            .replace("None", "null")
-        )
-
-        def convert_to_objectid(data):
-            if isinstance(data, dict):
-                for key, value in data.items():
-                    if key == "$oid":
-                        return ObjectId(value)
-                    else:
-                        data[key] = convert_to_objectid(value)
-            elif isinstance(data, list):
-                for i in range(len(data)):
-                    data[i] = convert_to_objectid(data[i])
-            return data
-
-        json_data = json.loads(string)
-        return convert_to_objectid(json_data)
-
-    @staticmethod
-    def convert_json_to_string(json_data):
-        out = (
-            str(json_data)
-            .replace("'", '"')
-            .replace("ObjectId(", '{"$oid": ')
-            .replace(")", "}")
-            .replace("True", "true")
-            .replace("False", "false")
-            .replace("None", "null")
-        )
-        return out
-
-    @staticmethod
     def percent_bar(iteration, total, prefix="", suffix="", length=15, fill="█"):
         """
         Call in a loop to create terminal progress bar
@@ -401,3 +359,30 @@ class Text:
         filledLength = int(length * iteration // total)
         bar = fill * filledLength + "-" * (length - filledLength)
         return f"\r{prefix} |{bar}| {percent}% {suffix}"
+
+    def update_dict(self, dict1, dict2):
+        """
+        dict2 -> dict1
+        Update dict1 with dict2, recursively.
+        """
+        dic3 = dict1.copy()
+        for key, value in dict2.items():
+            if key in dict1:
+                if type(value) is dict and type(dict1[key]) is dict:
+                    dic3[key] = self.update_dict(dict1[key], value)
+                elif (
+                    hasattr(value, "__iter__")
+                    and type(value) is not str
+                    and type(dic3[key]) is not str
+                ):
+                    if dic3[key] == value:
+                        continue
+                    dic3[key].extend(value)
+                    # remove duplicates
+                    dic3[key] = list(set(dic3[key]))
+                else:
+                    dic3[key] = value
+            else:
+                dic3[key] = value
+    
+        return dic3
