@@ -41,21 +41,27 @@ class StreamToLogger:
         return text1 + "\n" + text2
 
 
+def filter_msg(msg: str) -> str | None:
+    if (
+        "To sign in, use a web browser to open the page" in msg
+        or "email_modal" in msg
+        or "heartbeat" in msg.lower()
+        or "Sending data to websocket: {" in msg
+        or "event.ctx.responses" in msg
+        or re.match(
+            r"(POST|PATCH)::https://discord.com/api/v\d{1,2}/\S+\s[1-5][0-9]{2}",
+            msg,
+        )
+        is not None
+        or msg.startswith("[http_client.")
+    ):
+        return
+    return msg
+
+
 class EmailFileHandler(logging.FileHandler):
     def emit(self, record):
-        if (
-            "To sign in, use a web browser to open the page" in record.getMessage()
-            or "email_modal" in record.getMessage()
-            or "heartbeat" in record.getMessage().lower()
-            or "Added " in record.getMessage()
-            or "Sending data to websocket: {" in record.getMessage()
-            or "event.ctx.responses" in record.getMessage()
-            or re.match(
-                r"(POST|PATCH)::https://discord.com/api/v\d{1,2}/\S+\s[1-5][0-9]{2}",
-                record.getMessage(),
-            )
-            is not None
-        ):
+        if filter_msg(record.getMessage()) is None:
             return
         super().emit(record)
 
@@ -74,12 +80,11 @@ class Logger:
         self.webhook = discord_webhook
 
         logging.basicConfig(
-            level=level,
+            level=level if not self.DEBUG else logging.DEBUG,
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("log.log", mode="a",
-                                 encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
             ],
         )
 
@@ -89,6 +94,9 @@ class Logger:
         sys.stderr = self.out
 
         self.clear()
+
+        if self.DEBUG:
+            self.logging.info("Debugging enabled")
 
     @staticmethod
     def stack_trace(stack):
@@ -108,7 +116,6 @@ class Logger:
         message = " ".join([str(arg) for arg in message])
         message = f"[{self.stack_trace(inspect.stack())}] {message}"
         self.logging.error(message)
-        self.hook(message)
         self.print(message, log=False)
 
     def critical(self, *message):
@@ -119,7 +126,9 @@ class Logger:
         self.print(message, log=False)
 
     def debug(self, *args, **kwargs):
-        self.logging.debug(" ".join([str(arg) for arg in args]))
+        msg = " ".join([str(arg) for arg in args])
+        msg = f"[{self.stack_trace(inspect.stack())}] {msg}"
+        self.logging.debug(msg)
         if self.DEBUG:
             self.print(*args, **kwargs, log=False)
 
@@ -159,12 +168,14 @@ class Logger:
 
     def print(self, *args, log=True, **kwargs):
         msg = " ".join([str(arg) for arg in args])
-        msg = f"[{self.stack_trace(inspect.stack())}] {msg}"
+        stack_tr = self.stack_trace(inspect.stack())
+        if not stack_tr.lower().startswith("logger."):
+            msg = f"[{stack_tr}] {msg}"
         sys.stdout = norm  # output to console
         print(msg, **kwargs)
+        sys.stdout = self.out  # output to log.log
         if log:
-            sys.stdout = self.out  # output to log.log
-            self.info(msg)
+            self.logging.info(msg)
 
     def hook(self, message: str):
         try:
@@ -176,7 +187,8 @@ class Logger:
             loop.run_until_complete(self.async_hook(message))
 
     async def async_hook(self, message: str):
-        if self.webhook is not None and self.webhook != "":
+        message = filter_msg(message)
+        if self.webhook is not None and self.webhook != "" and message is not None:
             async with aiohttp.ClientSession() as session, session.post(
                 self.webhook,
                 json={

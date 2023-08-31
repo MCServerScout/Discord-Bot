@@ -31,17 +31,10 @@ class Database:
 
             new_pipeline.append({"$skip": index})
             new_pipeline.append({"$limit": 1})
-            new_pipeline.append({"$project": {"_id": 1}})
-            new_pipeline.append({"$limit": 1})
-            new_pipeline.append({"$addFields": {"doc": "$$ROOT"}})
-            new_pipeline.append({"$project": {"_id": 0, "doc": 1}})
 
-            result = self.col.aggregate(new_pipeline, allowDiskUse=True)
-            try:
-                return self.col.find_one(next(result)["doc"])
-            except StopIteration:
-                self.logger.error("Index out of range")
-                return None
+            result = self.col.aggregate(new_pipeline, allowDiskUse=True).try_next()
+            
+            return result
         except StopIteration:
             self.logger.error(traceback.format_exc())
             self.logger.error(f"Error getting document at index: {pipeline}")
@@ -118,7 +111,7 @@ class Database:
             if type(new_pipeline) is dict:
                 new_pipeline = [new_pipeline]
 
-            new_pipeline.append({"$count": "count"})
+            new_pipeline.append({"$group": {"_id": None, "count": {"$sum": 1}}})
 
             result = self.col.aggregate(new_pipeline, allowDiskUse=True)
             try:

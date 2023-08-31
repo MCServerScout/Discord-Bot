@@ -94,16 +94,14 @@ class Server:
 
             # if the server is in the db, then get the db doc
             if (
-                self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]})
+                self.db.col.find_one({"ip": status["ip"], "port": status["port"]})
                 is not None
             ):
                 db_val = self.db.col.find_one(
                     {"ip": status["ip"], "port": status["port"]}
                 )
                 status.update(db_val)
-                status["description"] = self.text.motd_parse(
-                    status["description"])
+                status["description"] = self.text.motd_parse(status["description"])
                 status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
             else:
                 db_val = None
@@ -120,8 +118,7 @@ class Server:
                 self.logger.info(f"Got status for {host}: {status}")
 
             server_type = (
-                self.join(ip=host, port=port,
-                          version=status["version"]["protocol"])
+                self.join(ip=host, port=port, version=status["version"]["protocol"])
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
@@ -136,8 +133,7 @@ class Server:
             status["description"] = self.text.motd_parse(status["description"])
             if "sample" in status["players"]:
                 for player in status["players"]["sample"]:
-                    player["lastSeen"] = int(
-                        datetime.datetime.utcnow().timestamp())
+                    player["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
 
             if "forgeData" in status:
                 mod_channels = status["forgeData"]["channels"]
@@ -151,21 +147,29 @@ class Server:
                     _id = mod_ids[mod_channels.index(mod)]
 
                     mods.append(
-                        {"name": name, "version": version,
-                            "required": req, "id": _id}
+                        {"name": name, "version": version, "required": req, "id": _id}
                     )
                 status["mods"] = mods
 
             if db_val is not None:
+                self.logger.debug("Updating status with database info")
                 # append the dbVal sample to the status sample
                 if "sample" in db_val["players"] and "sample" in status["players"]:
                     for player in db_val["players"]["sample"]:
                         if player["name"] not in str(status["players"]["sample"]):
-                            player["lastSeen"] = int(0)
+                            if "lastSeen" not in player:
+                                player["lastSeen"] = 0
                             list(status["players"]["sample"]).append(player)
+                elif "sample" in db_val["players"]:
+                    status["players"]["sample"] = []
+                    for player in db_val["players"]["sample"]:
+                        if "lastSeen" not in player:
+                            player["lastSeen"] = 0
+                        list(status["players"]["sample"]).append(player)
+                    if len(status["players"]["sample"]) == 0:
+                        del status["players"]["sample"]
             else:
-                self.logger.warning(
-                    f"Failed to get dbVal for {host}, making new entry")
+                self.logger.warning(f"Failed to get dbVal for {host}, making new entry")
             self.update_db(status)
 
             return status
@@ -224,15 +228,15 @@ class Server:
             try:
                 response = connection.read_buffer()
             except socket.error:
-                self.logger.error("Connection error")
+                self.logger.warning("Connection error")
                 return None
             res_id = response.read_varint()
 
             if res_id == -1:
-                self.logger.error("Connection error")
+                self.logger.warning("Connection error")
                 return None
             elif res_id != 0:
-                self.logger.error("Invalid packet ID received: " + str(res_id))
+                self.logger.warning("Invalid packet ID received: " + str(res_id))
                 return None
             elif res_id == 0:
                 length = response.read_varint()
@@ -241,16 +245,16 @@ class Server:
                 data = json.loads(data.decode("utf8"))
                 return data
         except TimeoutError:
-            self.logger.print("Connection error (timeout)")
+            self.logger.warning("Connection error (timeout)")
             return None
         except ConnectionRefusedError:
-            self.logger.print("Connection error (refused)")
+            self.logger.warning("Connection error (refused)")
             return None
         except socket.gaierror:
-            self.logger.print("Connection error (invalid host)")
+            self.logger.warning("Connection error (invalid host)")
             return None
         except Exception as err:
-            self.logger.warning(err)
+            self.logger.error(err)
             self.logger.print(f"{traceback.format_exc()}")
             return None
 
@@ -301,8 +305,7 @@ class Server:
             elif _id == 3:
                 self.logger.print("Setting compression")
                 compression_threshold = response.read_varint()
-                self.logger.print(
-                    f"Compression threshold: {compression_threshold}")
+                self.logger.print(f"Compression threshold: {compression_threshold}")
 
                 response = connection.read_buffer()
                 _id: int = response.read_varint()

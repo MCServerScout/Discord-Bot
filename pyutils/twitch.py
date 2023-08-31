@@ -106,3 +106,7 @@ class Twitch:
             }
 
         return stream
+
+    async def get_users_streaming(self) -> list[str]:
+        streamers = await self.async_get_streamers(self.client_id, self.client_secret)
+        return [streamer["user_name"] for streamer in streamers]

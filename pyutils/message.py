@@ -3,11 +3,13 @@ import base64
 import datetime
 import time
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
+import aiohttp
 import interactions
-from interactions import ActionRow
+from interactions import ActionRow, ComponentContext, ContextMenuContext, File
 
+from Extensions.Colors import *
 from .database import Database
 from .logger import Logger
 from .server import Server
@@ -29,12 +31,6 @@ class Message:
         self.text = text
         self.server = server
         self.twitch = twitch
-
-        self.RED = 0xFF0000  # error
-        self.GREEN = 0x00FF00  # success
-        self.YELLOW = 0xFFFF00  # warning
-        self.BLUE = 0x0000FF  # info
-        self.PINK = 0xFFC0CB  # offline
 
     @staticmethod
     def buttons(*args: bool | str) -> List[ActionRow]:
@@ -153,7 +149,7 @@ class Message:
                         "embed": self.standard_embed(
                             title="Error",
                             description="No server found",
-                            color=self.YELLOW,
+                            color=YELLOW,
                         ),
                         "components": self.buttons(),
                     }
@@ -167,7 +163,7 @@ class Message:
                         "embed": self.standard_embed(
                             title="Error",
                             description="No servers found",
-                            color=self.YELLOW,
+                            color=YELLOW,
                         ),
                         "components": self.buttons(),
                     }
@@ -183,7 +179,7 @@ class Message:
                         "embed": self.standard_embed(
                             title="Error",
                             description="No server found",
-                            color=self.YELLOW,
+                            color=YELLOW,
                         ),
                         "components": self.buttons(),
                     }
@@ -208,14 +204,12 @@ class Message:
                 data["lastSeen"] = 0
             elif not fast:
                 try:
-                    status = self.server.update(
-                        host=data["ip"], port=data["port"])
+                    status = self.server.update(host=data["ip"], port=data["port"])
 
                     if status is None:
                         # server is offline
                         data["cracked"] = None
-                        data["description"] = self.text.motd_parse(
-                            data["description"])
+                        data["description"] = self.text.motd_parse(data["description"])
                         self.logger.debug("Server is offline")
                     else:
                         self.logger.debug("Server is online")
@@ -228,22 +222,23 @@ class Message:
                         is_online = "🟢"
                 except Exception as e:
                     self.logger.error("Error: " + str(e))
-                    self.logger.print(
-                        f"Full traceback: {traceback.format_exc()}")
+                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
 
                 # try and see if any of the players are live-streaming
                 if "sample" in data["players"]:
                     self.logger.debug("Checking for streams")
+                    users_streaming: list[str] = await self.twitch.get_users_streaming()
                     for player in data["players"]["sample"]:
-                        if player["lastSeen"] - time.time() < 180:  # 3 minutes
-                            self.logger.debug(
-                                f"Checking if {player['name']} is streaming ({data['players']['sample'].index(player) + 1}/{len(data['players']['sample'])})"
-                            )
-                            stream = await self.twitch.get_stream(
-                                user=player["name"].lower()
-                            )
-                            if stream != {}:
-                                streams.append(stream)
+                        if (
+                            player["lastSeen"] - time.time() < 180
+                            and "§" not in player["name"]
+                            and player["name"]
+                        ):
+                            if player["name"] in users_streaming:
+                                self.logger.debug("Found stream")
+                                streams.append(
+                                    await self.twitch.get_stream(player["name"])
+                                )
                     else:
                         self.logger.debug("No streams found")
             else:
@@ -278,7 +273,7 @@ class Message:
             embed = self.standard_embed(
                 title=f"{is_online} {data['ip']}:{data['port']}",
                 description=f"{domain}\n```ansi\n{self.text.color_ansi(str(data['description']['text']))}\n```",
-                color=(self.GREEN if is_online == "🟢" else self.PINK)
+                color=(GREEN if is_online == "🟢" else PINK)
                 if is_online != "🟡"
                 else None,
             ).set_image(url="attachment://favicon.png")
@@ -301,7 +296,7 @@ class Message:
             # add the player count
             embed.add_field(
                 name="Players",
-                value=f"{data['players']['online']}/{data['players']['max']}",
+                value=f"{data['players']['online']}/{data['players']['max']} ({len(data['players']['sample']) if 'sample' in data['players'] else '-'})",
                 inline=True,
             )
 
@@ -374,7 +369,8 @@ class Message:
                     total_servers <= 1,  # jump
                     type(pipeline) is dict,  # update
                     "sample" not in data["players"]
-                    or type(pipeline) is dict,  # players
+                    or type(pipeline) is dict
+                    or len(data["players"]["sample"]) == 0,  # players
                     total_servers <= 1,  # sort
                     not data["hasForgeData"],  # mods
                     data["lastSeen"] <= time.time() - 300,  # join
@@ -438,7 +434,7 @@ class Message:
                 embed=self.standard_embed(
                     title="Error",
                     description="There was an error loading the server",
-                    color=self.RED,
+                    color=RED,
                 ),
                 file=None,
             )
@@ -461,7 +457,7 @@ class Message:
                 embed=self.standard_embed(
                     title="Error",
                     description="There was an error loading the server",
-                    color=self.RED,
+                    color=RED,
                 ),
                 file=None,
             )
@@ -476,3 +472,90 @@ class Message:
                 interactions.File("pipeline.ason"),
             ],
         )
+
+    async def get_pipe(self, msg: interactions.Message) -> Optional[Tuple[int, dict]]:
+        # make sure it has an embed with at least one attachment and a footer
+        if (
+            len(msg.embeds) == 0
+            or len(msg.attachments) == 0
+            or msg.embeds[0].footer is None
+        ):
+            return None
+
+        # grab the index
+        index = int(msg.embeds[0].footer.text.split("Showing ")[1].split(" of ")[0]) - 1
+
+        # grab the attachment
+        for file in msg.attachments:
+            if file.filename == "pipeline.ason":
+                async with aiohttp.ClientSession() as session, session.get(
+                    file.url
+                ) as resp:
+                    pipeline = await resp.text()
+
+                return index, (
+                    self.text.convert_string_to_json(pipeline)
+                    if pipeline is not None
+                    else None
+                )
+
+        return None
+
+    async def update(self, ctx: ComponentContext | ContextMenuContext):
+        try:
+            org = ctx.message if type(ctx) is ComponentContext else ctx.target
+
+            self.logger.print(f"update page called for {org.id}")
+            index, pipeline = await self.get_pipe(org)
+
+            msg = await org.edit(
+                embed=self.standard_embed(
+                    title="Loading...",
+                    description="Loading...",
+                    color=BLUE,
+                ),
+                components=self.buttons(),
+                file=File(file="assets/loading.png", file_name="favicon.png"),
+            )
+
+            # get the pipeline and index from the message
+            total = self.db.count(pipeline)
+
+            msg = await msg.edit(
+                embed=self.standard_embed(
+                    title="Loading...",
+                    description=f"Loading server {index + 1} of {total}",
+                    color=BLUE,
+                ),
+                components=self.buttons(),
+            )
+
+            # load the server
+            await self.async_load_server(
+                index=index,
+                pipeline=pipeline,
+                msg=msg,
+            )
+        except Exception as err:
+            if "403|Forbidden" in str(err):
+                await ctx.send(
+                    embed=self.standard_embed(
+                        title="An error occurred",
+                        description="Wrong channel for this bot",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            self.logger.error(err)
+            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+
+            await ctx.send(
+                embed=self.standard_embed(
+                    title="Error",
+                    description="An error occurred while trying to update the message",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
