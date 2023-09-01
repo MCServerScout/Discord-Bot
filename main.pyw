@@ -82,7 +82,7 @@ utils = pyutils.Utils(
     client_id=client_id,
     client_secret=client_secret,
     info_token=IP_INFO_TOKEN,
-    ssdk = (sentry_sdk,)
+    ssdk = ((sentry_sdk,),)
 )
 logger = utils.logger
 databaseLib = utils.database
@@ -141,6 +141,7 @@ for ext in exts:
         logger.critical(traceback.format_exc())
     else:
         logger.print(f"Loaded extension {ext}")
+        sentry_sdk.add_breadcrumb(category="extensions", message=f"Loaded {ext}")
 
 
 # -----------------------------------------------------------------------------

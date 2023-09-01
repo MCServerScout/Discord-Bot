@@ -19,6 +19,7 @@ from interactions import (
     ButtonStyle,
 )
 from interactions.ext.paginators import Paginator
+from sentry_sdk import trace, set_tag
 
 from .Colors import *
 
@@ -58,6 +59,7 @@ class Buttons(Extension):
 
     # button to get the next page of servers
     @component_callback("next")
+    @trace
     async def next_page(self, ctx: ComponentContext):
         msg = None
         try:
@@ -120,6 +122,7 @@ class Buttons(Extension):
 
     # button to get the previous page of servers
     @component_callback("previous")
+    @trace
     async def previous_page(self, ctx: ComponentContext):
         msg = None
         try:
@@ -180,6 +183,7 @@ class Buttons(Extension):
 
     # button to send the players that are online
     @component_callback("players")
+    @trace
     async def players(self, ctx: ComponentContext):
         try:
             org = ctx.message
@@ -202,6 +206,7 @@ class Buttons(Extension):
                 return
 
             self.logger.print(f"Found {len(player_list)} players")
+            set_tag("players", len(player_list))
 
             player_groups = [
                 list(player_list[i : i + 10]) for i in range(0, len(player_list), 10)
@@ -254,6 +259,7 @@ class Buttons(Extension):
 
     # button to jump to a specific index
     @component_callback("jump")
+    @trace
     async def jump(self, ctx: ComponentContext):
         org = None
         # when pressed should spawn a modal with a text input and then edit the message with the new index
@@ -350,6 +356,7 @@ class Buttons(Extension):
 
     # button to change the sort method
     @component_callback("sort")
+    @trace
     async def sort(self, ctx: ComponentContext):
         try:
             org = ctx.message
@@ -504,6 +511,7 @@ class Buttons(Extension):
 
     # button to update the message
     @component_callback("update")
+    @trace
     async def update_command(self, ctx: ComponentContext):
         await ctx.send(
             embed=self.messageLib.standard_embed(
@@ -518,6 +526,7 @@ class Buttons(Extension):
 
     # button to show mods
     @component_callback("mods")
+    @trace
     async def mods(self, ctx: ComponentContext):
         try:
             org = ctx.message
@@ -595,6 +604,7 @@ class Buttons(Extension):
 
     # button to try and join the server
     @component_callback("join")
+    @trace
     async def join(self, ctx: ComponentContext):
         # get the user tag
         user_id = ctx.author.id
@@ -699,6 +709,7 @@ class Buttons(Extension):
 
     # button to try and join the server for realziez
     @component_callback("submit")
+    @trace
     async def submit(self, ctx: ComponentContext):
         try:
             org = ctx.message

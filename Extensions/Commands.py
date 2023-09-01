@@ -5,6 +5,7 @@ import traceback
 from threading import Thread
 
 import aiohttp
+import sentry_sdk
 from interactions import (
     slash_command,
     Extension,
@@ -154,6 +155,10 @@ class Commands(Extension):
     ):
         msg = None
         try:
+            sentry_sdk.add_breadcrumb(
+                category="command",
+                message=f"find({', '.join([str(i) if i is not None else '' for i in [ip, version, max_players, online_players, logged_players, player, sign, description, cracked, has_favicon, country]])})",
+            )
             await ctx.defer()
 
             msg = await ctx.send(
@@ -517,6 +522,7 @@ class Commands(Extension):
     async def ping(self, ctx: SlashContext, ip: str, port: int = None):
         msg = None
         try:
+            sentry_sdk.add_breadcrumb(category="command", message=f"ping({ip}, {port})")
             port = port if port is not None else 25565
             if ":" in ip:
                 ip, port = ip.split(":")
@@ -606,6 +612,7 @@ class Commands(Extension):
     )
     async def streamers(self, ctx: SlashContext, lang: str = None):
         try:
+            sentry_sdk.add_breadcrumb(category="command", message=f"streamers({lang})")
             msg = await ctx.send(
                 embed=self.messageLib.standard_embed(
                     title="Loading...",
@@ -838,6 +845,9 @@ class Commands(Extension):
     )
     async def scan(self, ctx: SlashContext, file: Attachment, delimiter: str):
         try:
+            sentry_sdk.add_breadcrumb(
+                category="command", message=f"scan({file.url}, {delimiter})"
+            )
             await ctx.defer(ephemeral=True)
 
             # make sure the bot is running on linux
@@ -985,7 +995,7 @@ class Commands(Extension):
                 },
                 {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
             ]
-            total_players = self.databaseLib.aggregate(pipeline)[0]["total"]
+            total_players = self.databaseLib.aggregate(pipeline).try_next()["total"]
 
             main_embed.add_field(
                 name="Players",
@@ -1001,7 +1011,9 @@ class Commands(Extension):
                 {"$unwind": "$players.sample"},
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
-            total_sample_players = self.databaseLib.aggregate(pipeline)[0]["total"]
+            total_sample_players = self.databaseLib.aggregate(pipeline).try_next()[
+                "total"
+            ]
 
             main_embed.add_field(
                 name="Logged Players",
@@ -1023,7 +1035,9 @@ class Commands(Extension):
                 },
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
-            total_real_players = self.databaseLib.aggregate(pipeline)[0]["total"]
+            total_real_players = self.databaseLib.aggregate(pipeline).try_next()[
+                "total"
+            ]
 
             main_embed.add_field(
                 name="Real Players",
@@ -1043,7 +1057,9 @@ class Commands(Extension):
                 },
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
-            total_fake_players = self.databaseLib.aggregate(pipeline)[0]["total"]
+            total_fake_players = self.databaseLib.aggregate(pipeline).try_next()[
+                "total"
+            ]
 
             main_embed.add_field(
                 name="Fake Players",
