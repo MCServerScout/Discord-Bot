@@ -118,7 +118,8 @@ class Minecraft:
                 loginStart.write_varint(0)  # Packet ID
                 loginStart.write_utf(player_username)  # Username
             connection.write_buffer(loginStart)
-            self.logger.print("Sent login start packet:", loginStart.read_utf())
+            self.logger.print("Sent login start packet:",
+                              loginStart.read_utf())
 
             # Read response
             response = connection.read_buffer()
@@ -134,7 +135,8 @@ class Minecraft:
             elif _id == 3:
                 self.logger.print("Setting compression")
                 compression_threshold = response.read_varint()
-                self.logger.print(f"Compression threshold: {compression_threshold}")
+                self.logger.print(
+                    f"Compression threshold: {compression_threshold}")
 
                 response = connection.read_buffer()
                 _id: int = response.read_varint()
@@ -170,7 +172,8 @@ class Minecraft:
 
                 # send encryption response
                 self.logger.print("Sending encryption response")
-                encryptedSharedSecret = pubKey.encrypt(shared_secret, PKCS1v15())
+                encryptedSharedSecret = pubKey.encrypt(
+                    shared_secret, PKCS1v15())
                 encryptedVerifyToken = pubKey.encrypt(verify_token, PKCS1v15())
 
                 encryptionResponse = Connection()
@@ -200,7 +203,8 @@ class Minecraft:
                             self.logger.print("Account does not own the game")
                             return self.ServerType(ip, version, "NO_GAME")
                     else:
-                        self.logger.print("Failed to check if account owns the game")
+                        self.logger.print(
+                            "Failed to check if account owns the game")
                         self.logger.error(res.text)
                         return self.ServerType(ip, version, "BAD_TOKEN")
 
@@ -271,7 +275,8 @@ class Minecraft:
             return self.ServerType(ip, version, "OFFLINE")
         except OSError:
             self.logger.print("Server did not respond")
-            self.logger.error("Server did not respond: " + traceback.format_exc())
+            self.logger.error("Server did not respond: " +
+                              traceback.format_exc())
             return self.ServerType(ip, version, "UNKNOWN")
         except Exception:
             self.logger.print(traceback.format_exc())
@@ -339,7 +344,8 @@ class Minecraft:
                     xblToken = (await res2.json())["Token"]
                     self.logger.print("Verified account: " + xblToken)
                 else:
-                    self.logger.print("Failed to verify account: ", res2.status)
+                    self.logger.print(
+                        "Failed to verify account: ", res2.status)
                     self.logger.error(res2.reason, res2.request_info)
                     self.logger.error(await res2.text())
                     return {"type": "error", "error": "Failed to verify account"}
@@ -448,7 +454,8 @@ class Minecraft:
             self.logger.print("Failed to get access token")
             try:
                 error_j = res.json()
-                self.logger.error(error_j["error"], error_j["error_description"])
+                self.logger.error(error_j["error"],
+                                  error_j["error_description"])
             except KeyError:
                 self.logger.error(res.reason)
             return {"type": "error", "error": "Failed to get access token"}

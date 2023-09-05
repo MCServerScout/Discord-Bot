@@ -384,5 +384,5 @@ class Text:
                     dic3[key] = value
             else:
                 dic3[key] = value
-    
+
         return dic3
