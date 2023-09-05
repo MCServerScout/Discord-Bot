@@ -1,5 +1,4 @@
 import asyncio
-import datetime
 from typing import Optional
 
 import aiohttp
@@ -36,8 +35,7 @@ class Player:
         Returns:
             bool: True if the server is cracked, False if not
         """
-        url = "https://api.mcstatus.io/v2/status/java/" + \
-            host + ":" + str(port)
+        url = "https://api.mcstatus.io/v2/status/java/" + host + ":" + str(port)
 
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
@@ -100,7 +98,7 @@ class Player:
         Returns:
             str: list of players
         """
-        data = self.server.update(host=ip, port=port)
+        data = self.server.update(host=ip, port=port, fast=True)
 
         if data is None:
             self.logger.print(f"Server {ip}:{port} not found in database")
@@ -118,15 +116,9 @@ class Player:
         for player in data["players"]["sample"]:
             if "lastSeen" not in player:
                 player["lastSeen"] = 0
+            players.append(self.server.Player(**player))
 
-            # mark the player as online if they were in the server less than 2 minutes ago
-            if (
-                datetime.datetime.utcnow()
-                - datetime.datetime.fromtimestamp(player["lastSeen"])
-            ).total_seconds() < 120:
-                player["online"] = True
-            else:
-                player["online"] = False
-            players.append(player)
+        if len(players) == 0:
+            return None
 
         return players

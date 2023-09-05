@@ -1,4 +1,4 @@
-privVars.py
+/privVars.py
 .venv/*
 __pycache__/*
 pyutils/__pycache__/*

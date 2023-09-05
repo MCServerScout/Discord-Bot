@@ -9,6 +9,7 @@ import traceback
 from typing import Optional, Mapping, Any
 
 import ipinfo
+from bson import json_util
 from mcstatus.protocol.connection import Connection, TCPSocketConnection
 
 from .database import Database
@@ -33,6 +34,30 @@ class Server:
         def get_type(self) -> str:
             return self._type
 
+    class Player(dict):
+        def __init__(self, name: str, id: str, lastSeen: int = 0):
+            self.name = name
+            self.id = id
+            self.lastSeen = lastSeen
+            dict.__init__(self, name=name, id=id, lastSeen=lastSeen)
+
+        def __repr__(self):
+            return f"Player({self.name}, {self.id}, {self.lastSeen})"
+
+        def __eq__(self, other):
+            return self.id == other.id
+
+        def __hash__(self):
+            return hash(self.id)
+
+        def __dict__(self):
+            return {"name": self.name, "id": self.id, "lastSeen": self.lastSeen}
+
+        def __iter__(self):
+            yield "name", self.name
+            yield "id", self.id
+            yield "lastSeen", self.lastSeen
+
     def __init__(
         self,
         db: "Database",
@@ -48,14 +73,15 @@ class Server:
     def update(
         self,
         host: str,
-        fast: bool = False,
         port: int = 25565,
+        fast: bool = False,
     ) -> Optional[Mapping[str, Any]]:
         """
         Update a server and return a doc, returns either, None or Mapping[str, Any]
         """
         status = None
         try:
+            port = int(port)
             status = {
                 "ip": host,
                 "port": port,
@@ -85,6 +111,21 @@ class Server:
                 self.logger.print(err)
                 self.logger.print(f"{traceback.format_exc()}")
 
+            # if the server is in the db, then get the db doc
+            if self.db.col.find_one({"ip": host, "port": port}) is not None:
+                # set the status to the database values
+                db_val = self.db.col.find_one({"ip": host, "port": port})
+                status = db_val.copy()
+                status["description"] = self.text.motd_parse(status["description"])
+                status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
+                if "sample" in status["players"]:
+                    players = []
+                    for player in status["players"]["sample"]:
+                        players.append(self.Player(**player))
+                    status["players"]["sample"] = players
+            else:
+                self.logger.info(f"Server {host}:{port} not found in database")
+
             if geo != {}:
                 status["geo"] = geo
                 if "org" in geo:
@@ -92,36 +133,28 @@ class Server:
                     # remove the org from the geo dict
                     del status["geo"]["org"]
 
-            # if the server is in the db, then get the db doc
-            if (
-                self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]})
-                is not None
-            ):
-                db_val = self.db.col.find_one(
-                    {"ip": status["ip"], "port": status["port"]}
-                )
-                status.update(db_val)
-                status["description"] = self.text.motd_parse(
-                    status["description"])
-                status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
-            else:
-                db_val = None
+            if fast:
+                self.logger.info(f"Got fast status for {host}: {status}")
+                return json_util.loads(json_util.dumps(status))
 
             # get the status response
             status2 = self.status(host)
 
             if status2 is None:
                 self.logger.warning(f"Failed to get status for {host}")
-                self.update_db(status) if status is not None else None
                 return status
             else:
-                status.update(status2)
+                if "sample" in status2["players"]:
+                    players = []
+                    for player in status2["players"]["sample"]:
+                        player["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
+                        players.append(self.Player(**player))
+                    status2["players"]["sample"] = players
+                status = self.text.update_dict(status, status2)
                 self.logger.info(f"Got status for {host}: {status}")
 
             server_type = (
-                self.join(ip=host, port=port,
-                          version=status["version"]["protocol"])
+                self.join(ip=host, port=port, version=status["version"]["protocol"])
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
@@ -134,10 +167,6 @@ class Server:
             status["hasFavicon"] = "favicon" in status
             status["hasForgeData"] = server_type.get_type() == "MODDED"
             status["description"] = self.text.motd_parse(status["description"])
-            if "sample" in status["players"]:
-                for player in status["players"]["sample"]:
-                    player["lastSeen"] = int(
-                        datetime.datetime.utcnow().timestamp())
 
             if "forgeData" in status:
                 mod_channels = status["forgeData"]["channels"]
@@ -151,24 +180,13 @@ class Server:
                     _id = mod_ids[mod_channels.index(mod)]
 
                     mods.append(
-                        {"name": name, "version": version,
-                            "required": req, "id": _id}
+                        {"name": name, "version": version, "required": req, "id": _id}
                     )
                 status["mods"] = mods
 
-            if db_val is not None:
-                # append the dbVal sample to the status sample
-                if "sample" in db_val["players"] and "sample" in status["players"]:
-                    for player in db_val["players"]["sample"]:
-                        if player["name"] not in str(status["players"]["sample"]):
-                            player["lastSeen"] = int(0)
-                            list(status["players"]["sample"]).append(player)
-            else:
-                self.logger.warning(
-                    f"Failed to get dbVal for {host}, making new entry")
             self.update_db(status)
 
-            return status
+            return json_util.loads(json_util.dumps(status))
         except Exception as err:
             self.logger.warning(err)
             self.logger.print(f"{traceback.format_exc()}")
@@ -224,15 +242,15 @@ class Server:
             try:
                 response = connection.read_buffer()
             except socket.error:
-                self.logger.error("Connection error")
+                self.logger.warning("Connection error")
                 return None
             res_id = response.read_varint()
 
             if res_id == -1:
-                self.logger.error("Connection error")
+                self.logger.warning("Connection error")
                 return None
             elif res_id != 0:
-                self.logger.error("Invalid packet ID received: " + str(res_id))
+                self.logger.warning("Invalid packet ID received: " + str(res_id))
                 return None
             elif res_id == 0:
                 length = response.read_varint()
@@ -241,16 +259,16 @@ class Server:
                 data = json.loads(data.decode("utf8"))
                 return data
         except TimeoutError:
-            self.logger.print("Connection error (timeout)")
+            self.logger.warning("Connection error (timeout)")
             return None
         except ConnectionRefusedError:
-            self.logger.print("Connection error (refused)")
+            self.logger.warning("Connection error (refused)")
             return None
         except socket.gaierror:
-            self.logger.print("Connection error (invalid host)")
+            self.logger.warning("Connection error (invalid host)")
             return None
         except Exception as err:
-            self.logger.warning(err)
+            self.logger.error(err)
             self.logger.print(f"{traceback.format_exc()}")
             return None
 
@@ -301,8 +319,7 @@ class Server:
             elif _id == 3:
                 self.logger.print("Setting compression")
                 compression_threshold = response.read_varint()
-                self.logger.print(
-                    f"Compression threshold: {compression_threshold}")
+                self.logger.print(f"Compression threshold: {compression_threshold}")
 
                 response = connection.read_buffer()
                 _id: int = response.read_varint()
@@ -393,6 +410,12 @@ class Server:
         """
 
         try:
+            if "sample" in data["players"]:
+                players = []
+                for player in data["players"]["sample"]:
+                    # convert back to json
+                    players.append(dict(player))
+                data["players"]["sample"] = players
             self.db.update_one(
                 {"ip": data["ip"], "port": data["port"]},
                 {"$set": data},

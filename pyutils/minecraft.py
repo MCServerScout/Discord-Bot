@@ -1,13 +1,17 @@
 import http.server
-import json
 import os
+import secrets
 import traceback
-from hashlib import sha1
+import urllib.parse
+from base64 import urlsafe_b64encode
+from hashlib import sha1, sha256
 from http.server import BaseHTTPRequestHandler
 from threading import Thread
+from typing import Tuple, Literal, cast
 
 import aiohttp
 import mcstatus
+import requests
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.serialization import load_der_public_key
@@ -65,6 +69,7 @@ class Minecraft:
                 self.server.shutdown()
 
     def __init__(self, logger: Logger, server: Server, player: Player):
+        self.key = os.urandom(16)
         self.logger = logger
         self.server = server
         self.player = player
@@ -113,8 +118,7 @@ class Minecraft:
                 loginStart.write_varint(0)  # Packet ID
                 loginStart.write_utf(player_username)  # Username
             connection.write_buffer(loginStart)
-            self.logger.print("Sent login start packet:",
-                              loginStart.read_utf())
+            self.logger.print("Sent login start packet:", loginStart.read_utf())
 
             # Read response
             response = connection.read_buffer()
@@ -130,8 +134,7 @@ class Minecraft:
             elif _id == 3:
                 self.logger.print("Setting compression")
                 compression_threshold = response.read_varint()
-                self.logger.print(
-                    f"Compression threshold: {compression_threshold}")
+                self.logger.print(f"Compression threshold: {compression_threshold}")
 
                 response = connection.read_buffer()
                 _id: int = response.read_varint()
@@ -167,8 +170,7 @@ class Minecraft:
 
                 # send encryption response
                 self.logger.print("Sending encryption response")
-                encryptedSharedSecret = pubKey.encrypt(
-                    shared_secret, PKCS1v15())
+                encryptedSharedSecret = pubKey.encrypt(shared_secret, PKCS1v15())
                 encryptedVerifyToken = pubKey.encrypt(verify_token, PKCS1v15())
 
                 encryptionResponse = Connection()
@@ -198,8 +200,7 @@ class Minecraft:
                             self.logger.print("Account does not own the game")
                             return self.ServerType(ip, version, "NO_GAME")
                     else:
-                        self.logger.print(
-                            "Failed to check if account owns the game")
+                        self.logger.print("Failed to check if account owns the game")
                         self.logger.error(res.text)
                         return self.ServerType(ip, version, "BAD_TOKEN")
 
@@ -270,34 +271,39 @@ class Minecraft:
             return self.ServerType(ip, version, "OFFLINE")
         except OSError:
             self.logger.print("Server did not respond")
-            self.logger.error("Server did not respond: " +
-                              traceback.format_exc())
+            self.logger.error("Server did not respond: " + traceback.format_exc())
             return self.ServerType(ip, version, "UNKNOWN")
         except Exception:
             self.logger.print(traceback.format_exc())
             self.logger.error(traceback.format_exc())
             return self.ServerType(ip, version, "OFFLINE")
 
-    async def get_minecraft_token(self, clientID, redirect_uri, act_code):
-        # get access token
-        endpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
-        async with aiohttp.ClientSession() as oauthSession:
-            async with oauthSession.post(
+    async def get_minecraft_token_async(
+        self, clientID, redirect_uri, act_code, verify_code=None
+    ) -> dict:
+        async with aiohttp.ClientSession() as httpSession:
+            # get the access token
+            endpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
+            params = {
+                "client_id": clientID,
+                "scope": "XboxLive.signin",
+                "code": act_code,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            }
+            if verify_code:
+                params["code_verifier"] = verify_code
+            async with httpSession.post(
                 endpoint,
-                data={
-                    "client_id": clientID,
-                    "scope": "XboxLive.signin",
-                    "code": act_code,
-                    "redirect_uri": redirect_uri,
-                    "grant_type": "authorization_code",
-                },
+                data=params,
                 headers={
                     "Content-Type": "application/x-www-form-urlencoded",
                 },
             ) as res:
                 # get the access token
                 if res.status == 200:
-                    accessToken = (await res.json())["access_token"]
+                    rjson = await res.json()
+                    accessToken = rjson["access_token"]
                 else:
                     self.logger.print("Failed to get access token")
                     try:
@@ -309,19 +315,18 @@ class Minecraft:
                         self.logger.error(res.reason)
                     return {"type": "error", "error": "Failed to get access token"}
 
-        # verify account
-        url = "https://user.auth.xboxlive.com/user/authenticate"
-        async with aiohttp.ClientSession() as xblSession:
-            async with xblSession.post(
+            # obtain xbl token
+            url = "https://user.auth.xboxlive.com/user/authenticate"
+            async with httpSession.post(
                 url,
-                data=json.dumps(
+                data=str(
                     {
                         "Properties": {
                             "AuthMethod": "RPS",
                             "SiteName": "user.auth.xboxlive.com",
-                            "RpsTicket": f"d={accessToken}",
+                            "RpsTicket": f"t={accessToken}",
                         },
-                        "RelyingParty": "https://auth.xboxlive.com",
+                        "RelyingParty": "https://auth.xboxlive.com",  # changed from http -> https
                         "TokenType": "JWT",
                     }
                 ),
@@ -334,15 +339,14 @@ class Minecraft:
                     xblToken = (await res2.json())["Token"]
                     self.logger.print("Verified account: " + xblToken)
                 else:
-                    self.logger.print("Failed to verify account")
+                    self.logger.print("Failed to verify account: ", res2.status)
                     self.logger.error(res2.reason, res2.request_info)
                     self.logger.error(await res2.text())
                     return {"type": "error", "error": "Failed to verify account"}
 
-        # obtain xsts token
-        url = "https://xsts.auth.xboxlive.com/xsts/authorize"
-        async with aiohttp.ClientSession() as xstsSession:
-            async with xstsSession.post(
+            # obtain xsts token
+            url = "https://xsts.auth.xboxlive.com/xsts/authorize"
+            async with httpSession.post(
                 url,
                 json={
                     "Properties": {
@@ -365,11 +369,10 @@ class Minecraft:
                     self.logger.error(res3.reason)
                     return {"type": "error", "error": "Failed to obtain xsts token"}
 
-        # obtain minecraft token
-        xuid = (await res3.json())["DisplayClaims"]["xui"][0]["uhs"]
-        url = "https://api.minecraftservices.com/authentication/login_with_xbox"
-        async with aiohttp.ClientSession() as xuidSession:
-            async with xuidSession.post(
+            # obtain minecraft token
+            xuid = (await res3.json())["DisplayClaims"]["xui"][0]["uhs"]
+            url = "https://api.minecraftservices.com/authentication/login_with_xbox"
+            async with httpSession.post(
                 url,
                 json={
                     "identityToken": "XBL3.0 x={};{}".format(xuid, xstsToken),
@@ -390,10 +393,9 @@ class Minecraft:
                         "error": "Failed to obtain minecraft token",
                     }
 
-        # get the profile
-        url = "https://api.minecraftservices.com/minecraft/profile"
-        async with aiohttp.ClientSession() as profileSession:
-            async with profileSession.get(
+            # get the profile
+            url = "https://api.minecraftservices.com/minecraft/profile"
+            async with httpSession.get(
                 url,
                 headers={
                     "Authorization": "Bearer {}".format(minecraftToken),
@@ -417,16 +419,175 @@ class Minecraft:
                     "minecraft_token": minecraftToken,
                 }
 
+    def get_minecraft_token(
+        self, clientID, redirect_uri, act_code, verify_code=None
+    ) -> dict:
+        # get the access token
+        endpoint = "https://login.microsoftonline.com/consumers/oauth2/v2.0/token"
+        params = {
+            "client_id": clientID,
+            "scope": "XboxLive.signin",
+            "code": act_code,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        }
+        if verify_code:
+            params["code_verifier"] = verify_code
+        res = requests.post(
+            endpoint,
+            data=params,
+            headers={
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+        )
+        # get the access token
+        if res.status_code == 200:
+            rjson = res.json()
+            accessToken = rjson["access_token"]
+        else:
+            self.logger.print("Failed to get access token")
+            try:
+                error_j = res.json()
+                self.logger.error(error_j["error"], error_j["error_description"])
+            except KeyError:
+                self.logger.error(res.reason)
+            return {"type": "error", "error": "Failed to get access token"}
+
+        # obtain xbl token
+        url = "https://user.auth.xboxlive.com/user/authenticate"
+        res2 = requests.post(
+            url,
+            data=str(
+                {
+                    "Properties": {
+                        "AuthMethod": "RPS",
+                        "SiteName": "user.auth.xboxlive.com",
+                        "RpsTicket": f"t={accessToken}",
+                    },
+                    "RelyingParty": "https://auth.xboxlive.com",  # changed from http -> https
+                    "TokenType": "JWT",
+                }
+            ),
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+        if res2.status_code == 200:
+            xblToken = res2.json()["Token"]
+            self.logger.print("Verified account: " + xblToken)
+        else:
+            self.logger.print("Failed to verify account: ", res2.status_code)
+            self.logger.error(res2.reason)
+            self.logger.error(res2.text)
+            return {"type": "error", "error": "Failed to verify account"}
+
+        # obtain xsts token
+        url = "https://xsts.auth.xboxlive.com/xsts/authorize"
+        res3 = requests.post(
+            url,
+            json={
+                "Properties": {
+                    "SandboxId": "RETAIL",
+                    "UserTokens": [xblToken],
+                },
+                "RelyingParty": "rp://api.minecraftservices.com/",
+                "TokenType": "JWT",
+            },
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+        if res3.status_code == 200:
+            xstsToken = res3.json()["Token"]
+            self.logger.print("Got xsts token: " + xstsToken)
+        else:
+            self.logger.print("Failed to obtain xsts token")
+            self.logger.error(res3.reason)
+            return {"type": "error", "error": "Failed to obtain xsts token"}
+
+        # obtain minecraft token
+        xuid = res3.json()["DisplayClaims"]["xui"][0]["uhs"]
+        url = "https://api.minecraftservices.com/authentication/login_with_xbox"
+        res4 = requests.post(
+            url,
+            json={
+                "identityToken": "XBL3.0 x={};{}".format(xuid, xstsToken),
+            },
+            headers={
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+        if res4.status_code == 200:
+            minecraftToken = res4.json()["access_token"]
+            self.logger.print("Got xuid: " + xuid)
+        else:
+            self.logger.print("Failed to obtain minecraft token")
+            self.logger.error(res4.reason)
+            return {
+                "type": "error",
+                "error": "Failed to obtain minecraft token",
+            }
+
+        # get the profile
+        url = "https://api.minecraftservices.com/minecraft/profile"
+        res5 = requests.get(
+            url,
+            headers={
+                "Authorization": "Bearer {}".format(minecraftToken),
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+        )
+        if res5.status_code == 200 and "error" not in str(res5.json()):
+            uuid = res5.json()["id"]
+            name = res5.json()["name"]
+            self.logger.print("Name: " + name + " UUID: " + uuid)
+        else:
+            self.logger.print("Failed to obtain profile")
+            self.logger.error(res5.reason)
+            return {"type": "error", "error": "Failed to obtain profile"}
+
+        return {
+            "type": "success",
+            "uuid": uuid,
+            "name": name,
+            "minecraft_token": minecraftToken,
+        }
+
     @staticmethod
     def get_activation_code_url(clientID, redirect_uri):
         """Returns a url to get the activation code from microsoft."""
 
-        # check if the redirect uri is http encoded
-        if "%3A%2F%2F" not in redirect_uri:
-            # encode the redirect uri
-            redirect_uri = redirect_uri.replace(":", "%3A").replace("/", "%2F")
+        (
+            code_verifier,
+            code_challenge,
+            code_challenge_method,
+        ) = Minecraft._generate_pkce_data()
 
-        return f"https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize?client_id={clientID}&response_type=code&redirect_uri={redirect_uri}&response_mode=query&scope=XboxLive.signin&prompt=login"
+        base_url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize"
+
+        return (
+            urllib.parse.urlparse(base_url)
+            ._replace(
+                query=urllib.parse.urlencode(
+                    {
+                        "client_id": clientID,
+                        "response_type": "code",
+                        "redirect_uri": redirect_uri,
+                        "response_mode": "query",
+                        "scope": "XboxLive.signin offline_access",
+                        "prompt": "select_account",
+                        "code_challenge": code_challenge,
+                        "code_challenge_method": code_challenge_method,
+                    }
+                )
+            )
+            .geturl(),
+            code_verifier,
+        )
 
     def get_activation_code(self):
         """Returns the activation code from the server.
@@ -442,8 +603,27 @@ class Minecraft:
 
         def start_server(_port: int = 80):
             server = http.server.HTTPServer(("", _port), self.RequestHandler)
+            server.serve_forever()
 
         thread = Thread(target=start_server, args=(port,))
         thread.start()
 
         return thread
+
+    @staticmethod
+    def _generate_pkce_data() -> Tuple[str, str, Literal["plain", "S256"]]:
+        """
+        Generates the PKCE code challenge and code verifier
+
+        :return: A tuple containing the code_verifier, the code_challenge, and the code_challenge_method.
+        """
+        code_verifier = secrets.token_urlsafe(128)[:128]
+        code_challenge = urlsafe_b64encode(
+            sha256(code_verifier.encode("ascii")).digest()
+        ).decode("ascii")[:-1]
+        code_challenge_method = "S256"
+        return (
+            code_verifier,
+            code_challenge,
+            cast(Literal["plain", "S256"], code_challenge_method),
+        )

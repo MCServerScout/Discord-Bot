@@ -1,8 +1,12 @@
+import time
 import traceback
-from typing import List, Optional
+from typing import List, Optional, Any, Mapping
 
 import pymongo
+import sentry_sdk
+from pymongo.command_cursor import CommandCursor
 from pymongo.results import UpdateResult
+from sentry_sdk import trace
 
 from .logger import Logger
 
@@ -18,12 +22,14 @@ class Database:
         self.col = col
         self.logger = logger
 
+    @trace
     def get_doc_at_index(
         self,
         pipeline: list,
         index: int = 0,
     ) -> Optional[dict]:
         try:
+            tStart = time.time()
             new_pipeline = pipeline.copy()
 
             if type(new_pipeline) is dict:
@@ -31,34 +37,33 @@ class Database:
 
             new_pipeline.append({"$skip": index})
             new_pipeline.append({"$limit": 1})
-            new_pipeline.append({"$project": {"_id": 1}})
-            new_pipeline.append({"$limit": 1})
-            new_pipeline.append({"$addFields": {"doc": "$$ROOT"}})
-            new_pipeline.append({"$project": {"_id": 0, "doc": 1}})
 
-            result = self.col.aggregate(new_pipeline, allowDiskUse=True)
-            try:
-                return self.col.find_one(next(result)["doc"])
-            except StopIteration:
-                self.logger.error("Index out of range")
-                return None
+            result = self.aggregate(new_pipeline, allowDiskUse=True).try_next()
+            sentry_sdk.set_context("database", {"pipeline": pipeline, "index": index})
+
+            sentry_sdk.set_measurement("duration", time.time() - tStart, "seconds")
+
+            return result
         except StopIteration:
             self.logger.error(traceback.format_exc())
             self.logger.error(f"Error getting document at index: {pipeline}")
 
             return None
 
+    @trace
     def aggregate(
         self,
         pipeline: list,
-        allow_disk_use: bool = True,
-    ) -> Optional[List[dict]]:
-        try:
-            return list(self.col.aggregate(pipeline, allowDiskUse=allow_disk_use))
-        except StopIteration:
-            self.logger.error(traceback.format_exc())
-            self.logger.error(f"Error aggregating: {pipeline}")
-            return None
+        allowDiskUse: bool = True,
+    ) -> CommandCursor[Mapping[str, Any] | Any] | None:
+        with sentry_sdk.start_transaction(op="database", name="aggregate"):
+            sentry_sdk.set_context("database", {"pipeline": pipeline})
+            try:
+                return self.col.aggregate(pipeline, allowDiskUse=allowDiskUse)
+            except StopIteration:
+                self.logger.error(traceback.format_exc())
+                self.logger.error(f"Error aggregating: {pipeline}")
+                return None
 
     def find_one(
         self,
@@ -107,6 +112,7 @@ class Database:
             self.logger.error(f"Error updating many: {query}")
             return None
 
+    @trace
     def count(
         self,
         pipeline: list,
@@ -118,7 +124,7 @@ class Database:
             if type(new_pipeline) is dict:
                 new_pipeline = [new_pipeline]
 
-            new_pipeline.append({"$count": "count"})
+            new_pipeline.append({"$group": {"_id": None, "count": {"$sum": 1}}})
 
             result = self.col.aggregate(new_pipeline, allowDiskUse=True)
             try:
