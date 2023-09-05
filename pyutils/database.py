@@ -39,9 +39,11 @@ class Database:
             new_pipeline.append({"$limit": 1})
 
             result = self.aggregate(new_pipeline, allowDiskUse=True).try_next()
-            sentry_sdk.set_context("database", {"pipeline": pipeline, "index": index})
+            sentry_sdk.set_context(
+                "database", {"pipeline": pipeline, "index": index})
 
-            sentry_sdk.set_measurement("duration", time.time() - tStart, "seconds")
+            sentry_sdk.set_measurement(
+                "duration", time.time() - tStart, "seconds")
 
             return result
         except StopIteration:
@@ -124,7 +126,8 @@ class Database:
             if type(new_pipeline) is dict:
                 new_pipeline = [new_pipeline]
 
-            new_pipeline.append({"$group": {"_id": None, "count": {"$sum": 1}}})
+            new_pipeline.append(
+                {"$group": {"_id": None, "count": {"$sum": 1}}})
 
             result = self.col.aggregate(new_pipeline, allowDiskUse=True)
             try:
