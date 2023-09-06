@@ -4,12 +4,21 @@
 """
 
 import asyncio
+import json
 import sys
 import time
 import traceback
 
 import sentry_sdk
-from interactions import listen, Intents, ActivityType, Status, Activity, Client
+from interactions import (
+    listen,
+    Intents,
+    ActivityType,
+    Status,
+    Activity,
+    Client,
+    slash_command,
+)
 from interactions.api.events import Ready
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
@@ -82,7 +91,7 @@ utils = pyutils.Utils(
     client_id=client_id,
     client_secret=client_secret,
     info_token=IP_INFO_TOKEN,
-    ssdk = ((sentry_sdk,),)
+    ssdk=((sentry_sdk,),),
 )
 logger = utils.logger
 databaseLib = utils.database
@@ -142,6 +151,49 @@ for ext in exts:
     else:
         logger.print(f"Loaded extension {ext}")
         sentry_sdk.add_breadcrumb(category="extensions", message=f"Loaded {ext}")
+
+
+@slash_command(
+    name="help",
+    description="Get help with the bot",
+)
+async def help_cmd(ctx):
+    try:
+        # get a list of all the commands
+        commands = ctx.bot.interaction_tree
+
+        embed = messageLib.standard_embed(
+            title="Help",
+            description="Here is a list of all the commands",
+            color=BLUE,
+        )
+
+        for _, tree in commands.items():
+            for name, com in tree.items():
+                if name == "Refresh":
+                    continue
+                com = com.to_dict()
+                logger.print(f"Found command {name}: {json.dumps(com, indent=4)}")
+
+                options = (
+                    [
+                        f"\n`{option['name']}`: {option['description']}"
+                        for option in com["options"]
+                    ]
+                    if "options" in com
+                    else []
+                )
+
+                embed.add_field(
+                    name=f"`/{name}`",
+                    value=f"{com['description']}\n"
+                    + (f"Args:{'  '.join(options)}" if options else ""),
+                    inline=True,
+                )
+        await ctx.send(embed=embed, ephemeral=True, delete_after=60)
+    except Exception as err:
+        logger.critical(err)
+        await ctx.send("An error occurred while running the command", ephemeral=True)
 
 
 # -----------------------------------------------------------------------------

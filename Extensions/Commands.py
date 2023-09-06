@@ -111,7 +111,7 @@ class Commands(Extension):
             ),
             SlashCommandOption(
                 name="description",
-                description='The description of the server, via regex, the default is ".*<your search>.*"',
+                description="The description of the server, via regex: `.*<your input>.*`",
                 type=OptionType.STRING,
                 required=False,
                 min_length=1,
@@ -130,7 +130,7 @@ class Commands(Extension):
             ),
             SlashCommandOption(
                 name="country",
-                description="The country of the server",
+                description="The country of the server in a two char ISO code, ex: us",
                 type=OptionType.STRING,
                 required=False,
                 min_length=2,
@@ -673,9 +673,12 @@ class Commands(Extension):
                     ),
                     ephemeral=True,
                 )
+            else:
+                client_id = self.client_id
+                client_secret = self.client_secret
 
-            if (self.client_id == "" or self.client_secret == "") or (
-                self.client_id is None or self.client_secret is None
+            if (client_id == "" or client_secret == "") or (
+                client_id is None or client_secret is None
             ):
                 await ctx.send(
                     embed=self.messageLib.standard_embed(
@@ -688,8 +691,8 @@ class Commands(Extension):
                 return
 
             streams = await self.twitchLib.async_get_streamers(
-                client_id=self.client_id,
-                client_secret=self.client_secret,
+                client_id=client_id,
+                client_secret=client_secret,
                 lang=lang,
             )
 
@@ -954,6 +957,9 @@ class Commands(Extension):
         description="Get stats about the server",
     )
     async def stats(self, ctx: SlashContext):
+        """
+        Get stats about the server, ...
+        """
         msg = None
         await ctx.defer()
 
