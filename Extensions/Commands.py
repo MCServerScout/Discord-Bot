@@ -482,7 +482,7 @@ class Commands(Extension):
             )
         except Exception as err:
             if "403|Forbidden" in str(err):
-                await ctx.delete(message=msg)
+                await msg.delete(context=ctx)
                 return
             else:
                 self.logger.error(err)
@@ -554,9 +554,7 @@ class Commands(Extension):
                         ),
                         ephemeral=True,
                     )
-                    await ctx.delete(
-                        message=msg,
-                    )
+                    await msg.delete(context=ctx)
                     return
                 else:
                     pipeline = doc
@@ -579,9 +577,7 @@ class Commands(Extension):
                     ),
                     ephemeral=True,
                 )
-                await ctx.delete(
-                    message=msg,
-                )
+                await msg.delete(context=ctx)
                 return
             self.logger.error(err)
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
@@ -1229,7 +1225,7 @@ class Commands(Extension):
                 )
         except Exception as err:
             if "403|Forbidden" in str(err):
-                await ctx.delete(message=msg)
+                await msg.delete(context=ctx)
                 return
 
             self.logger.error(err)

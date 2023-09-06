@@ -9,6 +9,7 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
+from sentry_sdk import trace
 
 from Extensions.Colors import *
 from .database import Database
@@ -483,7 +484,8 @@ class Message:
             ],
         )
 
-    async def get_pipe(self, msg: interactions.Message) -> Optional[Tuple[int, dict]]:
+    @staticmethod
+    async def get_pipe(msg: interactions.Message) -> Optional[Tuple[int, dict]]:
         # make sure it has an embed with at least one attachment and a footer
         if (
             len(msg.embeds) == 0
@@ -509,6 +511,7 @@ class Message:
 
         return None
 
+    @trace
     async def update(self, ctx: ComponentContext | ContextMenuContext):
         try:
             org = ctx.message if type(ctx) is ComponentContext else ctx.target

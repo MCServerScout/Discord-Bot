@@ -105,7 +105,7 @@ class Buttons(Extension):
             )
         except Exception as err:
             if "403|Forbidden" in str(err):
-                await ctx.delete(message=msg)
+                await msg.delete(context=ctx)
                 return
 
             self.logger.error(err)
@@ -166,7 +166,7 @@ class Buttons(Extension):
             )
         except Exception as err:
             if "403|Forbidden" in str(err):
-                await ctx.delete(message=msg)
+                await msg.delete(context=ctx)
                 return
 
             self.logger.error(err)
@@ -338,9 +338,7 @@ class Buttons(Extension):
                 )
         except Exception as err:
             if "403|Forbidden" in str(err):
-                await ctx.delete(
-                    message=org,
-                )
+                await org.delete(context=ctx)
                 return
 
             self.logger.error(err)
