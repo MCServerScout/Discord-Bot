@@ -1,10 +1,8 @@
 import asyncio
 import datetime
-import json
 import time
 import traceback
 
-import aiohttp
 from interactions import (
     Extension,
     component_callback,
@@ -604,35 +602,22 @@ class Buttons(Extension):
     @component_callback("join")
     @trace
     async def join(self, ctx: ComponentContext):
-        # get the user tag
-        user_id = ctx.author.id
-        user = await ctx.bot.fetch_user(user_id)
+        self.logger.print(f"join called.")
 
-        self.logger.print(f"join called by {[user]}.")
-
-        # 504758496370360330
-        if user.id != 504758496370360330:
-            await ctx.send(
-                embed=self.messageLib.standard_embed(
-                    title="Error",
-                    description="You are not allowed to use this feature, as it is in alpha testing.",
-                    color=RED,
-                ),
-                ephemeral=True,
-            )
-            return
         try:
             # step one get the server info
             org = ctx.message
-            org_file = org.attachments[0]
-            with open("pipeline.ason", "w") as f:
-                async with aiohttp.ClientSession() as session, session.get(
-                    org_file.url
-                ) as resp:
-                    pipeline = await resp.text()
-                f.write(pipeline)
 
-            index, pipeline = await self.messageLib.get_pipe(org)
+            pipeline = [
+                {
+                    "$match": {
+                        "$and": [
+                            {"ip": org.embeds[0].title.split(" ")[1].split(":")[0]},
+                            {"port": int(org.embeds[0].title.split(" ")[1].split(":")[1])},
+                        ],
+                    },
+                },
+            ]
 
             self.logger.print(f"join called")
 
@@ -641,21 +626,18 @@ class Buttons(Extension):
             # get the pipeline
             self.logger.print(f"pipeline: {pipeline}")
 
-            host = self.databaseLib.get_doc_at_index(pipeline, index)
+            host = self.databaseLib.get_doc_at_index(pipeline, 0)
 
-            # step two is the server online
-            host = self.serverLib.update(host=host["ip"], fast=False, port=host["port"])
-
-            if host["lastSeen"] < time.time() - 60:
+            if host["lastSeen"] < time.time() - 300:
                 await ctx.send(
                     embed=self.messageLib.standard_embed(
                         title="Error",
-                        description="Server is offline",
+                        description="Server might be offline",
                         color=RED,
                     ),
                     ephemeral=True,
+                    delete_after=2,
                 )
-                return
 
             # step three it's joining time
             # get the activation code url
@@ -680,6 +662,7 @@ class Buttons(Extension):
                     )
                 ],
                 ephemeral=True,
+                delete_after=240,
             )
         except Exception as err:
             if "403|Forbidden" in str(err):
@@ -713,12 +696,12 @@ class Buttons(Extension):
             org = ctx.message
             org_org_id = org.embeds[0].footer.text.split(" ")[1]
             vCode = org.embeds[0].footer.text.split(" ")[3]
-            org = ctx.channel.get_message(org_org_id)
-            self.logger.print(f"org: {org}")
+            oorg = ctx.channel.get_message(org_org_id)
+            self.logger.print(f"org: {oorg}")
 
             self.logger.print(f"submit called")
             # get the files attached to the message
-            index, pipeline = await self.messageLib.get_pipe(org)
+            index, pipeline = await self.messageLib.get_pipe(oorg)
 
             # create the text input
             text_input = ShortText(
@@ -757,6 +740,7 @@ class Buttons(Extension):
                 )
                 return
             else:
+                await org.delete(context=ctx)
                 await modal_ctx.send(
                     embed=self.messageLib.standard_embed(
                         title="Success",
@@ -764,6 +748,7 @@ class Buttons(Extension):
                         color=GREEN,
                     ),
                     ephemeral=True,
+                    delete_after=2,
                 )
 
             # try and get the minecraft token
@@ -792,19 +777,14 @@ class Buttons(Extension):
                     name = res["name"]
                     token = res["minecraft_token"]
 
-                # try and delete the original message
-                try:
-                    await org.delete(context=ctx)
-                except Exception:
-                    pass
-
-                mod_msg = await ctx.send(
+                await ctx.send(
                     embed=self.messageLib.standard_embed(
                         title="Joining...",
                         description=f"Joining the server with the player:\nName: {name}\nUUID: {uuid}",
                         color=BLUE,
                     ),
                     ephemeral=True,
+                    delete_after=2,
                 )
             except Exception as err:
                 self.logger.error(err)
@@ -820,7 +800,9 @@ class Buttons(Extension):
 
             # try and join the server
             host = self.databaseLib.get_doc_at_index(pipeline, index)
-            res = await self.mcLib.join(
+            ServerType = self.mcLib.ServerType
+
+            res: ServerType = await self.mcLib.join(
                 ip=host["ip"],
                 port=host["port"],
                 player_username=name,
@@ -828,23 +810,12 @@ class Buttons(Extension):
                 mine_token=token,
             )
 
-            # try and delete the original message
-            try:
-                await mod_msg.delete(context=ctx)
-            except Exception:
-                pass
-
-            # send the res as a json file after removing the favicon if it's there
-            if "favicon" in res:
-                del res["favicon"]
-
             await ctx.send(
                 embed=self.messageLib.standard_embed(
-                    title="Joining...",
-                    description=f"Joining the server with the player:\nName: {name}\nUUID: {uuid}",
-                    color=BLUE,
+                    title="Done!",
+                    description="The server was of type: " + str(res.status),
+                    color=GREEN,
                 ),
-                file=File(json.dumps(res, indent=4), "join.json"),
                 ephemeral=True,
             )
         except Exception as err:
@@ -858,4 +829,5 @@ class Buttons(Extension):
                     color=RED,
                 ),
                 components=[],
+                ephemeral=True,
             )

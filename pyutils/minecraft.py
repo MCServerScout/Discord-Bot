@@ -83,15 +83,20 @@ class Minecraft:
         mine_token: str = None,
     ) -> ServerType:
         try:
-            self.logger.print("Getting server/player info")
+            self.logger.debug("Getting server/player info")
             # get info on the server
             server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
             version = server.status().version.protocol if version == -1 else version
-            uuid = await self.player.async_get_uuid(player_username)
+            _uuid = await self.player.async_get_uuid(player_username)
 
-            if not uuid:
-                self.logger.error("Player UUID not found")
+            if not _uuid:
+                self.logger.print("Player UUID not found")
                 return self.ServerType(ip, version, "bad uuid")
+
+            _uuid = _uuid.replace("-", "")
+            _uuid = (
+                f"{_uuid[:8]}-{_uuid[8:12]}-{_uuid[12:16]}-{_uuid[16:20]}-{_uuid[20:]}"
+            )
 
             connection = TCPSocketConnection((ip, port))
 
@@ -106,24 +111,18 @@ class Minecraft:
             handshake.write_varint(2)  # Intention to login
 
             connection.write_buffer(handshake)
-            self.logger.print("Sent handshake packet:", handshake.read_utf())
 
             # Send login start packet: ID, username, include sig data, has uuid, uuid
             loginStart = Connection()
 
-            if version > 760:
-                loginStart.write_varint(0)  # Packet ID
-                loginStart.write_utf(player_username)  # Username
-            else:
-                loginStart.write_varint(0)  # Packet ID
-                loginStart.write_utf(player_username)  # Username
+            loginStart.write_varint(0)  # Packet ID
+            loginStart.write_utf(player_username)  # Username
             connection.write_buffer(loginStart)
-            self.logger.print("Sent login start packet:", loginStart.read_utf())
 
             # Read response
             response = connection.read_buffer()
             _id: int = response.read_varint()
-            self.logger.print("Received packet ID:", _id)
+            self.logger.debug("Received packet ID:", _id)
             if _id == 2:
                 self.logger.print("Logged in successfully")
                 return self.ServerType(ip, version, "CRACKED")
@@ -139,7 +138,7 @@ class Minecraft:
                 response = connection.read_buffer()
                 _id: int = response.read_varint()
             if _id == 1:
-                self.logger.print("Encryption requested")
+                self.logger.debug("Encryption requested")
                 if mine_token is None:
                     return self.ServerType(ip, version, "PREMIUM")
 
@@ -164,12 +163,42 @@ class Minecraft:
 
                 pubKey = load_der_public_key(public_key, default_backend())
 
-                self.logger.print(
+                self.logger.debug(
                     f"Encryption info:\nserver_id: {server_id}\npublic_key: {public_key}\nverify_token: {verify_token}\nshared_secret: {shared_secret}\nverify_hash: {verify_hash}\npublic key: {pubKey}"
                 )
 
+                self.logger.debug("Sending authentication request")
+                async with aiohttp.ClientSession() as httpSession:
+                    url = "https://sessionserver.mojang.com/session/minecraft/join"
+                    async with httpSession.post(
+                        url,
+                        json={
+                            "accessToken": mine_token,
+                            "selectedProfile": _uuid.replace("-", ""),
+                            "serverId": verify_hash,
+                        },
+                        headers={
+                            "Content-Type": "application/json",
+                        },
+                    ) as res:
+                        if res.status == 204:  # success
+                            self.logger.debug(
+                                "Authenticated account: " + (await res.text())
+                            )
+                        elif res.status == 403:  # bad something
+                            jres = await res.json()
+                            self.logger.print("Failed to authenticate account")
+                            self.logger.print(jres["errorMessage"])
+
+                            return self.ServerType(ip, version, "BAD_USER")
+                        else:
+                            self.logger.print("Failed to authenticate account")
+                            self.logger.error(res.status)
+                            self.logger.error(await res.text())
+                            return self.ServerType(ip, version, "BAD_USER")
+
                 # send encryption response
-                self.logger.print("Sending encryption response")
+                self.logger.debug("Sending encryption response")
                 encryptedSharedSecret = pubKey.encrypt(shared_secret, PKCS1v15())
                 encryptedVerifyToken = pubKey.encrypt(verify_token, PKCS1v15())
 
@@ -182,80 +211,85 @@ class Minecraft:
 
                 connection.write_buffer(encryptionResponse)
 
-                # check if the account owns the game
-                self.logger.print("Checking if account owns the game")
-                url = "https://api.minecraftservices.com/entitlements/mcstore"
-                async with aiohttp.ClientSession().get(
-                    url,
-                    headers={
-                        "Authorization": "Bearer {}".format(mine_token),
-                        "Content-Type": "application/json",
-                    },
-                ) as res:
-                    if res.status == 200:
-                        items = (await res.json()).get("items", [])
+                async with aiohttp.ClientSession() as httpSession:
+                    # check if the account owns the game
+                    self.logger.debug("Checking if account owns the game")
+                    url = "https://api.minecraftservices.com/entitlements/mcstore"
+                    async with httpSession.get(
+                        url,
+                        headers={
+                            "Authorization": "Bearer {}".format(mine_token),
+                            "Content-Type": "application/json",
+                        },
+                    ) as res:
+                        if res.status == 200:
+                            items = (await res.json()).get("items", [])
 
-                        # make sure the account owns the game
-                        if len(items) == 0:
-                            self.logger.print("Account does not own the game")
-                            return self.ServerType(ip, version, "NO_GAME")
-                    else:
-                        self.logger.print("Failed to check if account owns the game")
-                        self.logger.error(res.text)
-                        return self.ServerType(ip, version, "BAD_TOKEN")
-
-                # verify the account with mojang
-                self.logger.print("Verifying account")
-                url = "https://sessionserver.mojang.com/session/minecraft/join"
-                async with aiohttp.ClientSession().post(
-                    url,
-                    json={
-                        "accessToken": mine_token,
-                        "selectedProfile": uuid.replace("-", ""),
-                        "serverId": verify_hash,
-                    },
-                    headers={
-                        "Content-Type": "application/json",
-                    },
-                ) as res2:
-                    if res2.status == 204:  # success
-                        if "error" in res2.text:
-                            self.logger.print("Failed to verify account")
-                            self.logger.error(res2.text)
-                            return self.ServerType(ip, version, "BAD_TOKEN")
+                            # make sure the account owns the game
+                            if len(items) == 0:
+                                self.logger.print("Account does not own the game")
+                                return self.ServerType(ip, version, "NO_GAME")
                         else:
-                            self.logger.print("Verified account")
-                    else:
-                        self.logger.print("Failed to verify account")
-                        self.logger.error(res2.text)
-                        return self.ServerType(ip, version, "BAD_TOKEN")
+                            self.logger.print(
+                                "Failed to check if account owns the game"
+                            )
+                            self.logger.error(res.text)
+                            return self.ServerType(ip, version, "BAD_TOKEN")
 
-                    # listen for a set compression packet
-                    try:
+                    # verify the account with mojang
+                    self.logger.debug("Verifying account")
+                    url = "https://sessionserver.mojang.com/session/minecraft/join"
+                    async with httpSession.post(
+                        url,
+                        json={
+                            "accessToken": mine_token,
+                            "selectedProfile": _uuid.replace("-", ""),
+                            "serverId": verify_hash,
+                        },
+                        headers={
+                            "Content-Type": "application/json",
+                        },
+                    ) as res2:
+                        if res2.status == 204:  # success
+                            if "error" in await res2.text():
+                                self.logger.print("Failed to verify account")
+                                self.logger.print(await res2.text())
+                                return self.ServerType(ip, version, "BAD_TOKEN")
+                            else:
+                                self.logger.debug("Verified account")
+                        else:
+                            self.logger.print("Failed to verify account")
+                            self.logger.print(await res2.text())
+                            return self.ServerType(ip, version, "BAD_TOKEN")
+
+                # listen for a set compression packet
+                try:
+                    _id = 51
+                    while _id > 50:
                         response = connection.read_buffer()
-                    except OSError:
-                        self.logger.print("Something went wrong!")
-                        self.logger.error(traceback.format_exc())
-                        return self.ServerType(ip, version, "UNKNOWN")
+                        _id = response.read_varint()
+                        self.logger.debug("Received packet ID:", _id)
+                except OSError:
+                    self.logger.print("Invalid session")
+                    return self.ServerType(ip, version, "BAD_SESSION")
+
+                if _id == 3:
+                    self.logger.print("Setting compression")
+                    compression_threshold = response.read_varint()
+                    self.logger.print(f"Compression threshold: {compression_threshold}")
+
+                    response = connection.read_buffer()
                     _id: int = response.read_varint()
 
-                    if _id == 3:
-                        self.logger.print("Setting compression")
-                        compression_threshold = response.read_varint()
-                        self.logger.print(
-                            f"Compression threshold: {compression_threshold}"
-                        )
-                    elif _id == 2:
-                        self.logger.print("Logged in successfully")
-                        return self.ServerType(ip, version, "PREMIUM")
-                    elif _id == 0:
-                        self.logger.print("Failed to login")
-                        self.logger.print(response.read_utf())
-                        return self.ServerType(ip, version, "WHITELISTED")
-                    else:
-                        self.logger.print("Failed to set compression")
-                        return self.ServerType(ip, version, "UNKNOWN")
-
+                if _id in [2, 27, 4]:
+                    self.logger.print("Logged in successfully")
+                    return self.ServerType(ip, version, "PREMIUM")
+                elif _id == 0:
+                    self.logger.print("Failed to login")
+                    return self.ServerType(ip, version, "WHITELISTED")
+                else:
+                    self.logger.print("Failed to login: " + str(_id))
+                    return self.ServerType(ip, version, "UNKNOWN")
             else:
                 self.logger.info("Unknown response: " + str(_id))
                 try:
@@ -319,17 +353,15 @@ class Minecraft:
             url = "https://user.auth.xboxlive.com/user/authenticate"
             async with httpSession.post(
                 url,
-                data=str(
-                    {
-                        "Properties": {
-                            "AuthMethod": "RPS",
-                            "SiteName": "user.auth.xboxlive.com",
-                            "RpsTicket": f"t={accessToken}",
-                        },
-                        "RelyingParty": "https://auth.xboxlive.com",  # changed from http -> https
-                        "TokenType": "JWT",
-                    }
-                ),
+                json={
+                    "Properties": {
+                        "AuthMethod": "RPS",
+                        "SiteName": "user.auth.xboxlive.com",
+                        "RpsTicket": f"d={accessToken}",
+                    },
+                    "RelyingParty": "https://auth.xboxlive.com",  # changed from http -> https
+                    "TokenType": "JWT",
+                },
                 headers={
                     "Content-Type": "application/json",
                     "Accept": "application/json",
@@ -337,7 +369,6 @@ class Minecraft:
             ) as res2:
                 if res2.status == 200:
                     xblToken = (await res2.json())["Token"]
-                    self.logger.print("Verified account: " + xblToken)
                 else:
                     self.logger.print("Failed to verify account: ", res2.status)
                     self.logger.error(res2.reason, res2.request_info)
@@ -363,7 +394,6 @@ class Minecraft:
             ) as res3:
                 if res3.status == 200:
                     xstsToken = (await res3.json())["Token"]
-                    self.logger.print("Got xsts token: " + xstsToken)
                 else:
                     self.logger.print("Failed to obtain xsts token")
                     self.logger.error(res3.reason)
@@ -384,7 +414,6 @@ class Minecraft:
             ) as res4:
                 if res4.status == 200:
                     minecraftToken = (await res4.json())["access_token"]
-                    self.logger.print("Got xuid: " + xuid)
                 else:
                     self.logger.print("Failed to obtain minecraft token")
                     self.logger.error(res4.reason)
@@ -457,17 +486,15 @@ class Minecraft:
         url = "https://user.auth.xboxlive.com/user/authenticate"
         res2 = requests.post(
             url,
-            data=str(
-                {
-                    "Properties": {
-                        "AuthMethod": "RPS",
-                        "SiteName": "user.auth.xboxlive.com",
-                        "RpsTicket": f"t={accessToken}",
-                    },
-                    "RelyingParty": "https://auth.xboxlive.com",  # changed from http -> https
-                    "TokenType": "JWT",
-                }
-            ),
+            json={
+                "Properties": {
+                    "AuthMethod": "RPS",
+                    "SiteName": "user.auth.xboxlive.com",
+                    "RpsTicket": f"d={accessToken}",
+                },
+                "RelyingParty": "http://auth.xboxlive.com",  # changed from http -> https
+                "TokenType": "JWT",
+            },
             headers={
                 "Content-Type": "application/json",
                 "Accept": "application/json",
