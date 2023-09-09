@@ -103,11 +103,13 @@ class Minecraft:
                 self.logger.debug("Checking if account owns the game")
                 url = "https://api.minecraftservices.com/entitlements/mcstore"
                 async with httpSession.get(
-                        url,
-                        headers={
+                    url,
+                    headers=(
+                        {
                             "Authorization": "Bearer {}".format(mine_token),
                             "Content-Type": "application/json",
                         },
+                    ),
                 ) as res:
                     if res.status == 200:
                         items = (await res.json()).get("items", [])
@@ -117,9 +119,7 @@ class Minecraft:
                             self.logger.print("Account does not own the game")
                             return self.ServerType(ip, version, "NO_GAME")
                     else:
-                        self.logger.print(
-                            "Failed to check if account owns the game"
-                        )
+                        self.logger.print("Failed to check if account owns the game")
                         self.logger.error(res.text)
                         return self.ServerType(ip, version, "BAD_TOKEN")
 
@@ -193,7 +193,9 @@ class Minecraft:
                 )
 
                 self.logger.debug("Sending authentication request")
-                await self.session_join(mine_token=mine_token, server_hash=verify_hash, _uuid=_uuid)
+                await self.session_join(
+                    mine_token=mine_token, server_hash=verify_hash, _uuid=_uuid
+                )
 
                 # send encryption response
                 self.logger.debug("Sending encryption response")
@@ -610,15 +612,15 @@ class Minecraft:
             async with aiohttp.ClientSession() as httpSession:
                 url = "https://sessionserver.mojang.com/session/minecraft/join"
                 async with httpSession.post(
-                        url,
-                        json={
-                            "accessToken": mine_token,
-                            "selectedProfile": _uuid.replace("-", ""),
-                            "serverId": server_hash,
-                        },
-                        headers={
-                            "Content-Type": "application/json",
-                        },
+                    url,
+                    json={
+                        "accessToken": mine_token,
+                        "selectedProfile": _uuid.replace("-", ""),
+                        "serverId": server_hash,
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                    },
                 ) as res:
                     if res.status == 204:  # success
                         self.logger.debug(
@@ -633,7 +635,9 @@ class Minecraft:
                         # wait 1 second and try again
                         self.logger.print("Service unavailable")
                         await asyncio.sleep(1)
-                        await self.session_join(mine_token, server_hash, _uuid, tries + 1)
+                        await self.session_join(
+                            mine_token, server_hash, _uuid, tries + 1
+                        )
                     else:
                         self.logger.print("Failed to authenticate account")
                         self.logger.error(res.status, await res.text())
