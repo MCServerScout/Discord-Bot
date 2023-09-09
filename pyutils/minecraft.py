@@ -1,3 +1,4 @@
+import asyncio
 import http.server
 import os
 import secrets
@@ -97,6 +98,30 @@ class Minecraft:
             _uuid = (
                 f"{_uuid[:8]}-{_uuid[8:12]}-{_uuid[12:16]}-{_uuid[16:20]}-{_uuid[20:]}"
             )
+            async with aiohttp.ClientSession() as httpSession:
+                # check if the account owns the game
+                self.logger.debug("Checking if account owns the game")
+                url = "https://api.minecraftservices.com/entitlements/mcstore"
+                async with httpSession.get(
+                        url,
+                        headers={
+                            "Authorization": "Bearer {}".format(mine_token),
+                            "Content-Type": "application/json",
+                        },
+                ) as res:
+                    if res.status == 200:
+                        items = (await res.json()).get("items", [])
+
+                        # make sure the account owns the game
+                        if len(items) == 0:
+                            self.logger.print("Account does not own the game")
+                            return self.ServerType(ip, version, "NO_GAME")
+                    else:
+                        self.logger.print(
+                            "Failed to check if account owns the game"
+                        )
+                        self.logger.error(res.text)
+                        return self.ServerType(ip, version, "BAD_TOKEN")
 
             connection = TCPSocketConnection((ip, port))
 
@@ -168,34 +193,7 @@ class Minecraft:
                 )
 
                 self.logger.debug("Sending authentication request")
-                async with aiohttp.ClientSession() as httpSession:
-                    url = "https://sessionserver.mojang.com/session/minecraft/join"
-                    async with httpSession.post(
-                        url,
-                        json={
-                            "accessToken": mine_token,
-                            "selectedProfile": _uuid.replace("-", ""),
-                            "serverId": verify_hash,
-                        },
-                        headers={
-                            "Content-Type": "application/json",
-                        },
-                    ) as res:
-                        if res.status == 204:  # success
-                            self.logger.debug(
-                                "Authenticated account: " + (await res.text())
-                            )
-                        elif res.status == 403:  # bad something
-                            jres = await res.json()
-                            self.logger.print("Failed to authenticate account")
-                            self.logger.print(jres["errorMessage"])
-
-                            return self.ServerType(ip, version, "BAD_USER")
-                        else:
-                            self.logger.print("Failed to authenticate account")
-                            self.logger.error(res.status)
-                            self.logger.error(await res.text())
-                            return self.ServerType(ip, version, "BAD_USER")
+                await self.session_join(mine_token=mine_token, server_hash=verify_hash, _uuid=_uuid)
 
                 # send encryption response
                 self.logger.debug("Sending encryption response")
@@ -210,57 +208,6 @@ class Minecraft:
                 encryptionResponse.write(encryptedVerifyToken)
 
                 connection.write_buffer(encryptionResponse)
-
-                async with aiohttp.ClientSession() as httpSession:
-                    # check if the account owns the game
-                    self.logger.debug("Checking if account owns the game")
-                    url = "https://api.minecraftservices.com/entitlements/mcstore"
-                    async with httpSession.get(
-                        url,
-                        headers={
-                            "Authorization": "Bearer {}".format(mine_token),
-                            "Content-Type": "application/json",
-                        },
-                    ) as res:
-                        if res.status == 200:
-                            items = (await res.json()).get("items", [])
-
-                            # make sure the account owns the game
-                            if len(items) == 0:
-                                self.logger.print("Account does not own the game")
-                                return self.ServerType(ip, version, "NO_GAME")
-                        else:
-                            self.logger.print(
-                                "Failed to check if account owns the game"
-                            )
-                            self.logger.error(res.text)
-                            return self.ServerType(ip, version, "BAD_TOKEN")
-
-                    # verify the account with mojang
-                    self.logger.debug("Verifying account")
-                    url = "https://sessionserver.mojang.com/session/minecraft/join"
-                    async with httpSession.post(
-                        url,
-                        json={
-                            "accessToken": mine_token,
-                            "selectedProfile": _uuid.replace("-", ""),
-                            "serverId": verify_hash,
-                        },
-                        headers={
-                            "Content-Type": "application/json",
-                        },
-                    ) as res2:
-                        if res2.status == 204:  # success
-                            if "error" in await res2.text():
-                                self.logger.print("Failed to verify account")
-                                self.logger.print(await res2.text())
-                                return self.ServerType(ip, version, "BAD_TOKEN")
-                            else:
-                                self.logger.debug("Verified account")
-                        else:
-                            self.logger.print("Failed to verify account")
-                            self.logger.print(await res2.text())
-                            return self.ServerType(ip, version, "BAD_TOKEN")
 
                 # listen for a set compression packet
                 try:
@@ -654,3 +601,43 @@ class Minecraft:
             code_challenge,
             cast(Literal["plain", "S256"], code_challenge_method),
         )
+
+    async def session_join(self, mine_token, server_hash, _uuid, tries=0):
+        try:
+            if tries > 5:
+                self.logger.print("Failed to authenticate account after 5 tries")
+                return 1
+            async with aiohttp.ClientSession() as httpSession:
+                url = "https://sessionserver.mojang.com/session/minecraft/join"
+                async with httpSession.post(
+                        url,
+                        json={
+                            "accessToken": mine_token,
+                            "selectedProfile": _uuid.replace("-", ""),
+                            "serverId": server_hash,
+                        },
+                        headers={
+                            "Content-Type": "application/json",
+                        },
+                ) as res:
+                    if res.status == 204:  # success
+                        self.logger.debug(
+                            "Authenticated account: " + (await res.text())
+                        )
+                        return 0
+                    elif res.status == 403:  # bad something
+                        jres = await res.json()
+                        self.logger.print("Failed to authenticate account")
+                        self.logger.print(jres["errorMessage"])
+                    elif res.status == 503:  # service unavailable
+                        # wait 1 second and try again
+                        self.logger.print("Service unavailable")
+                        await asyncio.sleep(1)
+                        await self.session_join(mine_token, server_hash, _uuid, tries + 1)
+                    else:
+                        self.logger.print("Failed to authenticate account")
+                        self.logger.error(res.status, await res.text())
+
+            return 1
+        except Exception:
+            self.logger.error(traceback.format_exc())
