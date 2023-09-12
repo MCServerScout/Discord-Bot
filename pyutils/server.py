@@ -268,8 +268,8 @@ class Server:
             self.logger.warning("Connection error (invalid host)")
             return None
         except Exception as err:
-            self.logger.error(err)
             self.logger.print(f"{traceback.format_exc()}")
+            self.logger.error(err)
             return None
 
     def join(
@@ -359,8 +359,8 @@ class Server:
             self.logger.print("Server did not respond")
             return self.ServerType(ip, version, "UNKNOWN")
         except Exception as err:
-            self.logger.error(err)
             self.logger.print(f"{traceback.format_exc()}")
+            self.logger.error(err)
             return self.ServerType(ip, version, "OFFLINE")
 
     @staticmethod
@@ -422,5 +422,5 @@ class Server:
                 upsert=True,
             )
         except Exception as err:
-            self.logger.error(err)
             self.logger.print(f"{traceback.format_exc()}")
+            self.logger.error(err)

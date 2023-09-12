@@ -13,6 +13,7 @@ from typing import Tuple, Literal, cast
 import aiohttp
 import mcstatus
 import requests
+import sentry_sdk
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.padding import PKCS1v15
 from cryptography.hazmat.primitives.serialization import load_der_public_key
@@ -104,12 +105,10 @@ class Minecraft:
                 url = "https://api.minecraftservices.com/entitlements/mcstore"
                 async with httpSession.get(
                     url,
-                    headers=(
-                        {
-                            "Authorization": "Bearer {}".format(mine_token),
-                            "Content-Type": "application/json",
-                        },
-                    ),
+                    headers={
+                        "Authorization": "Bearer {}".format(mine_token),
+                        "Content-Type": "application/json",
+                    },
                 ) as res:
                     if res.status == 200:
                         items = (await res.json()).get("items", [])
@@ -136,16 +135,27 @@ class Minecraft:
             handshake.write_varint(2)  # Intention to login
 
             connection.write_buffer(handshake)
+            self.logger.debug("Sent handshake packet")
 
             # Send login start packet: ID, username, include sig data, has uuid, uuid
             loginStart = Connection()
 
             loginStart.write_varint(0)  # Packet ID
+            if len(player_username) > 16:
+                self.logger.print("Username too long")
+                return self.ServerType(ip, version, "BAD_USERNAME")
             loginStart.write_utf(player_username)  # Username
+
             connection.write_buffer(loginStart)
+            self.logger.debug("Sent login start packet")
 
             # Read response
-            response = connection.read_buffer()
+            try:
+                response = connection.read_buffer()
+            except OSError:
+                self.logger.print("No response from server")
+                return self.ServerType(ip, version, "OFFLINE")
+
             _id: int = response.read_varint()
             self.logger.debug("Received packet ID:", _id)
             if _id == 2:
@@ -210,6 +220,7 @@ class Minecraft:
                 encryptionResponse.write(encryptedVerifyToken)
 
                 connection.write_buffer(encryptionResponse)
+                self.logger.debug("Sent encryption response")
 
                 # listen for a set compression packet
                 try:
@@ -230,15 +241,12 @@ class Minecraft:
                     response = connection.read_buffer()
                     _id: int = response.read_varint()
 
-                if _id in [2, 27, 4]:
-                    self.logger.print("Logged in successfully")
-                    return self.ServerType(ip, version, "PREMIUM")
-                elif _id == 0:
+                if _id == 0:
                     self.logger.print("Failed to login")
                     return self.ServerType(ip, version, "WHITELISTED")
                 else:
-                    self.logger.print("Failed to login: " + str(_id))
-                    return self.ServerType(ip, version, "UNKNOWN")
+                    self.logger.print("Logged in successfully")
+                    return self.ServerType(ip, version, "PREMIUM")
             else:
                 self.logger.info("Unknown response: " + str(_id))
                 try:
@@ -247,18 +255,12 @@ class Minecraft:
                     reason = "Unknown"
 
                 self.logger.info("Reason: " + reason)
-                return self.ServerType(ip, version, "UNKNOWN")
+                return self.ServerType(ip, version, "UNKNOWN: " + reason)
         except TimeoutError:
             self.logger.print("Server timed out")
-            self.logger.error("Server timed out")
-            return self.ServerType(ip, version, "OFFLINE")
-        except OSError:
-            self.logger.print("Server did not respond")
-            self.logger.error("Server did not respond: " + traceback.format_exc())
-            return self.ServerType(ip, version, "UNKNOWN")
-        except Exception:
-            self.logger.print(traceback.format_exc())
-            self.logger.error(traceback.format_exc())
+            return self.ServerType(ip, version, "OFFLINE:Timeout")
+        except Exception as e:
+            sentry_sdk.capture_exception(e)
             return self.ServerType(ip, version, "OFFLINE")
 
     async def get_minecraft_token_async(
@@ -276,6 +278,7 @@ class Minecraft:
             }
             if verify_code:
                 params["code_verifier"] = verify_code
+
             async with httpSession.post(
                 endpoint,
                 data=params,
@@ -308,7 +311,7 @@ class Minecraft:
                         "SiteName": "user.auth.xboxlive.com",
                         "RpsTicket": f"d={accessToken}",
                     },
-                    "RelyingParty": "https://auth.xboxlive.com",  # changed from http -> https
+                    "RelyingParty": "http://auth.xboxlive.com",  # changed from http -> https
                     "TokenType": "JWT",
                 },
                 headers={
@@ -318,10 +321,11 @@ class Minecraft:
             ) as res2:
                 if res2.status == 200:
                     xblToken = (await res2.json())["Token"]
+                    self.logger.debug("Got xbl token: ")
                 else:
                     self.logger.print("Failed to verify account: ", res2.status)
-                    self.logger.error(res2.reason, res2.request_info)
-                    self.logger.error(await res2.text())
+                    self.logger.error(res2.reason)
+                    self.logger.error(res2.text)
                     return {"type": "error", "error": "Failed to verify account"}
 
             # obtain xsts token
@@ -343,6 +347,7 @@ class Minecraft:
             ) as res3:
                 if res3.status == 200:
                     xstsToken = (await res3.json())["Token"]
+                    self.logger.debug("Got xsts token: ")
                 else:
                     self.logger.print("Failed to obtain xsts token")
                     self.logger.error(res3.reason)
@@ -363,6 +368,7 @@ class Minecraft:
             ) as res4:
                 if res4.status == 200:
                     minecraftToken = (await res4.json())["access_token"]
+                    self.logger.print("Got Minecraft token")
                 else:
                     self.logger.print("Failed to obtain minecraft token")
                     self.logger.error(res4.reason)
@@ -390,12 +396,12 @@ class Minecraft:
                     self.logger.error(res5.reason)
                     return {"type": "error", "error": "Failed to obtain profile"}
 
-                return {
-                    "type": "success",
-                    "uuid": uuid,
-                    "name": name,
-                    "minecraft_token": minecraftToken,
-                }
+            return {
+                "type": "success",
+                "uuid": uuid,
+                "name": name,
+                "minecraft_token": minecraftToken,
+            }
 
     def get_minecraft_token(
         self, clientID, redirect_uri, act_code, verify_code=None

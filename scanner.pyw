@@ -8,7 +8,15 @@ from pymongo import MongoClient
 import pyutils
 from pyutils.scanner import Scanner
 
-DISCORD_WEBHOOK, MONGO_URL, db_name, col_name, client_id, client_secret, IP_INFO_TOKEN = "", "", "", "", "", "", ""
+(
+    DISCORD_WEBHOOK,
+    MONGO_URL,
+    db_name,
+    col_name,
+    client_id,
+    client_secret,
+    IP_INFO_TOKEN,
+) = ("", "", "", "", "", "", "")
 max_threads, max_pps = 10, 1000
 DEBUG = False
 try:
@@ -27,7 +35,7 @@ if MONGO_URL == "":
 # test the db connection
 try:
     client = MongoClient(MONGO_URL)
-    db = client['MCSS' if db_name == "" else db_name]
+    db = client["MCSS" if db_name == "" else db_name]
     col = db["scannedServers" if col_name == "" else col_name]
 
     col.count_documents({})
@@ -73,6 +81,9 @@ random.shuffle(ips)
 logger.print("IP list created:", len(ips))
 
 if __name__ == "__main__":
-    scanner = Scanner(logger, max_thread_count=max_threads, max_ping_rate=max_pps, serverLib=serverLib)
+    scanner = Scanner(
+        logger, max_thread_count=max_threads, max_ping_rate=max_pps, serverLib=serverLib
+    )
     # ips = ["0.0.0.0/1"]
-    scanner.start(ip_ranges=ips)
+    while True:
+        scanner.start(ip_ranges=ips)

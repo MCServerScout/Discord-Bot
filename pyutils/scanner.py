@@ -16,6 +16,7 @@ class Scanner:
         self.max_threads = max_thread_count
         self.max_pps = max_ping_rate
         self.serverLib = serverLib
+        self.counts = [0]
 
     def stop(self):
         self.STOP = True
@@ -24,6 +25,7 @@ class Scanner:
         if not ip_ranges:
             self.logger.error("No ip ranges provided")
             return
+        threading.Thread(target=self.stats).start()
         threading.Thread(target=self.test_starter, args=(self.logger,)).start()
         self.scan_starter(ip_ranges)
 
@@ -46,16 +48,16 @@ class Scanner:
                 host = hosts[ip]
                 for port in host:
                     if port["status"] == "open":
-                        self.logger.print(
-                            f"Found open port {port['port']} on {ip}")
+                        self.logger.debug(f"Found open port {port['port']} on {ip}")
                         self.que.put(ip + ":" + str(port["port"]))
+                        self.counts[-1] += 1
         except Exception as err:
             self.logger.error(f"Error scanning {ip_range}: {err}")
             self.logger.print(traceback.format_exc())
             raise err
 
     def scan_starter(self, ip_list):
-        self.logger.print("Starting scans")
+        self.logger.debug("Starting scans")
         # creates all the threads that run the scan_range function
         pool = ThreadPool(processes=self.max_threads)
         pool.map(self.scan_range, ip_list)
@@ -66,7 +68,7 @@ class Scanner:
         self.serverLib.update(host=ip, port=port, fast=False)
 
     def test_starter(self):
-        self.logger.print("Starting tests")
+        self.logger.debug("Starting tests")
         while not self.STOP:
             if self.que.qsize() > 0:
                 ip = self.que.get()
@@ -74,3 +76,15 @@ class Scanner:
             else:
                 self.logger.debug("No ips in que, sleeping")
                 time.sleep(30)
+
+    def stats(self):
+        while True:
+            while len(self.counts) > 100:
+                self.counts.pop(0)
+
+            self.logger.print(
+                f"Scanned {self.counts[-1]} servers in the last hour, average of {sum(self.counts) / len(self.counts)} per hour"
+            )
+            self.counts.append(0)
+
+            time.sleep(60 * 60)  # sleep for an hour

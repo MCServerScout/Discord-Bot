@@ -225,8 +225,8 @@ class Message:
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
                 except Exception as e:
-                    self.logger.error("Error: " + str(e))
                     self.logger.print(f"Full traceback: {traceback.format_exc()}")
+                    self.logger.error("Error: " + str(e))
 
                 # try and see if any of the players are live-streaming
                 if "sample" in data["players"]:
@@ -386,12 +386,12 @@ class Message:
                 else self.buttons(),
             }
         except KeyError as e:
-            self.logger.error(f"KeyError: {e}, IP: {data['ip']}, data: {data}")
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"KeyError: {e}, IP: {data['ip']}, data: {data}")
             return None
         except Exception as e:
-            self.logger.error(f"{e}, IP: {data['ip']}")
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"{e}, IP: {data['ip']}")
             return None
 
     def standard_embed(
@@ -424,8 +424,8 @@ class Message:
                 timestamp=self.text.time_now(),
             )
         except Exception as e:
-            self.logger.error(e)
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(e)
             return interactions.Embed(
                 title=title,
                 description=description,
@@ -559,8 +559,8 @@ class Message:
                 )
                 return
 
-            self.logger.error(err)
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(err)
 
             await ctx.send(
                 embed=self.standard_embed(

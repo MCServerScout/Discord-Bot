@@ -56,7 +56,7 @@ class Player:
         url = "https://minotar.net/avatar/" + name
         async with aiohttp.ClientSession() as session, session.get(url) as r:
             if r.status != 200:
-                self.logger.error("Player head not found")
+                self.logger.print("Player head not found")
                 return None
             with open("playerhead.png", "wb") as f:
                 f.write(await r.read())

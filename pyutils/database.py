@@ -45,8 +45,9 @@ class Database:
 
             return result
         except StopIteration:
-            self.logger.error(traceback.format_exc())
-            self.logger.error(f"Error getting document at index: {pipeline}")
+            self.logger.error(
+                f"Error getting document at index: {pipeline}\n{traceback.format_exc()}"
+            )
 
             return None
 
@@ -61,8 +62,7 @@ class Database:
             try:
                 return self.col.aggregate(pipeline, allowDiskUse=allowDiskUse)
             except StopIteration:
-                self.logger.error(traceback.format_exc())
-                self.logger.error(f"Error aggregating: {pipeline}")
+                self.logger.print(f"No matches for pipeline: {pipeline}")
                 return None
 
     def find_one(
@@ -72,8 +72,7 @@ class Database:
         try:
             return self.col.find_one(query)
         except StopIteration:
-            self.logger.error(traceback.format_exc())
-            self.logger.error(f"Error finding one: {query}")
+            self.logger.print(f"No matches for query: {query}")
             return None
 
     def find(
@@ -83,8 +82,7 @@ class Database:
         try:
             return list(self.col.find(query))
         except StopIteration:
-            self.logger.error(traceback.format_exc())
-            self.logger.error(f"Error finding: {query}")
+            self.logger.print(f"No matches for query: {query}")
             return None
 
     def update_one(
@@ -96,8 +94,7 @@ class Database:
         try:
             return self.col.update_one(query, update, **kwargs)
         except StopIteration:
-            self.logger.error(traceback.format_exc())
-            self.logger.error(f"Error updating one: {query}")
+            self.logger.print(f"No matches for query: {query}")
             return None
 
     def update_many(
@@ -108,8 +105,7 @@ class Database:
         try:
             return self.col.update_many(query, update)
         except StopIteration:
-            self.logger.error(traceback.format_exc())
-            self.logger.error(f"Error updating many: {query}")
+            self.logger.print(f"No matches for query: {query}")
             return None
 
     @trace
@@ -118,20 +114,14 @@ class Database:
         pipeline: list,
     ):
         """Counts the number of documents in a pipeline"""
-        try:
-            new_pipeline = pipeline.copy()
+        new_pipeline = pipeline.copy()
 
-            if type(new_pipeline) is dict:
-                new_pipeline = [new_pipeline]
+        if type(new_pipeline) is dict:
+            new_pipeline = [new_pipeline]
 
-            new_pipeline.append({"$group": {"_id": None, "count": {"$sum": 1}}})
+        new_pipeline.append({"$group": {"_id": None, "count": {"$sum": 1}}})
 
-            result = self.col.aggregate(new_pipeline, allowDiskUse=True)
-            try:
-                return next(result)["count"]
-            except StopIteration:
-                return 0
-        except StopIteration:
-            self.logger.error(traceback.format_exc())
-            self.logger.error(f"Error counting pipeline: {pipeline}")
+        result = self.col.aggregate(new_pipeline, allowDiskUse=True).try_next()
+        if result is None:
             return 0
+        return result["count"]

@@ -3,6 +3,7 @@ import datetime
 import time
 import traceback
 
+import sentry_sdk
 from interactions import (
     Extension,
     component_callback,
@@ -106,8 +107,8 @@ class Buttons(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
 
             await ctx.send(
                 embed=self.messageLib.standard_embed(
@@ -167,8 +168,8 @@ class Buttons(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
 
             await ctx.send(
                 embed=self.messageLib.standard_embed(
@@ -243,8 +244,8 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
 
             await ctx.send(
                 embed=self.messageLib.standard_embed(
@@ -339,8 +340,9 @@ class Buttons(Extension):
                 await org.delete(context=ctx)
                 return
 
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
+
             await ctx.send(
                 embed=self.messageLib.standard_embed(
                     title="Error",
@@ -494,8 +496,10 @@ class Buttons(Extension):
                     ephemeral=True,
                 )
                 return
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
+
             await ctx.send(
                 embed=self.messageLib.standard_embed(
                     title="Error",
@@ -586,8 +590,8 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
 
             await ctx.send(
                 embed=self.messageLib.standard_embed(
@@ -613,7 +617,11 @@ class Buttons(Extension):
                     "$match": {
                         "$and": [
                             {"ip": org.embeds[0].title.split(" ")[1].split(":")[0]},
-                            {"port": int(org.embeds[0].title.split(" ")[1].split(":")[1])},
+                            {
+                                "port": int(
+                                    org.embeds[0].title.split(" ")[1].split(":")[1]
+                                )
+                            },
                         ],
                     },
                 },
@@ -676,8 +684,8 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
 
             await ctx.send(
                 embed=self.messageLib.standard_embed(
@@ -754,7 +762,7 @@ class Buttons(Extension):
             # try and get the minecraft token
             try:
                 # res = await mcLib.get_minecraft_token_async(
-                res = self.mcLib.get_minecraft_token(
+                res = await self.mcLib.get_minecraft_token_async(
                     clientID=self.azure_client_id,
                     redirect_uri=self.azure_redirect_uri,
                     act_code=code,
@@ -762,7 +770,7 @@ class Buttons(Extension):
                 )
 
                 if res["type"] == "error":
-                    self.logger.error(res["error"])
+                    self.logger.error(f"Error getting token: {res['error']}")
                     await ctx.send(
                         embed=self.messageLib.standard_embed(
                             title="Error",
@@ -787,7 +795,11 @@ class Buttons(Extension):
                     delete_after=2,
                 )
             except Exception as err:
-                self.logger.error(err)
+                self.logger.error(
+                    f"Error: {err}\nFull traceback: {traceback.format_exc()}"
+                )
+                sentry_sdk.capture_exception(err)
+
                 await ctx.send(
                     embed=self.messageLib.standard_embed(
                         title="Error",
@@ -819,8 +831,8 @@ class Buttons(Extension):
                 ephemeral=True,
             )
         except Exception as err:
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
 
             await ctx.send(
                 embed=self.messageLib.standard_embed(

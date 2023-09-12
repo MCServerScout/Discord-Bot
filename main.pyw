@@ -19,7 +19,7 @@ from interactions import (
     Client,
     slash_command,
 )
-from interactions.api.events import Ready
+from interactions.api.events import Ready, CommandCompletion, CommandError
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
@@ -204,6 +204,27 @@ async def help_cmd(ctx):
 async def on_ready():
     user = await bot.fetch_user(bot.user.id)
     logger.hook(f"Logged in as {user.username}#{user.discriminator}")
+
+
+@listen(CommandCompletion, disable_default_listeners=True)
+async def on_command_completion(event):
+    sentry_sdk.add_breadcrumb(
+        category="command",
+        message=f"Command {event.ctx.invoke_target} completed, with args {[arg for arg in event.ctx.kwargs]}",
+    )
+    sentry_sdk.set_tag("command", event.ctx.invoke_target)
+
+
+@listen(CommandError, disable_default_listeners=True)
+async def on_command_error(event):
+    sentry_sdk.add_breadcrumb(
+        category="command",
+        message=f"Command {event.ctx.invoke_target} errored, with args {[arg for arg in event.ctx.kwargs]}",
+    )
+    sentry_sdk.set_tag("command", event.ctx.invoke_target)
+    sentry_sdk.capture_exception(event.error)
+    logger.critical(event.error)
+    await event.ctx.send("An error occurred while running the command", ephemeral=True)
 
 
 # -----------------------------------------------------------------------------
