@@ -208,7 +208,7 @@ class Buttons(Extension):
             set_tag("players", len(player_list))
 
             player_groups = [
-                list(player_list[i : i + 10]) for i in range(0, len(player_list), 10)
+                list(player_list[i: i + 10]) for i in range(0, len(player_list), 10)
             ]
 
             players = []

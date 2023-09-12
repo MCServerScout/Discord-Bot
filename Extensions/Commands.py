@@ -172,7 +172,8 @@ class Commands(Extension):
             # filter out servers that have max players less than zero
             pipeline[0]["$match"]["$and"].append({"players.max": {"$gt": 0}})
             # filter out servers that have more than 150k players online
-            pipeline[0]["$match"]["$and"].append({"players.online": {"$lt": 150000}})
+            pipeline[0]["$match"]["$and"].append(
+                {"players.online": {"$lt": 150000}})
 
             if player is not None:
                 if len(player) < 16:
@@ -230,7 +231,8 @@ class Commands(Extension):
                         {"version.name": {"$regex": f".*{version}.*"}}
                     )
             if max_players is not None:
-                pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                pipeline[0]["$match"]["$and"].append(
+                    {"players.max": max_players})
             if online_players is not None:
                 if (
                     not online_players.isdigit()
@@ -274,7 +276,8 @@ class Commands(Extension):
                         components=self.messageLib.buttons(),
                     )
                     return
-                pipeline[0]["$match"]["$and"].append({"players.online": online_players})
+                pipeline[0]["$match"]["$and"].append(
+                    {"players.online": online_players})
             if sign is not None:
                 pipeline[0]["$match"]["$and"].append(
                     {"world.signs": {"$elemMatch": {"text": {"$regex": f".*{sign}.*"}}}}
@@ -327,7 +330,8 @@ class Commands(Extension):
                     }
                 )
             if has_favicon is not None:
-                pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
+                pipeline[0]["$match"]["$and"].append(
+                    {"hasFavicon": has_favicon})
             if logged_players is not None:
                 pipeline[0]["$match"]["$and"].extend(
                     [
@@ -454,7 +458,8 @@ class Commands(Extension):
                         {"ip": {"$regex": f"^{ip}$", "$options": "i"}}
                     )
             if country is not None:
-                pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
+                pipeline[0]["$match"]["$and"].append(
+                    {"geo": {"$exists": True}})
                 pipeline[0]["$match"]["$and"].append(
                     {"geo.country": {"$regex": f"^{country}$", "$options": "i"}}
                 )
@@ -750,7 +755,8 @@ class Commands(Extension):
             msg = await msg.edit(
                 embed=self.messageLib.standard_embed(
                     title="Loading...",
-                    description="Found " + str(total) + " servers in the database",
+                    description="Found " +
+                    str(total) + " servers in the database",
                     color=BLUE,
                 ),
             )
@@ -1004,13 +1010,15 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
                 {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
             ]
-            total_players = self.databaseLib.aggregate(pipeline).try_next()["total"]
+            total_players = self.databaseLib.aggregate(
+                pipeline).try_next()["total"]
 
             main_embed.add_field(
                 name="Players",
@@ -1117,7 +1125,8 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1150,7 +1159,8 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1185,7 +1195,8 @@ class Commands(Extension):
 
             main_embed.add_field(
                 name="Cracked",
-                value=self.textLib.percent_bar(cracked[0]["count"], total_servers),
+                value=self.textLib.percent_bar(
+                    cracked[0]["count"], total_servers),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1201,7 +1212,8 @@ class Commands(Extension):
 
             main_embed.add_field(
                 name="Has Favicon",
-                value=self.textLib.percent_bar(has_favicon[0]["count"], total_servers),
+                value=self.textLib.percent_bar(
+                    has_favicon[0]["count"], total_servers),
                 inline=True,
             )
             msg = await msg.edit(
