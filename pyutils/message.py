@@ -227,7 +227,8 @@ class Message:
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
                 except Exception as e:
-                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
+                    self.logger.print(
+                        f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
 
                 # try and see if any of the players are live-streaming

@@ -84,7 +84,9 @@ class Player:
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
                 uuid = (await resp.json())["id"]
-                return f"{uuid[:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:]}"
+                return (
+                    f"{uuid[:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:]}"
+                )
             else:
                 return ""
 
