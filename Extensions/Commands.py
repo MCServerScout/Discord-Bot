@@ -111,7 +111,7 @@ class Commands(Extension):
             ),
             SlashCommandOption(
                 name="description",
-                description='The description of the server, via regex, the default is ".*<your search>.*"',
+                description="The description of the server, via regex: `.*<your input>.*`",
                 type=OptionType.STRING,
                 required=False,
                 min_length=1,
@@ -130,7 +130,7 @@ class Commands(Extension):
             ),
             SlashCommandOption(
                 name="country",
-                description="The country of the server",
+                description="The country of the server in a two char ISO code, ex: us",
                 type=OptionType.STRING,
                 required=False,
                 min_length=2,
@@ -155,10 +155,6 @@ class Commands(Extension):
     ):
         msg = None
         try:
-            sentry_sdk.add_breadcrumb(
-                category="command",
-                message=f"find({', '.join([str(i) if i is not None else '' for i in [ip, version, max_players, online_players, logged_players, player, sign, description, cracked, has_favicon, country]])})",
-            )
             await ctx.defer()
 
             msg = await ctx.send(
@@ -228,7 +224,7 @@ class Commands(Extension):
             if version is not None:
                 if version.isnumeric() and "." not in version:
                     pipeline[0]["$match"]["$and"].append(
-                        {"version.protocol": {"$regex": f"^{version}"}}
+                        {"version.protocol": int(version)}
                     )
                 else:
                     pipeline[0]["$match"]["$and"].append(
@@ -292,7 +288,18 @@ class Commands(Extension):
                 # validate that the description is a valid regex
                 try:
                     re.compile(description)
-                except re.error:
+                    for rng in re.findall("\\{\d+}", description):
+                        if int(rng[1:-1]) > 1000:
+                            await msg.edit(
+                                embed=self.messageLib.standard_embed(
+                                    title="Error",
+                                    description=f"Quantifier range `{rng}` too large",
+                                    color=RED,
+                                ),
+                                components=self.messageLib.buttons(),
+                            )
+                            return
+                except re.error | ValueError:
                     await msg.edit(
                         embed=self.messageLib.standard_embed(
                             title="Error",
@@ -479,6 +486,9 @@ class Commands(Extension):
                 ),
                 components=self.messageLib.buttons(),
             )
+            sentry_sdk.add_breadcrumb(
+                category="commands", message=f"Found {total} servers"
+            )
 
             await self.messageLib.async_load_server(
                 index=0,
@@ -487,11 +497,14 @@ class Commands(Extension):
             )
         except Exception as err:
             if "403|Forbidden" in str(err):
-                await ctx.delete(message=msg)
+                await msg.delete(context=ctx)
                 return
             else:
-                self.logger.error(err)
-                self.logger.print(traceback.format_exc())
+                self.logger.error(
+                    f"Error: {err}\nFull traceback: {traceback.format_exc()}"
+                )
+                sentry_sdk.capture_exception(err)
+
                 await ctx.send(
                     embed=self.messageLib.standard_embed(
                         title="An error occurred",
@@ -527,8 +540,6 @@ class Commands(Extension):
     async def ping(self, ctx: SlashContext, ip: str, port: int = None):
         msg = None
         try:
-            sentry_sdk.add_breadcrumb(
-                category="command", message=f"ping({ip}, {port})")
             port = port if port is not None else 25565
             if ":" in ip:
                 ip, port = ip.split(":")
@@ -560,9 +571,7 @@ class Commands(Extension):
                         ),
                         ephemeral=True,
                     )
-                    await ctx.delete(
-                        message=msg,
-                    )
+                    await msg.delete(context=ctx)
                     return
                 else:
                     pipeline = doc
@@ -585,12 +594,10 @@ class Commands(Extension):
                     ),
                     ephemeral=True,
                 )
-                await ctx.delete(
-                    message=msg,
-                )
+                await msg.delete(context=ctx)
                 return
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
 
             await ctx.send(
                 embed=self.messageLib.standard_embed(
@@ -618,8 +625,6 @@ class Commands(Extension):
     )
     async def streamers(self, ctx: SlashContext, lang: str = None):
         try:
-            sentry_sdk.add_breadcrumb(
-                category="command", message=f"streamers({lang})")
             msg = await ctx.send(
                 embed=self.messageLib.standard_embed(
                     title="Loading...",
@@ -680,9 +685,12 @@ class Commands(Extension):
                     ),
                     ephemeral=True,
                 )
+            else:
+                client_id = self.client_id
+                client_secret = self.client_secret
 
-            if (self.client_id == "" or self.client_secret == "") or (
-                self.client_id is None or self.client_secret is None
+            if (client_id == "" or client_secret == "") or (
+                client_id is None or client_secret is None
             ):
                 await ctx.send(
                     embed=self.messageLib.standard_embed(
@@ -695,8 +703,8 @@ class Commands(Extension):
                 return
 
             streams = await self.twitchLib.async_get_streamers(
-                client_id=self.client_id,
-                client_secret=self.client_secret,
+                client_id=client_id,
+                client_secret=client_secret,
                 lang=lang,
             )
 
@@ -802,8 +810,9 @@ class Commands(Extension):
                 )
                 return
 
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
+
             await ctx.send(
                 embed=self.messageLib.standard_embed(
                     title="Error",
@@ -853,9 +862,9 @@ class Commands(Extension):
     )
     async def scan(self, ctx: SlashContext, file: Attachment, delimiter: str):
         try:
-            sentry_sdk.add_breadcrumb(
-                category="command", message=f"scan({file.url}, {delimiter})"
-            )
+            with sentry_sdk.configure_scope() as scope:
+                scope.add_attachment(filename=file.filename, path=file.url)
+
             await ctx.defer(ephemeral=True)
 
             # make sure the bot is running on linux
@@ -944,8 +953,9 @@ class Commands(Extension):
                     ephemeral=True,
                 )
         except Exception as err:
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
+
             await ctx.send(
                 embed=self.messageLib.standard_embed(
                     title="Error",
@@ -962,6 +972,9 @@ class Commands(Extension):
         description="Get stats about the server",
     )
     async def stats(self, ctx: SlashContext):
+        """
+        Get stats about the server, ...
+        """
         msg = None
         await ctx.defer()
 
@@ -1237,11 +1250,12 @@ class Commands(Extension):
                 )
         except Exception as err:
             if "403|Forbidden" in str(err):
-                await ctx.delete(message=msg)
+                await msg.delete(context=ctx)
                 return
 
-            self.logger.error(err)
-            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
+
             await ctx.send(
                 embed=self.messageLib.standard_embed(
                     title="Error",

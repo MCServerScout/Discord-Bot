@@ -57,7 +57,7 @@ class Player:
         url = "https://minotar.net/avatar/" + name
         async with aiohttp.ClientSession() as session, session.get(url) as r:
             if r.status != 200:
-                self.logger.error("Player head not found")
+                self.logger.print("Player head not found")
                 return None
             with open("playerhead.png", "wb") as f:
                 f.write(await r.read())
@@ -83,7 +83,8 @@ class Player:
         url = "https://api.mojang.com/users/profiles/minecraft/" + name
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
-                return (await resp.json())["id"]
+                uuid = (await resp.json())["id"]
+                return f"{uuid[:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:]}"
             else:
                 return ""
 

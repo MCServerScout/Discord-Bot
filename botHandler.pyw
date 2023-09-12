@@ -73,13 +73,19 @@ def install_requirements():
             "pip",
             "install",
             "-Ur",
-            "Discord-Bot-main/Discord-Bot-master/requirements.txt" if not dev
+            "Discord-Bot-main/Discord-Bot-master/requirements.txt"
+            if not dev
             else "Discord-Bot-main/Discord-Bot-dev-builds/requirements.txt",
         ]
     )
     subprocess.call(
-        ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-master/privVars.py"] if not dev
-        else ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-dev-builds/privVars.py"]
+        ["cp", "privVars.py", "Discord-Bot-main/Discord-Bot-master/privVars.py"]
+        if not dev
+        else [
+            "cp",
+            "privVars.py",
+            "Discord-Bot-main/Discord-Bot-dev-builds/privVars.py",
+        ]
     )
 
 
@@ -89,15 +95,14 @@ def run():
     try:
         # time remaining until midnight
         time_out = seconds_until_midnight_mountain()
-        script_duration = 60 * 60 * 24  # 24 hours
-        print_and_log("Time remaining until midnight: {} sec".format(time_out))
-
+        script_duration = 60 * 20  # 20 min
         if time_out <= script_duration:
             time_out = script_duration
-        else:
-            time_out -= script_duration
+        print_and_log("Time remaining until midnight: {} sec".format(time_out))
+
         exit_id = subprocess.call(
-            ["python3", "Discord-Bot-main/Discord-Bot-master/" + run_file] if not dev
+            ["python3", "Discord-Bot-main/Discord-Bot-master/" + run_file]
+            if not dev
             else ["python3", "Discord-Bot-main/Discord-Bot-dev-builds/" + run_file],
             timeout=time_out,
         )

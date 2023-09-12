@@ -4,13 +4,22 @@
 """
 
 import asyncio
+import json
 import sys
 import time
 import traceback
 
 import sentry_sdk
-from interactions import listen, Intents, ActivityType, Status, Activity, Client
-from interactions.api.events import Ready
+from interactions import (
+    listen,
+    Intents,
+    ActivityType,
+    Status,
+    Activity,
+    Client,
+    slash_command,
+)
+from interactions.api.events import Ready, CommandCompletion, CommandError
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
@@ -82,7 +91,7 @@ utils = pyutils.Utils(
     client_id=client_id,
     client_secret=client_secret,
     info_token=IP_INFO_TOKEN,
-    ssdk = ((sentry_sdk,),)
+    ssdk=((sentry_sdk,),),
 )
 logger = utils.logger
 databaseLib = utils.database
@@ -144,6 +153,49 @@ for ext in exts:
         sentry_sdk.add_breadcrumb(category="extensions", message=f"Loaded {ext}")
 
 
+@slash_command(
+    name="help",
+    description="Get help with the bot",
+)
+async def help_cmd(ctx):
+    try:
+        # get a list of all the commands
+        commands = ctx.bot.interaction_tree
+
+        embed = messageLib.standard_embed(
+            title="Help",
+            description="Here is a list of all the commands",
+            color=BLUE,
+        )
+
+        for _, tree in commands.items():
+            for name, com in tree.items():
+                if name == "Refresh":
+                    continue
+                com = com.to_dict()
+                logger.print(f"Found command {name}: {json.dumps(com, indent=4)}")
+
+                options = (
+                    [
+                        f"\n`{option['name']}`: {option['description']}"
+                        for option in com["options"]
+                    ]
+                    if "options" in com
+                    else []
+                )
+
+                embed.add_field(
+                    name=f"`/{name}`",
+                    value=f"{com['description']}\n"
+                    + (f"Args:{'  '.join(options)}" if options else ""),
+                    inline=True,
+                )
+        await ctx.send(embed=embed, ephemeral=True, delete_after=60)
+    except Exception as err:
+        logger.critical(err)
+        await ctx.send("An error occurred while running the command", ephemeral=True)
+
+
 # -----------------------------------------------------------------------------
 # bot events
 
@@ -152,6 +204,27 @@ for ext in exts:
 async def on_ready():
     user = await bot.fetch_user(bot.user.id)
     logger.hook(f"Logged in as {user.username}#{user.discriminator}")
+
+
+@listen(CommandCompletion, disable_default_listeners=True)
+async def on_command_completion(event):
+    sentry_sdk.add_breadcrumb(
+        category="command",
+        message=f"Command {event.ctx.invoke_target} completed, with args {[arg for arg in event.ctx.kwargs]}",
+    )
+    sentry_sdk.set_tag("command", event.ctx.invoke_target)
+
+
+@listen(CommandError, disable_default_listeners=True)
+async def on_command_error(event):
+    sentry_sdk.add_breadcrumb(
+        category="command",
+        message=f"Command {event.ctx.invoke_target} errored, with args {[arg for arg in event.ctx.kwargs]}",
+    )
+    sentry_sdk.set_tag("command", event.ctx.invoke_target)
+    sentry_sdk.capture_exception(event.error)
+    logger.critical(event.error)
+    await event.ctx.send("An error occurred while running the command", ephemeral=True)
 
 
 # -----------------------------------------------------------------------------

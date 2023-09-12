@@ -143,7 +143,7 @@ class Text:
             return "§a"
         elif color == "yellow":
             return "§e"
-        elif color == "blue":
+        elif color == "blue" or color == "aqua":
             return "§9"
         elif color == "pink":
             return "§d"
@@ -310,15 +310,15 @@ class Text:
             dict: The parsed motd dict
         """
         text = ""
+        if "text" in motd:
+            text += motd["text"]
+
         if "extra" in motd:
             for ext in motd["extra"]:
                 if "color" in ext:
                     text += self.color_mine(color=ext["color"]) + ext["text"]
                 else:
                     text += ext["text"]
-
-        if "text" in motd:
-            text += motd["text"]
 
         if type(motd) is str:
             text = motd

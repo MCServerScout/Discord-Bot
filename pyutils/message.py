@@ -9,6 +9,7 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
+from sentry_sdk import trace
 
 from Extensions.Colors import *
 from .database import Database
@@ -226,9 +227,8 @@ class Message:
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
                 except Exception as e:
+                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
-                    self.logger.print(
-                        f"Full traceback: {traceback.format_exc()}")
 
                 # try and see if any of the players are live-streaming
                 if "sample" in data["players"]:
@@ -389,12 +389,12 @@ class Message:
                 else self.buttons(),
             }
         except KeyError as e:
-            self.logger.error(f"KeyError: {e}, IP: {data['ip']}, data: {data}")
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"KeyError: {e}, IP: {data['ip']}, data: {data}")
             return None
         except Exception as e:
-            self.logger.error(f"{e}, IP: {data['ip']}")
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(f"{e}, IP: {data['ip']}")
             return None
 
     def standard_embed(
@@ -427,8 +427,8 @@ class Message:
                 timestamp=self.text.time_now(),
             )
         except Exception as e:
-            self.logger.error(e)
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(e)
             return interactions.Embed(
                 title=title,
                 description=description,
@@ -487,7 +487,8 @@ class Message:
             ],
         )
 
-    async def get_pipe(self, msg: interactions.Message) -> Optional[Tuple[int, dict]]:
+    @staticmethod
+    async def get_pipe(msg: interactions.Message) -> Optional[Tuple[int, dict]]:
         # make sure it has an embed with at least one attachment and a footer
         if (
             len(msg.embeds) == 0
@@ -514,6 +515,7 @@ class Message:
 
         return None
 
+    @trace
     async def update(self, ctx: ComponentContext | ContextMenuContext):
         try:
             org = ctx.message if type(ctx) is ComponentContext else ctx.target
@@ -561,8 +563,8 @@ class Message:
                 )
                 return
 
-            self.logger.error(err)
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
+            self.logger.error(err)
 
             await ctx.send(
                 embed=self.standard_embed(
