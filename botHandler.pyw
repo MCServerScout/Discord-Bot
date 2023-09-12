@@ -2,12 +2,31 @@ import datetime
 import logging
 import os
 import subprocess
+import sys
 import time
 import traceback
 
 import requests
 
-from privVars import DISCORD_WEBHOOK
+# ---------------------------------------------
+
+# whether to use the dev branch
+dev = True
+# launch the scanner or the bot (True = scanner, False = bot)
+target = [
+    "scanner",
+    # "bot",
+    # "rescanner",
+][0]
+# autoupdate the handler
+autoupdate = True
+
+# ---------------------------------------------
+
+try:
+    from privVars import *
+except ImportError:
+    sys.exit("Config error in privVars.py, please fix before rerunning")
 
 logging.basicConfig(
     filename="botHandler.log",
@@ -22,9 +41,6 @@ def print_and_log(*args, **kwargs):
     print(*args, **kwargs)
 
 
-# dev=1, master=0
-dev = 1
-
 if not dev:
     zip_url = (
         "https://github.com/MCServerScout/Discord-Bot/archive/refs/heads/master.zip"
@@ -34,7 +50,14 @@ else:
         "https://github.com/MCServerScout/Discord-Bot/archive/refs/heads/dev-builds.zip"
     )
 
-run_file = "main.pyw"
+if target == "scanner":
+    run_file = os.path.join(os.getcwd(), "scanners", "scanner.pyw")
+elif target == "bot":
+    run_file = os.path.join(os.getcwd(), "main.pyw")
+elif target == "rescanner":
+    run_file = os.path.join(os.getcwd(), "scanners", "rescanner.pyw")
+else:
+    raise Exception("Invalid target")
 
 
 def seconds_until_midnight_mountain():
@@ -113,9 +136,29 @@ def run():
     return str(exit_id) + " - Exited"
 
 
+def update():
+    if autoupdate:
+        if dev:
+            handler_url = "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/dev-builds/botHandler.pyw"
+        else:
+            handler_url = "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/botHandler.pyw"
+
+        contents = requests.get(handler_url).text
+        with open(__file__, "r") as f:
+            if f.read() != contents:
+                print_and_log("Updating botHandler")
+                with open(__file__, "w") as n:
+                    n.write(contents)
+                print_and_log("Restarting")
+                # restart
+                os.execl(sys.executable, sys.executable, *sys.argv)
+
+
 def main():
     last_run = 0
     while True:
+        update()  # updates this file
+
         download_zip()
         install_requirements()
 
