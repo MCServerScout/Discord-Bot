@@ -14,8 +14,8 @@ import requests
 dev = True
 # launch the scanner or the bot (True = scanner, False = bot)
 target = [
-    "scanner",
-    # "bot",
+    # "scanner",
+    "bot",
     # "rescanner",
 ][0]
 # autoupdate the handler
@@ -51,11 +51,11 @@ else:
     )
 
 if target == "scanner":
-    run_file = os.path.join(os.getcwd(), "scanners", "scanner.pyw")
+    run_file = "scanner.pyw"
 elif target == "bot":
-    run_file = os.path.join(os.getcwd(), "main.pyw")
+    run_file = "main.pyw"
 elif target == "rescanner":
-    run_file = os.path.join(os.getcwd(), "scanners", "rescanner.pyw")
+    run_file = "rescanner.pyw"
 else:
     raise Exception("Invalid target")
 
