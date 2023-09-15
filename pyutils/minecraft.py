@@ -85,7 +85,6 @@ class Minecraft:
         mine_token: str = None,
     ) -> ServerType:
         try:
-            self.logger.debug("Getting server/player info")
             # get info on the server
             server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
             version = server.status().version.protocol if version == -1 else version
@@ -101,7 +100,6 @@ class Minecraft:
             )
             async with aiohttp.ClientSession() as httpSession:
                 # check if the account owns the game
-                self.logger.debug("Checking if account owns the game")
                 url = "https://api.minecraftservices.com/entitlements/mcstore"
                 async with httpSession.get(
                     url,
@@ -168,8 +166,7 @@ class Minecraft:
             elif _id == 3:
                 self.logger.print("Setting compression")
                 compression_threshold = response.read_varint()
-                self.logger.print(
-                    f"Compression threshold: {compression_threshold}")
+                self.logger.print(f"Compression threshold: {compression_threshold}")
 
                 response = connection.read_buffer()
                 _id: int = response.read_varint()
@@ -258,8 +255,9 @@ class Minecraft:
                 self.logger.info("Reason: " + reason)
                 return self.ServerType(ip, version, "UNKNOWN: " + reason)
         except TimeoutError:
-            self.logger.print("Server timed out")
             return self.ServerType(ip, version, "OFFLINE:Timeout")
+        except TypeError:
+            return self.ServerType(ip, version, "OFFLINE:TypeError")
         except Exception as e:
             sentry_sdk.capture_exception(e)
             return self.ServerType(ip, version, "OFFLINE")
@@ -433,8 +431,7 @@ class Minecraft:
             self.logger.print("Failed to get access token")
             try:
                 error_j = res.json()
-                self.logger.error(error_j["error"],
-                                  error_j["error_description"])
+                self.logger.error(error_j["error"], error_j["error_description"])
             except KeyError:
                 self.logger.error(res.reason)
             return {"type": "error", "error": "Failed to get access token"}
