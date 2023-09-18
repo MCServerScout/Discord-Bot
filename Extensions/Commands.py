@@ -600,7 +600,8 @@ class Commands(Extension):
                 )
                 await msg.delete(context=ctx)
                 return
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -813,7 +814,8 @@ class Commands(Extension):
                 )
                 return
 
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -956,7 +958,8 @@ class Commands(Extension):
                     ephemeral=True,
                 )
         except Exception as err:
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -1250,7 +1253,8 @@ class Commands(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
