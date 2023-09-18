@@ -6,6 +6,23 @@
 This is a Discord bot that I made for my friends and me to use in our Discord server.
 It is a work in progress, and I will be adding more features as time goes on.
 
+## Features
+
+- Able to very quickly find servers based on a filter
+- Able to scan ip ranges for servers from discord
+- List players that are currently online on a server
+- List streamers that are currently streaming on a server
+- Show stats about the database
+- Attempt to join premium servers to test a whitelist
+- Quickly scan all ipv4 addresses for servers (separate program)
+- Server information:
+  - Version (name/protocol)
+  - Players (online/max/uuids)
+  - Is Cracked or Premium
+  - Is modded
+  - Host organization
+  - Geolocation
+
 ## TODO
 
 - [ ] Make it work well
