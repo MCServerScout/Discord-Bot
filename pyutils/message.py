@@ -208,14 +208,12 @@ class Message:
                 data["lastSeen"] = 0
             elif not fast:
                 try:
-                    status = self.server.update(
-                        host=data["ip"], port=data["port"])
+                    status = self.server.update(host=data["ip"], port=data["port"])
 
                     if status is None:
                         # server is offline
                         data["cracked"] = None
-                        data["description"] = self.text.motd_parse(
-                            data["description"])
+                        data["description"] = self.text.motd_parse(data["description"])
                         self.logger.debug("Server is offline")
                     else:
                         self.logger.debug("Server is online")
@@ -251,8 +249,7 @@ class Message:
                 # isonline is yellow
                 is_online = "🟡"
                 if "description" in data.keys():
-                    data["description"] = self.text.motd_parse(
-                        data["description"])
+                    data["description"] = self.text.motd_parse(data["description"])
                 else:
                     data["description"] = {"text": "n/a"}
 
@@ -358,6 +355,18 @@ class Message:
                 embed.add_field(
                     name="Location",
                     value=f":flag_{data['geo']['country'].lower()}: {city}",
+                    inline=True,
+                )
+
+            # add whitelist
+            if "whitelist" in data.keys():
+                is_w = "Yes" if data["whitelist"] else "No"
+                if is_w == "Yes":
+                    embed.color = PINK
+                    embed.title = embed.title + " (Whitelisted)"
+                embed.add_field(
+                    name="Whitelisted",
+                    value=is_w,
                     inline=True,
                 )
 
@@ -498,8 +507,7 @@ class Message:
             return None
 
         # grab the index
-        index = int(msg.embeds[0].footer.text.split(
-            "Showing ")[1].split(" of ")[0]) - 1
+        index = int(msg.embeds[0].footer.text.split("Showing ")[1].split(" of ")[0]) - 1
 
         # grab the attachment
         for file in msg.attachments:

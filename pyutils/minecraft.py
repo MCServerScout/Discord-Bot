@@ -161,7 +161,13 @@ class Minecraft:
                 return self.ServerType(ip, version, "CRACKED")
             elif _id == 0:
                 self.logger.print("Failed to login")
-                self.logger.print(response.read_utf())
+                reason = response.read_utf()
+                self.logger.print(reason)
+                if any(i in reason.lower() for i in ["fml", "forge", "modded", "mods"]):
+                    return self.ServerType(ip, version, "MODDED")
+                elif any(i in reason.lower() for i in ["whitelist", "not whitelisted"]):
+                    return self.ServerType(ip, version, "WHITELISTED")
+
                 return self.ServerType(ip, version, "UNKNOWN")
             elif _id == 3:
                 self.logger.print("Setting compression")
@@ -223,9 +229,18 @@ class Minecraft:
                 # listen for a set compression packet
                 try:
                     _id = 51
+                    werid_ps = 0
                     while _id > 50:
                         response = connection.read_buffer()
                         _id = response.read_varint()
+                        if _id >= 1000:
+                            werid_ps += 1
+                            if werid_ps > 2:
+                                self.logger.print(
+                                    "Server is sending weird packets and probably modded"
+                                )
+                                return self.ServerType(ip, version, "MODDED")
+                            continue
                         self.logger.debug("Received packet ID:", _id)
                 except OSError:
                     self.logger.print("Invalid session")
@@ -257,6 +272,7 @@ class Minecraft:
         except TimeoutError:
             return self.ServerType(ip, version, "OFFLINE:Timeout")
         except TypeError:
+            self.logger.error(traceback.format_exc())
             return self.ServerType(ip, version, "OFFLINE:TypeError")
         except Exception as e:
             sentry_sdk.capture_exception(e)

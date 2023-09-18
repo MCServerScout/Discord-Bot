@@ -1,7 +1,6 @@
 # Server Scout (Discord Bot)
 
 [![DeepSource](https://app.deepsource.com/gh/MCServerScout/Discord-Bot.svg/?label=resolved+issues&show_trend=true&token=WBeh3kT2daCAxLlfI8PhPJsD)](https://app.deepsource.com/gh/MCServerScout/Discord-Bot/?ref=repository-badge)
-[![Qodana](https://github.com/MCServerScout/Discord-Bot/actions/workflows/code_quality.yml/badge.svg)](https://github.com/MCServerScout/Discord-Bot/actions/workflows/code_quality.yml)
 
 This is a Discord bot that I made for my friends and me to use in our Discord server.
 It is a work in progress, and I will be adding more features as time goes on.
@@ -22,6 +21,7 @@ It is a work in progress, and I will be adding more features as time goes on.
   - Is modded
   - Host organization
   - Geolocation
+  - Whitelist
 
 ## TODO
 

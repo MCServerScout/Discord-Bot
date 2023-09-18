@@ -94,11 +94,11 @@ async def main():
                     {"players.max": {"$gt": 0}},
                     {"hasForgeData": False},
                     {"modpackData": {"$exists": False}},
-                    {"whitelist": {"$exists": False}},
+                    # {"whitelist": {"$exists": False}},
                 ]
             }
         },
-        {"$sort": {"lastSeen": 1}},
+        {"$sort": {"lastSeen": -1}},
     ]
 
     # whitelist can be False, True, or None (not online to test)
@@ -128,7 +128,7 @@ async def main():
             sType = await mcLib.join(
                 ip=server["ip"],
                 port=server["port"],
-                version=server["version"],
+                version=server["version"]["protocol"],
                 player_username=uname,
                 mine_token=token,
             )
@@ -143,12 +143,13 @@ async def main():
             databaseLib.update_one(
                 {"_id": server["_id"]}, {"$set": {"whitelist": True}}
             )
-        elif sType.status == "PREMIUM":
+        elif sType.status == "PREMIUM" or sType.status == "MODDED":
             logger.print(f"Premium: {server['ip']}")
             databaseLib.update_one(
                 {"_id": server["_id"]}, {"$set": {"whitelist": False}}
             )
         else:
+            logger.print(f"Unknown: {server['ip']} ({sType.status})")
             databaseLib.update_one(
                 {"_id": server["_id"]}, {"$set": {"whitelist": None}}
             )
