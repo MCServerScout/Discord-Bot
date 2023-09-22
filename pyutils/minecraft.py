@@ -116,8 +116,7 @@ class Minecraft:
                             self.logger.print("Account does not own the game")
                             return self.ServerType(ip, version, "NO_GAME")
                     else:
-                        self.logger.print(
-                            "Failed to check if account owns the game")
+                        self.logger.print("Failed to check if account owns the game")
                         self.logger.error(res.text)
                         return self.ServerType(ip, version, "BAD_TOKEN")
 
@@ -208,14 +207,14 @@ class Minecraft:
                 )
 
                 self.logger.debug("Sending authentication request")
-                await self.session_join(
+                if await self.session_join(
                     mine_token=mine_token, server_hash=verify_hash, _uuid=_uuid
-                )
+                ):
+                    self.logger.print("Failed to authenticate account")
 
                 # send encryption response
                 self.logger.debug("Sending encryption response")
-                encryptedSharedSecret = pubKey.encrypt(
-                    shared_secret, PKCS1v15())
+                encryptedSharedSecret = pubKey.encrypt(shared_secret, PKCS1v15())
                 encryptedVerifyToken = pubKey.encrypt(verify_token, PKCS1v15())
 
                 encryptionResponse = Connection()
@@ -231,13 +230,13 @@ class Minecraft:
                 # listen for a set compression packet
                 try:
                     _id = 51
-                    werid_ps = 0
+                    weird_ps = 0
                     while _id > 50:
                         response = connection.read_buffer()
                         _id = response.read_varint()
                         if _id >= 1000:
-                            werid_ps += 1
-                            if werid_ps > 2:
+                            weird_ps += 1
+                            if weird_ps > 2:
                                 self.logger.print(
                                     "Server is sending weird packets and probably modded"
                                 )
@@ -251,8 +250,7 @@ class Minecraft:
                 if _id == 3:
                     self.logger.print("Setting compression")
                     compression_threshold = response.read_varint()
-                    self.logger.print(
-                        f"Compression threshold: {compression_threshold}")
+                    self.logger.print(f"Compression threshold: {compression_threshold}")
 
                     response = connection.read_buffer()
                     _id: int = response.read_varint()
@@ -260,8 +258,12 @@ class Minecraft:
                 if _id == 0:
                     self.logger.print("Failed to login")
                     return self.ServerType(ip, version, "WHITELISTED")
+                elif _id < 0:
+                    self.logger.print("This server is a honey pot: " + str(_id))
+                    return self.ServerType(ip, version, "HONEY_POT")
                 else:
                     self.logger.print("Logged in successfully")
+
                     return self.ServerType(ip, version, "PREMIUM")
             else:
                 self.logger.info("Unknown response: " + str(_id))
@@ -341,8 +343,7 @@ class Minecraft:
                     xblToken = (await res2.json())["Token"]
                     self.logger.debug("Got xbl token: ")
                 else:
-                    self.logger.print(
-                        "Failed to verify account: ", res2.status)
+                    self.logger.print("Failed to verify account: ", res2.status)
                     self.logger.error(res2.reason)
                     self.logger.error(res2.text)
                     return {"type": "error", "error": "Failed to verify account"}
@@ -632,8 +633,7 @@ class Minecraft:
     async def session_join(self, mine_token, server_hash, _uuid, tries=0):
         try:
             if tries > 5:
-                self.logger.print(
-                    "Failed to authenticate account after 5 tries")
+                self.logger.print("Failed to authenticate account after 5 tries")
                 return 1
             async with aiohttp.ClientSession() as httpSession:
                 url = "https://sessionserver.mojang.com/session/minecraft/join"
@@ -661,7 +661,7 @@ class Minecraft:
                         # wait 1 second and try again
                         self.logger.print("Service unavailable")
                         await asyncio.sleep(1)
-                        await self.session_join(
+                        return await self.session_join(
                             mine_token, server_hash, _uuid, tries + 1
                         )
                     else:

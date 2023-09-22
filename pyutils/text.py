@@ -386,3 +386,47 @@ class Text:
                 dic3[key] = value
 
         return dic3
+
+    @staticmethod
+    def parse_range(rng: str) -> list[tuple, tuple]:
+        """
+        Parses a range string into a tuple of ints
+    
+        ex `(1, 2)` -> ((0, 1), (0, 2))
+           `(1, 3]` -> ((0, 1), (1, 3))
+    
+        Returns:
+            tuple: First tuple group is the lower bound, second is the upper bound
+              The tuple groups have two ints, one for is equal (1) or not (0), and the other is the number
+        """
+        out = [(), ()]
+        if rng.startswith(("(", "[")) and rng.endswith((")", "]")) and "," in rng:
+            rng = rng.replace(" ", "").split(",")
+    
+            if len(rng) == 1:
+                # one sided limit
+                if rng[0].startswith(("(", "[")):
+                    out[0] = (
+                        int(rng[0].startswith("(")),
+                        int(rng[0][1:]),
+                    )
+                else:
+                    out[0] = (
+                        int(rng[0].endswith(")")),
+                        int(rng[0][1:-1]),
+                    )
+            elif len(rng) == 2:
+                # two sided limit
+                out[0] = (
+                    int(rng[0].startswith("(")),
+                    int(rng[0][1:]),
+                )
+    
+                out[1] = (
+                    int(rng[1].endswith(")")),
+                    int(rng[1][:-1]),
+                )
+            else:
+                raise ValueError("Invalid range")
+    
+        return out

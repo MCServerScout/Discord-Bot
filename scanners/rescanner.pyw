@@ -94,7 +94,7 @@ async def main():
                     {"players.max": {"$gt": 0}},
                     {"hasForgeData": False},
                     {"modpackData": {"$exists": False}},
-                    # {"whitelist": {"$exists": False}},
+                    {"whitelist": {"$exists": False}},
                 ]
             }
         },
@@ -128,7 +128,6 @@ async def main():
             sType = await mcLib.join(
                 ip=server["ip"],
                 port=server["port"],
-                version=server["version"]["protocol"],
                 player_username=uname,
                 mine_token=token,
             )
@@ -145,6 +144,11 @@ async def main():
             )
         elif sType.status == "PREMIUM" or sType.status == "MODDED":
             logger.print(f"Premium: {server['ip']}")
+            databaseLib.update_one(
+                {"_id": server["_id"]}, {"$set": {"whitelist": False}}
+            )
+        elif sType.status == "HONEY_POT":
+            logger.print(f"Honey Pot: {server['ip']}")
             databaseLib.update_one(
                 {"_id": server["_id"]}, {"$set": {"whitelist": False}}
             )

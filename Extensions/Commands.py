@@ -76,21 +76,21 @@ class Commands(Extension):
             ),
             SlashCommandOption(
                 name="max_players",
-                description="The max players of the server",
-                type=OptionType.INTEGER,
+                description=("The max players of the server as an int or range"),
+                type=OptionType.STRING,
                 required=False,
-                min_value=0,
+                min_length=1,
             ),
             SlashCommandOption(
                 name="online_players",
-                description="The online players of the server",
+                description="The online players of the server as an int or range",
                 type=OptionType.STRING,
                 required=False,
                 min_length=1,
             ),
             SlashCommandOption(
                 name="logged_players",
-                description="The logged players of the server",
+                description="The logged players of the server as an int or range",
                 type=OptionType.STRING,
                 required=False,
                 min_length=1,
@@ -149,7 +149,7 @@ class Commands(Extension):
         ctx: SlashContext,
         ip: str = None,
         version: str = None,
-        max_players: int = None,
+        max_players: str = None,
         online_players: str = None,
         logged_players: str = None,
         player: str = None,
@@ -237,51 +237,79 @@ class Commands(Extension):
                         {"version.name": {"$regex": f".*{version}.*"}}
                     )
             if max_players is not None:
-                pipeline[0]["$match"]["$and"].append({"players.max": max_players})
-            if online_players is not None:
-                if (
-                    not online_players.isdigit()
-                    and not online_players.startswith(">")
-                    and not online_players.startswith("<")
-                    and not online_players.startswith("=")
-                    and "-" not in online_players
+                if max_players.isnumeric():
+                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                elif (
+                    max_players.startswith(("[", "("))
+                    and max_players.endswith(("]", ")"))
+                    and "," in max_players
                 ):
-                    await msg.edit(
-                        embed=self.messageLib.standard_embed(
-                            title="Error",
-                            description=f"Online players `{online_players}` not a valid number",
-                            color=RED,
-                        ),
-                        components=self.messageLib.buttons(),
-                    )
-                    self.logger.debug(
-                        f"Online players `{online_players}` not a valid number: {online_players}"
-                    )
-                    return
-                if online_players.startswith(">"):
-                    online_players = {"$gt": int(online_players[1:])}
-                elif online_players.startswith("<"):
-                    online_players = {"$lt": int(online_players[1:])}
-                elif online_players.startswith("="):
-                    online_players = int(online_players[1:])
-                elif len(online_players.split("-")) == 2:
-                    online_players = {
-                        "$gte": int(online_players.split("-")[0]),
-                        "$lte": int(online_players.split("-")[1]),
-                    }
-                elif online_players.isdigit():
-                    online_players = int(online_players)
+                    rng = self.textLib.parse_range(max_players)
+
+                    if rng[0]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'gt' if rng[0][0] else 'gte'}": int(rng[0][1])
+                                }
+                            }
+                        )
+                    if rng[1]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'lt' if rng[1][0] else 'lte'}": int(rng[1][1])
+                                }
+                            }
+                        )
                 else:
                     await msg.edit(
                         embed=self.messageLib.standard_embed(
                             title="Error",
-                            description=f"Online players `{online_players}` not a valid number",
+                            description=f"Max players `{max_players}` not a valid range",
                             color=RED,
                         ),
                         components=self.messageLib.buttons(),
                     )
                     return
-                pipeline[0]["$match"]["$and"].append({"players.online": online_players})
+            if online_players is not None:
+                if online_players.isnumeric():
+                    pipeline[0]["$match"]["$and"].append(
+                        {"players.max": online_players}
+                    )
+                elif (
+                    online_players.startswith(("[", "("))
+                    and online_players.endswith(("]", ")"))
+                    and "," in online_players
+                ):
+                    rng = self.textLib.parse_range(online_players)
+
+                    if rng[0]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'gt' if rng[0][0] else 'gte'}": int(rng[0][1])
+                                }
+                            }
+                        )
+                    if rng[1]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'lt' if rng[1][0] else 'lte'}": int(rng[1][1])
+                                }
+                            }
+                        )
+                else:
+                    await msg.edit(
+                        embed=self.messageLib.standard_embed(
+                            title="Error",
+                            description=f"Online players `{online_players}` not a valid range",
+                            color=RED,
+                        ),
+                        components=self.messageLib.buttons(),
+                    )
+                    return
             if sign is not None:
                 pipeline[0]["$match"]["$and"].append(
                     {"world.signs": {"$elemMatch": {"text": {"$regex": f".*{sign}.*"}}}}
@@ -342,78 +370,31 @@ class Commands(Extension):
                         {"players.sample.0": {"$exists": True}},
                     ]
                 )
-                if (
-                    not logged_players.isdigit()
-                    and not logged_players.startswith(">")
-                    and not logged_players.startswith("<")
-                    and not logged_players.startswith("=")
-                    and "-" not in logged_players
+                if max_players.isnumeric():
+                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                elif (
+                    max_players.startswith(("[", "("))
+                    and max_players.endswith(("]", ")"))
+                    and "," in max_players
                 ):
-                    await msg.edit(
-                        embed=self.messageLib.standard_embed(
-                            title="Error",
-                            description=f"Logged players `{logged_players}` not a valid number",
-                            color=RED,
-                        ),
-                        components=self.messageLib.buttons(),
-                    )
-                    return
-                if logged_players.startswith(">"):
-                    pipeline[0]["$match"]["$and"].append(
-                        {
-                            f"players.sample.{int(logged_players[1:]) - 1}": {
-                                "$exists": True
+                    rng = self.textLib.parse_range(max_players)
+
+                    if rng[0]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'gt' if rng[0][0] else 'gte'}": int(rng[0][1])
+                                }
                             }
-                        }
-                    )
-                elif logged_players.startswith("<"):
-                    pipeline[0]["$match"]["$and"].append(
-                        {
-                            f"players.sample.{int(logged_players[1:]) - 1}": {
-                                "$exists": True
+                        )
+                    if rng[1]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'lt' if rng[1][0] else 'lte'}": int(rng[1][1])
+                                }
                             }
-                        }
-                    )
-                elif logged_players.startswith("=") or logged_players.isdigit():
-                    pipeline[0]["$match"]["$and"].extend(
-                        [
-                            {
-                                f"players.sample.{int(logged_players.replace('=','')) - 1}": {
-                                    "$exists": True
-                                }
-                            },
-                            {
-                                f"players.sample.{int(logged_players.replace('=',''))}": {
-                                    "$exists": False
-                                }
-                            },
-                        ]
-                    )
-                elif len(logged_players.split("-")) == 2:
-                    pipeline[0]["$match"]["$and"].extend(
-                        [
-                            {
-                                f"players.sample.{logged_players.split('-')[1]}": {
-                                    "$exists": False
-                                }
-                            },
-                            {
-                                f"players.sample.{int(logged_players.split('-')[1])-1}": {
-                                    "$exists": True
-                                }
-                            },
-                        ]
-                    )
-                else:
-                    await msg.edit(
-                        embed=self.messageLib.standard_embed(
-                            title="Error",
-                            description=f"Logged players `{logged_players}` not a valid number",
-                            color=RED,
-                        ),
-                        components=self.messageLib.buttons(),
-                    )
-                    return
+                        )
             if cracked is not None:
                 pipeline[0]["$match"]["$and"].append({"cracked": cracked})
             if ip is not None:
@@ -600,8 +581,7 @@ class Commands(Extension):
                 )
                 await msg.delete(context=ctx)
                 return
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -814,8 +794,7 @@ class Commands(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -958,8 +937,7 @@ class Commands(Extension):
                     ephemeral=True,
                 )
         except Exception as err:
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -1253,8 +1231,7 @@ class Commands(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
