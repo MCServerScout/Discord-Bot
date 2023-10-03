@@ -31,7 +31,7 @@ class Minecraft:
     1. Request authorization url
     2. Start the http server
     3. Send the auth url to the user
-    4. Wait for the user to login
+    4. Wait for the user to log in
     5. Get call the join function for the desired server
     """
 

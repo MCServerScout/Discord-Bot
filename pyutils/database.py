@@ -6,6 +6,7 @@ import pymongo
 import sentry_sdk
 from pymongo.command_cursor import CommandCursor
 from pymongo.results import UpdateResult
+# noinspection PyProtectedMember
 from sentry_sdk import trace
 
 from .logger import Logger

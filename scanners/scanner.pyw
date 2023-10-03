@@ -5,10 +5,13 @@ import traceback
 
 from pymongo import MongoClient
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-import pyutils
-from pyutils.scanner import Scanner
+try:
+    import pyutils
+except ImportError:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+finally:
+    import pyutils
+    from pyutils.scanner import Scanner
 
 (
     DISCORD_WEBHOOK,

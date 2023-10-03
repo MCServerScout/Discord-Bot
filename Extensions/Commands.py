@@ -39,7 +39,7 @@ class Commands(Extension):
         azure_redirect_uri,
         client_id,
         client_secret,
-        **kwargs,
+        **__,
     ):
         super().__init__()
 
@@ -60,7 +60,7 @@ class Commands(Extension):
 
     @slash_command(
         name="find",
-        description = "Find a server by anything in the database, any ranges must be in interval notation",
+        description="Find a server by anything in the database, any ranges must be in interval notation",
         options=[
             SlashCommandOption(
                 name="ip",
@@ -76,7 +76,7 @@ class Commands(Extension):
             ),
             SlashCommandOption(
                 name="max_players",
-                description=("The max players of the server as an int or range"),
+                description="The max players of the server as an int or range",
                 type=OptionType.STRING,
                 required=False,
                 min_length=1,

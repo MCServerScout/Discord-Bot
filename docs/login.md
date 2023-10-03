@@ -290,7 +290,7 @@ C. Listen for response S->C
   - Ex: `0x020"uuid"10"username"...`
   - uuid is a string
   - username is a string
-  - THis indicates that the server is 'cracked' and allows non premium accounts to join
+  - THis indicates that the server is 'cracked' and allows non-premium accounts to join
 - 0x03: Set Compression
   - Ex: `0x031234`
   - threshold is an integer
@@ -304,6 +304,12 @@ D. Send Authentication request (0x01) C->...
 - Then create your verify hash:
 
 ```python
+from hashlib import sha1
+
+server_id = ...
+shared_secret = ...
+public_key = ...
+
 shaHash = sha1()
 shaHash.update(server_id)
 shaHash.update(shared_secret)
@@ -328,9 +334,10 @@ https://sessionserver.mojang.com/session/minecraft/join
 E. Listen for response ...->C
 
 - 204: Success
-  - This indicates that the server has accepted your login and you can now send the encryption packets
+  - This indicates that the server has accepted your login, and you can now send the encryption packets
 - 403: Invalid Session
-  - This indicates that the server has rejected your login as you don't have multiplayer or are banned from multiplayer
+  - This indicates that the server has rejected your login as you don't have a multiplayer or are banned from
+    multiplayer
 - 503: Service Unavailable
   - This indicates that the server is down or is not accepting logins, try again after a few seconds
 
@@ -359,7 +366,7 @@ G. Listen for response S->C
   - Ex: `0x020"uuid"10"username"...`
   - uuid is a string
   - username is a string
-  - This indicates that the server has accepted your login and you can now send the encryption packets
+  - This indicates that the server has accepted your login, and you can now send the encryption packets
 - 0x04: Load Plugin
   - Ex: `0x04"channel"10"plugin data"`
   - channel is a string
@@ -375,7 +382,7 @@ G. Listen for response S->C
 - 0x... > 50: Play packet
   - The server responded with a packet that might be out of order, ignore and listen again
 - 0x... <= 50: Play packet
-  - The server responded with a valid packet and you can now start sending packets to the server
+  - The server responded with a valid packet, and you can now start sending packets to the server
 - 0x... < 0: Invalid Packet
   - This is a honeypot and you should disconnect
   - You can also usually tell by checking the players listed in the sample, as they are usually fake

@@ -35,11 +35,11 @@ class Server:
             return self._type
 
     class Player(dict):
-        def __init__(self, name: str, id: str, lastSeen: int = 0):
+        def __init__(self, name: str, _id: str, lastSeen: int = 0):
             self.name = name
-            self.id = id
+            self.id = _id
             self.lastSeen = lastSeen
-            dict.__init__(self, name=name, id=id, lastSeen=lastSeen)
+            dict.__init__(self, name=name, id=_id, lastSeen=lastSeen)
 
         def __repr__(self):
             return f"Player({self.name}, {self.id}, {self.lastSeen})"
