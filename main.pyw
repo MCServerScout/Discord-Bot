@@ -177,7 +177,7 @@ async def help_cmd(ctx):
 
                 options = (
                     [
-                        f"\n`{option['name']}`: {option['description']}"
+                        f"\n- `{option['name']}`: {option['description']} ({option['type']})"
                         for option in com["options"]
                     ]
                     if "options" in com

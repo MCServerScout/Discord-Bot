@@ -60,7 +60,7 @@ class Commands(Extension):
 
     @slash_command(
         name="find",
-        description="Find a server by anything in the database",
+        description = "Find a server by anything in the database, any ranges must be in interval notation",
         options=[
             SlashCommandOption(
                 name="ip",
@@ -269,7 +269,7 @@ class Commands(Extension):
                     await msg.edit(
                         embed=self.messageLib.standard_embed(
                             title="Error",
-                            description=f"Max players `{max_players}` not a valid range",
+                            description=f"Max players `{max_players}` not a valid range, use interval notation\nex:\n- [0, 10]\n- (0, 10)\n- [0, 10)\n- (0, 10]",
                             color=RED,
                         ),
                         components=self.messageLib.buttons(),
@@ -307,7 +307,7 @@ class Commands(Extension):
                     await msg.edit(
                         embed=self.messageLib.standard_embed(
                             title="Error",
-                            description=f"Online players `{online_players}` not a valid range",
+                            description=f"Online players `{online_players}` not a valid range, use interval notation\nex:\n- [0, 10]\n- (0, 10)\n- [0, 10)\n- (0, 10]",
                             color=RED,
                         ),
                         components=self.messageLib.buttons(),
@@ -390,14 +390,25 @@ class Commands(Extension):
                                 }
                             }
                         )
-                    if rng[1]:
-                        pipeline[0]["$match"]["$and"].append(
-                            {
-                                "players.max": {
-                                    f"${'lt' if rng[1][0] else 'lte'}": int(rng[1][1])
-                                }
+                    pipeline[0]["$match"]["$and"].append(
+                        {
+                            "players.max": {
+                                f"${'lt' if rng[1][0] else 'lte'}": int(rng[1][1])
                             }
-                        )
+                        }
+                    )
+                    if rng[1]:
+                        pass
+                else:
+                    await msg.edit(
+                        embed=self.messageLib.standard_embed(
+                            title="Error",
+                            description=f"Logged players `{logged_players}` not a valid range, use interval notation\nex:\n- [0, 10]\n- (0, 10)\n- [0, 10)\n- (0, 10]",
+                            color=RED,
+                        ),
+                        components=self.messageLib.buttons(),
+                    )
+                    return
             if cracked is not None:
                 pipeline[0]["$match"]["$and"].append({"cracked": cracked})
             if ip is not None:
@@ -722,11 +733,7 @@ class Commands(Extension):
                 {
                     "$match": {
                         "$and": [
-                            {
-                                "players.sample.name": {
-                                    "$in": names
-                                }
-                            },
+                            {"players.sample.name": {"$in": names}},
                             {"players.sample": {"$exists": True}},
                         ]
                     }
