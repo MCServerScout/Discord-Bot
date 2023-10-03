@@ -50,8 +50,8 @@ class Message:
                 interactions.Button(): Mods
             ]
         """
-        if len(args) != 8:
-            disabled = list([True] * 8)
+        if len(args) != 9:
+            disabled = list([True] * 9)
         else:
             disabled = list(args)
 
@@ -109,6 +109,12 @@ class Message:
                     label="Join",
                     custom_id="join",
                     disabled=disabled[7],
+                ),
+                interactions.Button(
+                    style=interactions.ButtonStyle.SECONDARY,
+                    label="Streams",
+                    custom_id="streams",
+                    disabled=disabled[8],
                 ),
             ),
         ]
@@ -225,27 +231,8 @@ class Message:
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
                 except Exception as e:
-                    self.logger.print(
-                        f"Full traceback: {traceback.format_exc()}")
+                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
-
-                # try and see if any of the players are live-streaming
-                if "sample" in data["players"]:
-                    self.logger.debug("Checking for streams")
-                    users_streaming: list[str] = await self.twitch.get_users_streaming()
-                    for player in data["players"]["sample"]:
-                        if (
-                            player["lastSeen"] - time.time() < 180
-                            and "§" not in player["name"]
-                            and player["name"]
-                        ):
-                            if player["name"] in users_streaming:
-                                self.logger.debug("Found stream")
-                                streams.append(
-                                    await self.twitch.get_stream(player["name"])
-                                )
-                    else:
-                        self.logger.debug("No streams found")
             else:
                 # isonline is yellow
                 is_online = "🟡"
@@ -371,16 +358,6 @@ class Message:
                     inline=True,
                 )
 
-            # add the streams
-            if len(streams) > 0:
-                embed.add_field(
-                    name="Streams",
-                    value="\n".join(
-                        [f"[{stream['title']}]({stream['url']})" for stream in streams]
-                    ),
-                    inline=False,
-                )
-
             return {
                 "embed": embed,
                 "components": self.buttons(
@@ -394,6 +371,7 @@ class Message:
                     total_servers <= 1,  # sort
                     not data["hasForgeData"],  # mods
                     data["lastSeen"] <= time.time() - 300,  # join
+                    "sample" not in data["players"],  # streams
                 )
                 if not fast
                 else self.buttons(),

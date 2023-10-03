@@ -90,8 +90,7 @@ class Logger:
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("log.log", mode="a",
-                                 encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
             ],
         )
 
@@ -131,7 +130,7 @@ class Logger:
         message = f"[{self.stack_trace(inspect.stack())}] {message}"
         self.logging.info(message)
 
-    def error(self, *message):
+    def error(self, *message, **_):
         message = " ".join([str(arg) for arg in message])
         message = f"[{self.stack_trace(inspect.stack())}] {message}"
         self.logging.error(message)

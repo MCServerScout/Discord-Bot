@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import http.server
 import os
 import secrets
@@ -263,6 +264,16 @@ class Minecraft:
                     return self.ServerType(ip, version, "HONEY_POT")
                 else:
                     self.logger.print("Logged in successfully")
+
+                    # send a chat message
+                    chat = Connection()
+
+                    chat.write_varint(5)  # Packet ID
+                    chat.write_utf("Hello from ServerScout (by Pilot1782)!")  # Message
+                    chat.write_varlong(
+                        int(datetime.datetime.utcnow().timestamp())
+                    )  # Timestamp
+                    chat.write_varint(1)  # message count
 
                     return self.ServerType(ip, version, "PREMIUM")
             else:

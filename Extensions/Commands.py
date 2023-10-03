@@ -174,7 +174,10 @@ class Commands(Extension):
             )
 
             # default pipeline
-            pipeline = [{"$match": {"$and": []}}]
+            pipeline = [
+                {"$match": {"$and": []}},
+                {"$sample": {"size": 1}},
+            ]
 
             # filter out servers that have max players less than zero
             pipeline[0]["$match"]["$and"].append({"players.max": {"$gt": 0}})
@@ -447,7 +450,7 @@ class Commands(Extension):
                     {"geo.country": {"$regex": f"^{country}$", "$options": "i"}}
                 )
             if whitelisted is not None:
-                pipeline[0]["$match"]["$and"].append({"whitelisted": whitelisted})
+                pipeline[0]["$match"]["$and"].append({"whitelist": whitelisted})
 
             total = self.databaseLib.count(pipeline)
 
@@ -711,9 +714,7 @@ class Commands(Extension):
                     ),
                 )
 
-            names = []
-            for stream in streams:
-                names.append(stream["user_name"])
+            names = [i["user_name"] for i in streams]
 
             # get the servers
             # by case-insensitive name of streamer and players.sample is greater than 0
@@ -723,20 +724,22 @@ class Commands(Extension):
                         "$and": [
                             {
                                 "players.sample.name": {
-                                    "$in": [
-                                        re.compile(name, re.IGNORECASE)
-                                        for name in names
-                                    ]
+                                    "$in": names
                                 }
                             },
                             {"players.sample": {"$exists": True}},
                         ]
                     }
-                }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                    }
+                },
             ]
 
             total = self.databaseLib.count(pipeline)
-            self.logger.debug(f"Got {total} servers: {names}")
+            self.logger.debug(f"Got {total} servers")
             msg = await msg.edit(
                 embed=self.messageLib.standard_embed(
                     title="Loading...",
@@ -745,9 +748,10 @@ class Commands(Extension):
                 ),
             )
 
-            _ids = []
-            for doc in self.databaseLib.aggregate(pipeline):
-                _ids.append(doc["_id"])
+            _ids = [i["_id"] for i in self.databaseLib.aggregate(pipeline)]
+
+            self.logger.debug(f"Got {len(_ids)} ids")
+
             pipeline = [
                 {
                     "$match": {
@@ -1166,7 +1170,7 @@ class Commands(Extension):
                 embed=main_embed,
             )
 
-            # get the percent of servers which are cracked (cracked == True)
+            # get the percentage of servers which are cracked (cracked == True)
             pipeline = [
                 {"$match": {"cracked": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
@@ -1182,7 +1186,7 @@ class Commands(Extension):
                 embed=main_embed,
             )
 
-            # get the percent of servers which have favicons (hasFavicon == True)
+            # get the percentage of servers which have favicons (hasFavicon == True)
             pipeline = [
                 {"$match": {"hasFavicon": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
@@ -1198,7 +1202,7 @@ class Commands(Extension):
                 embed=main_embed,
             )
 
-            # get the percent of servers which have forge mods (hasForgeData == True)
+            # get the percentage of servers which have forge mods (hasForgeData == True)
             pipeline = [
                 {"$match": {"hasForgeData": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
