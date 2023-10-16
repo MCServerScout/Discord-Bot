@@ -67,22 +67,11 @@ if sys.platform != "linux":
     logger.error("Scanner must be run on linux as root")
     sys.exit("Scanner must be run on linux as root")
 
-# # Create the x.x.0.0/16 list
-# ips = []
-# for i in range(0, 256):
-#     for j in range(0, 256):
-#         for k in range(0, 256):
-#             ips.append(f"{i}.{j}.{k}.0/24")
-# random.shuffle(ips)
-#
-# # ips = ["5.9.177.0/24", "5.9.83.0/24"]  # test ips
-#
-# logger.print("IP list created:", len(ips))
 
 if __name__ == "__main__":
     scanner = Scanner(
         logger, max_thread_count=max_threads, max_ping_rate=max_pps, serverLib=serverLib
     )
-    ips = ["0.0.0.0/1"]
+    ips = "0.0.0.0/1"
     while True:
         scanner.start(ip_ranges=ips)

@@ -1182,11 +1182,11 @@ class Commands(Extension):
                 {"$match": {"cracked": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            cracked = list(self.databaseLib.aggregate(pipeline))
+            cracked = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             main_embed.add_field(
                 name="Cracked",
-                value=self.textLib.percent_bar(cracked[0]["count"], total_servers),
+                value=self.textLib.percent_bar(cracked, total_servers),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1214,13 +1214,33 @@ class Commands(Extension):
                 {"$match": {"hasForgeData": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            has_forge_data = list(self.databaseLib.aggregate(pipeline))
+            has_forge_data = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             main_embed.add_field(
                 name="Has Forge Data",
-                value=self.textLib.percent_bar(
-                    has_forge_data[0]["count"], total_servers
-                ),
+                value=self.textLib.percent_bar(has_forge_data, total_servers),
+                inline=True,
+            )
+            msg = await msg.edit(
+                embed=main_embed,
+            )
+
+            # get the percentage of servers that are whitelisted
+            pipeline = [
+                {"$match": {"whitelist": {"$exists": True}}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            have_whitelist = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+
+            pipeline = [
+                {"$match": {"whitelist": True}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+
+            main_embed.add_field(
+                name="Whitelisted",
+                value=self.textLib.percent_bar(whitelist_enabled, have_whitelist),
                 inline=True,
             )
             msg = await msg.edit(

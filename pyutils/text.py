@@ -1,6 +1,7 @@
 import datetime
 import re
 
+import minecraft_data
 import unicodedata
 
 
@@ -214,91 +215,12 @@ class Text:
         Returns:
             str: The string of the protocol version
         """
-        out = "1."
-        match protocol:
-            case 3:
-                out += "7.1"
-            case 4:
-                out += "7.5"
-            case 5:
-                out += "7.10"
-            case 47:
-                out += "8.9"
-            case 107:
-                out += "9"
-            case 108:
-                out += "9.1"
-            case 109:
-                out += "9.2"
-            case 110:
-                out += "9.4"
-            case 210:
-                out += "10.2"
-            case 315:
-                out += "11"
-            case 316:
-                out += "11.2"
-            case 335:
-                out += "12"
-            case 338:
-                out += "12.1"
-            case 340:
-                out += "12.2"
-            case 393:
-                out += "13"
-            case 401:
-                out += "13.1"
-            case 404:
-                out += "13.2"
-            case 477:
-                out += "14"
-            case 480:
-                out += "14.1"
-            case 485:
-                out += "14.2"
-            case 490:
-                out += "14.3"
-            case 498:
-                out += "14.4"
-            case 573:
-                out += "15"
-            case 575:
-                out += "15.1"
-            case 578:
-                out += "15.2"
-            case 735:
-                out += "16"
-            case 736:
-                out += "16.1"
-            case 751:
-                out += "16.2"
-            case 753:
-                out += "16.3"
-            case 754:
-                out += "16.5"
-            case 755:
-                out += "17"
-            case 756:
-                out += "17.1"
-            case 757:
-                out += "18.1"
-            case 758:
-                out += "18.2"
-            case 759:
-                out += "19"
-            case 760:
-                out += "19.2"
-            case 761:
-                out += "19.3"
-            case 762:
-                out += "19.4"
-            case 763:
-                out += "20.1"
-            case _:
-                out += "?.?"
-                self.logger.warning(f"Unknown protocol version: {protocol}")
+        for version in minecraft_data.common().protocolVersions:
+            if version["version"] == protocol:
+                return version["minecraftVersion"]
 
-        return out
+        self.logger.error(f"Unknown protocol version: {protocol}")
+        return "Unknown"
 
     def motd_parse(self, motd: dict) -> dict:
         """Parses a motd dict to remove color codes
@@ -391,10 +313,10 @@ class Text:
     def parse_range(rng: str) -> list[tuple, tuple]:
         """
         Parses a range string into a tuple of ints
-    
+
         ex `(1, 2)` -> ((0, 1), (0, 2))
            `(1, 3]` -> ((0, 1), (1, 3))
-    
+
         Returns:
             tuple: First tuple group is the lower bound, second is the upper bound
               The tuple groups have two ints, one for is equal (1) or not (0), and the other is the number
@@ -402,7 +324,7 @@ class Text:
         out = [(), ()]
         if rng.startswith(("(", "[")) and rng.endswith((")", "]")) and "," in rng:
             rng = rng.replace(" ", "").split(",")
-    
+
             if len(rng) == 1:
                 # one sided limit
                 if rng[0].startswith(("(", "[")):
@@ -421,12 +343,12 @@ class Text:
                     int(rng[0].startswith("(")),
                     int(rng[0][1:]),
                 )
-    
+
                 out[1] = (
                     int(rng[1].endswith(")")),
                     int(rng[1][:-1]),
                 )
             else:
                 raise ValueError("Invalid range")
-    
+
         return out

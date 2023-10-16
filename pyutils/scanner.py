@@ -29,13 +29,13 @@ class Scanner:
             return
         else:
             rngs = []
-            if type(ip_ranges) == str:
+            if type(ip_ranges) == str or (
+                type(ip_ranges) == list and len(ip_ranges) == 1
+            ):
                 rng = IPNetwork(ip_ranges)
                 rngs.extend([str(i).split("(")[0] for i in rng.subnet(24)])
             elif type(ip_ranges) == list:
-                for rng in ip_ranges:
-                    rng = IPNetwork(rng)
-                    rngs.extend([str(i).split("(")[0] for i in rng.subnet(24)])
+                self.logger.debug("Scanning range as is")
             else:
                 self.logger.error("Invalid ip range type")
                 return
