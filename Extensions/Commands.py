@@ -39,7 +39,7 @@ class Commands(Extension):
         azure_redirect_uri,
         client_id,
         client_secret,
-        **kwargs,
+        **__,
     ):
         super().__init__()
 
@@ -60,7 +60,7 @@ class Commands(Extension):
 
     @slash_command(
         name="find",
-        description="Find a server by anything in the database",
+        description="Find a server by anything in the database, any ranges must be in interval notation",
         options=[
             SlashCommandOption(
                 name="ip",
@@ -76,21 +76,21 @@ class Commands(Extension):
             ),
             SlashCommandOption(
                 name="max_players",
-                description="The max players of the server",
-                type=OptionType.INTEGER,
+                description="The max players of the server as an int or range",
+                type=OptionType.STRING,
                 required=False,
-                min_value=0,
+                min_length=1,
             ),
             SlashCommandOption(
                 name="online_players",
-                description="The online players of the server",
+                description="The online players of the server as an int or range",
                 type=OptionType.STRING,
                 required=False,
                 min_length=1,
             ),
             SlashCommandOption(
                 name="logged_players",
-                description="The logged players of the server",
+                description="The logged players of the server as an int or range",
                 type=OptionType.STRING,
                 required=False,
                 min_length=1,
@@ -136,6 +136,12 @@ class Commands(Extension):
                 min_length=2,
                 max_length=2,
             ),
+            SlashCommandOption(
+                name="whitelisted",
+                description="If the server is whitelisted",
+                type=OptionType.BOOLEAN,
+                required=False,
+            ),
         ],
     )
     async def find(
@@ -143,7 +149,7 @@ class Commands(Extension):
         ctx: SlashContext,
         ip: str = None,
         version: str = None,
-        max_players: int = None,
+        max_players: str = None,
         online_players: str = None,
         logged_players: str = None,
         player: str = None,
@@ -152,6 +158,7 @@ class Commands(Extension):
         cracked: bool = None,
         has_favicon: bool = None,
         country: str = None,
+        whitelisted: bool = None,
     ):
         msg = None
         try:
@@ -167,13 +174,15 @@ class Commands(Extension):
             )
 
             # default pipeline
-            pipeline = [{"$match": {"$and": []}}]
+            pipeline = [
+                {"$match": {"$and": []}},
+                {"$sample": {"size": 1}},
+            ]
 
             # filter out servers that have max players less than zero
             pipeline[0]["$match"]["$and"].append({"players.max": {"$gt": 0}})
             # filter out servers that have more than 150k players online
-            pipeline[0]["$match"]["$and"].append(
-                {"players.online": {"$lt": 150000}})
+            pipeline[0]["$match"]["$and"].append({"players.online": {"$lt": 150000}})
 
             if player is not None:
                 if len(player) < 16:
@@ -231,53 +240,79 @@ class Commands(Extension):
                         {"version.name": {"$regex": f".*{version}.*"}}
                     )
             if max_players is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"players.max": max_players})
-            if online_players is not None:
-                if (
-                    not online_players.isdigit()
-                    and not online_players.startswith(">")
-                    and not online_players.startswith("<")
-                    and not online_players.startswith("=")
-                    and "-" not in online_players
+                if max_players.isnumeric():
+                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                elif (
+                    max_players.startswith(("[", "("))
+                    and max_players.endswith(("]", ")"))
+                    and "," in max_players
                 ):
-                    await msg.edit(
-                        embed=self.messageLib.standard_embed(
-                            title="Error",
-                            description=f"Online players `{online_players}` not a valid number",
-                            color=RED,
-                        ),
-                        components=self.messageLib.buttons(),
-                    )
-                    self.logger.debug(
-                        f"Online players `{online_players}` not a valid number: {online_players}"
-                    )
-                    return
-                if online_players.startswith(">"):
-                    online_players = {"$gt": int(online_players[1:])}
-                elif online_players.startswith("<"):
-                    online_players = {"$lt": int(online_players[1:])}
-                elif online_players.startswith("="):
-                    online_players = int(online_players[1:])
-                elif len(online_players.split("-")) == 2:
-                    online_players = {
-                        "$gte": int(online_players.split("-")[0]),
-                        "$lte": int(online_players.split("-")[1]),
-                    }
-                elif online_players.isdigit():
-                    online_players = int(online_players)
+                    rng = self.textLib.parse_range(max_players)
+
+                    if rng[0]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'gt' if rng[0][0] else 'gte'}": int(rng[0][1])
+                                }
+                            }
+                        )
+                    if rng[1]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'lt' if rng[1][0] else 'lte'}": int(rng[1][1])
+                                }
+                            }
+                        )
                 else:
                     await msg.edit(
                         embed=self.messageLib.standard_embed(
                             title="Error",
-                            description=f"Online players `{online_players}` not a valid number",
+                            description=f"Max players `{max_players}` not a valid range, use interval notation\nex:\n- [0, 10]\n- (0, 10)\n- [0, 10)\n- (0, 10]",
                             color=RED,
                         ),
                         components=self.messageLib.buttons(),
                     )
                     return
-                pipeline[0]["$match"]["$and"].append(
-                    {"players.online": online_players})
+            if online_players is not None:
+                if online_players.isnumeric():
+                    pipeline[0]["$match"]["$and"].append(
+                        {"players.max": online_players}
+                    )
+                elif (
+                    online_players.startswith(("[", "("))
+                    and online_players.endswith(("]", ")"))
+                    and "," in online_players
+                ):
+                    rng = self.textLib.parse_range(online_players)
+
+                    if rng[0]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'gt' if rng[0][0] else 'gte'}": int(rng[0][1])
+                                }
+                            }
+                        )
+                    if rng[1]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'lt' if rng[1][0] else 'lte'}": int(rng[1][1])
+                                }
+                            }
+                        )
+                else:
+                    await msg.edit(
+                        embed=self.messageLib.standard_embed(
+                            title="Error",
+                            description=f"Online players `{online_players}` not a valid range, use interval notation\nex:\n- [0, 10]\n- (0, 10)\n- [0, 10)\n- (0, 10]",
+                            color=RED,
+                        ),
+                        components=self.messageLib.buttons(),
+                    )
+                    return
             if sign is not None:
                 pipeline[0]["$match"]["$and"].append(
                     {"world.signs": {"$elemMatch": {"text": {"$regex": f".*{sign}.*"}}}}
@@ -330,8 +365,7 @@ class Commands(Extension):
                     }
                 )
             if has_favicon is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"hasFavicon": has_favicon})
+                pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
             if logged_players is not None:
                 pipeline[0]["$match"]["$and"].extend(
                     [
@@ -339,73 +373,37 @@ class Commands(Extension):
                         {"players.sample.0": {"$exists": True}},
                     ]
                 )
-                if (
-                    not logged_players.isdigit()
-                    and not logged_players.startswith(">")
-                    and not logged_players.startswith("<")
-                    and not logged_players.startswith("=")
-                    and "-" not in logged_players
+                if max_players.isnumeric():
+                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                elif (
+                    max_players.startswith(("[", "("))
+                    and max_players.endswith(("]", ")"))
+                    and "," in max_players
                 ):
-                    await msg.edit(
-                        embed=self.messageLib.standard_embed(
-                            title="Error",
-                            description=f"Logged players `{logged_players}` not a valid number",
-                            color=RED,
-                        ),
-                        components=self.messageLib.buttons(),
-                    )
-                    return
-                if logged_players.startswith(">"):
+                    rng = self.textLib.parse_range(max_players)
+
+                    if rng[0]:
+                        pipeline[0]["$match"]["$and"].append(
+                            {
+                                "players.max": {
+                                    f"${'gt' if rng[0][0] else 'gte'}": int(rng[0][1])
+                                }
+                            }
+                        )
                     pipeline[0]["$match"]["$and"].append(
                         {
-                            f"players.sample.{int(logged_players[1:]) - 1}": {
-                                "$exists": True
+                            "players.max": {
+                                f"${'lt' if rng[1][0] else 'lte'}": int(rng[1][1])
                             }
                         }
                     )
-                elif logged_players.startswith("<"):
-                    pipeline[0]["$match"]["$and"].append(
-                        {
-                            f"players.sample.{int(logged_players[1:]) - 1}": {
-                                "$exists": True
-                            }
-                        }
-                    )
-                elif logged_players.startswith("=") or logged_players.isdigit():
-                    pipeline[0]["$match"]["$and"].extend(
-                        [
-                            {
-                                f"players.sample.{int(logged_players.replace('=','')) - 1}": {
-                                    "$exists": True
-                                }
-                            },
-                            {
-                                f"players.sample.{int(logged_players.replace('=',''))}": {
-                                    "$exists": False
-                                }
-                            },
-                        ]
-                    )
-                elif len(logged_players.split("-")) == 2:
-                    pipeline[0]["$match"]["$and"].extend(
-                        [
-                            {
-                                f"players.sample.{logged_players.split('-')[1]}": {
-                                    "$exists": False
-                                }
-                            },
-                            {
-                                f"players.sample.{int(logged_players.split('-')[1])-1}": {
-                                    "$exists": True
-                                }
-                            },
-                        ]
-                    )
+                    if rng[1]:
+                        pass
                 else:
                     await msg.edit(
                         embed=self.messageLib.standard_embed(
                             title="Error",
-                            description=f"Logged players `{logged_players}` not a valid number",
+                            description=f"Logged players `{logged_players}` not a valid range, use interval notation\nex:\n- [0, 10]\n- (0, 10)\n- [0, 10)\n- (0, 10]",
                             color=RED,
                         ),
                         components=self.messageLib.buttons(),
@@ -458,11 +456,12 @@ class Commands(Extension):
                         {"ip": {"$regex": f"^{ip}$", "$options": "i"}}
                     )
             if country is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"geo": {"$exists": True}})
+                pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
                 pipeline[0]["$match"]["$and"].append(
                     {"geo.country": {"$regex": f"^{country}$", "$options": "i"}}
                 )
+            if whitelisted is not None:
+                pipeline[0]["$match"]["$and"].append({"whitelist": whitelisted})
 
             total = self.databaseLib.count(pipeline)
 
@@ -596,8 +595,7 @@ class Commands(Extension):
                 )
                 await msg.delete(context=ctx)
                 return
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -727,9 +725,7 @@ class Commands(Extension):
                     ),
                 )
 
-            names = []
-            for stream in streams:
-                names.append(stream["user_name"])
+            names = [i["user_name"] for i in streams]
 
             # get the servers
             # by case-insensitive name of streamer and players.sample is greater than 0
@@ -737,34 +733,32 @@ class Commands(Extension):
                 {
                     "$match": {
                         "$and": [
-                            {
-                                "players.sample.name": {
-                                    "$in": [
-                                        re.compile(name, re.IGNORECASE)
-                                        for name in names
-                                    ]
-                                }
-                            },
+                            {"players.sample.name": {"$in": names}},
                             {"players.sample": {"$exists": True}},
                         ]
                     }
-                }
+                },
+                {
+                    "$project": {
+                        "_id": 1,
+                    }
+                },
             ]
 
             total = self.databaseLib.count(pipeline)
-            self.logger.debug(f"Got {total} servers: {names}")
+            self.logger.debug(f"Got {total} servers")
             msg = await msg.edit(
                 embed=self.messageLib.standard_embed(
                     title="Loading...",
-                    description="Found " +
-                    str(total) + " servers in the database",
+                    description="Found " + str(total) + " servers in the database",
                     color=BLUE,
                 ),
             )
 
-            _ids = []
-            for doc in self.databaseLib.aggregate(pipeline):
-                _ids.append(doc["_id"])
+            _ids = [i["_id"] for i in self.databaseLib.aggregate(pipeline)]
+
+            self.logger.debug(f"Got {len(_ids)} ids")
+
             pipeline = [
                 {
                     "$match": {
@@ -811,8 +805,7 @@ class Commands(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -955,8 +948,7 @@ class Commands(Extension):
                     ephemeral=True,
                 )
         except Exception as err:
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -1013,15 +1005,13 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
                 {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
             ]
-            total_players = self.databaseLib.aggregate(
-                pipeline).try_next()["total"]
+            total_players = self.databaseLib.aggregate(pipeline).try_next()["total"]
 
             main_embed.add_field(
                 name="Players",
@@ -1128,8 +1118,7 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1162,8 +1151,7 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1189,24 +1177,23 @@ class Commands(Extension):
                 embed=main_embed,
             )
 
-            # get the percent of servers which are cracked (cracked == True)
+            # get the percentage of servers which are cracked (cracked == True)
             pipeline = [
                 {"$match": {"cracked": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            cracked = list(self.databaseLib.aggregate(pipeline))
+            cracked = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             main_embed.add_field(
                 name="Cracked",
-                value=self.textLib.percent_bar(
-                    cracked[0]["count"], total_servers),
+                value=self.textLib.percent_bar(cracked, total_servers),
                 inline=True,
             )
             msg = await msg.edit(
                 embed=main_embed,
             )
 
-            # get the percent of servers which have favicons (hasFavicon == True)
+            # get the percentage of servers which have favicons (hasFavicon == True)
             pipeline = [
                 {"$match": {"hasFavicon": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
@@ -1215,26 +1202,45 @@ class Commands(Extension):
 
             main_embed.add_field(
                 name="Has Favicon",
-                value=self.textLib.percent_bar(
-                    has_favicon[0]["count"], total_servers),
+                value=self.textLib.percent_bar(has_favicon[0]["count"], total_servers),
                 inline=True,
             )
             msg = await msg.edit(
                 embed=main_embed,
             )
 
-            # get the percent of servers which have forge mods (hasForgeData == True)
+            # get the percentage of servers which have forge mods (hasForgeData == True)
             pipeline = [
                 {"$match": {"hasForgeData": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            has_forge_data = list(self.databaseLib.aggregate(pipeline))
+            has_forge_data = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             main_embed.add_field(
                 name="Has Forge Data",
-                value=self.textLib.percent_bar(
-                    has_forge_data[0]["count"], total_servers
-                ),
+                value=self.textLib.percent_bar(has_forge_data, total_servers),
+                inline=True,
+            )
+            msg = await msg.edit(
+                embed=main_embed,
+            )
+
+            # get the percentage of servers that are whitelisted
+            pipeline = [
+                {"$match": {"whitelist": {"$exists": True}}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            have_whitelist = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+
+            pipeline = [
+                {"$match": {"whitelist": True}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+
+            main_embed.add_field(
+                name="Whitelisted",
+                value=self.textLib.percent_bar(whitelist_enabled, have_whitelist),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1256,8 +1262,7 @@ class Commands(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(

@@ -18,6 +18,7 @@ from interactions import (
     ButtonStyle,
 )
 from interactions.ext.paginators import Paginator
+# noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
 from .Colors import *
@@ -39,7 +40,7 @@ class Buttons(Extension):
         cstats,
         azure_client_id,
         azure_redirect_uri,
-        **kwargs,
+        **__,
     ):
         super().__init__()
 
@@ -107,8 +108,7 @@ class Buttons(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -169,8 +169,7 @@ class Buttons(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -210,7 +209,7 @@ class Buttons(Extension):
             set_tag("players", len(player_list))
 
             player_groups = [
-                list(player_list[i: i + 10]) for i in range(0, len(player_list), 10)
+                list(player_list[i : i + 10]) for i in range(0, len(player_list), 10)
             ]
 
             players = []
@@ -246,8 +245,7 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -343,8 +341,7 @@ class Buttons(Extension):
                 await org.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -501,8 +498,7 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -595,8 +591,7 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -622,12 +617,10 @@ class Buttons(Extension):
                 {
                     "$match": {
                         "$and": [
-                            {"ip": org.embeds[0].title.split(
-                                " ")[1].split(":")[0]},
+                            {"ip": org.embeds[0].title.split(" ")[1].split(":")[0]},
                             {
                                 "port": int(
-                                    org.embeds[0].title.split(
-                                        " ")[1].split(":")[1]
+                                    org.embeds[0].title.split(" ")[1].split(":")[1]
                                 )
                             },
                         ],
@@ -692,8 +685,7 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -840,8 +832,7 @@ class Buttons(Extension):
                 ephemeral=True,
             )
         except Exception as err:
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -853,3 +844,57 @@ class Buttons(Extension):
                 components=[],
                 ephemeral=True,
             )
+
+    # button to show streams
+    @component_callback("streams")
+    @trace
+    async def streams(self, ctx: ComponentContext):
+        # get the pipeline
+        org = ctx.message
+        index, pipeline = await self.messageLib.get_pipe(org)
+
+        self.logger.print(f"streams called")
+
+        await ctx.defer(ephemeral=True)
+
+        data = self.databaseLib.get_doc_at_index(pipeline, index)
+
+        streams = []
+        raw_streams = await self.twitchLib.async_get_streamers()
+
+        users_streaming: list[str] = [i["user_name"] for i in raw_streams]
+        server_players = list(
+            set([player["name"] for player in data["players"]["sample"]])
+        )
+
+        streaming_players = list(
+            set(server_players)
+            - set(users_streaming).symmetric_difference(set(server_players))
+        )
+        self.logger.debug(f"Found {len(streaming_players)} streams in server")
+
+        for player in streaming_players:
+            stream = raw_streams[users_streaming.index(player)]
+            if stream is not None and stream not in streams:
+                streams.append(
+                    f"{stream['user_name']}: [{stream['title']}](https://twitch.tv/{stream['user_login']})"
+                )
+
+            if len(streams) >= len(users_streaming):
+                # already added all the streams
+                break
+
+        if len(streams) == 0:
+            await ctx.send(
+                embed=self.messageLib.standard_embed(
+                    title="Error",
+                    description="No streams found",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return
+
+        pag = Paginator.create_from_list(ctx.bot, streams, timeout=60)
+
+        await pag.send(ctx)

@@ -35,8 +35,7 @@ class Player:
         Returns:
             bool: True if the server is cracked, False if not
         """
-        url = "https://api.mcstatus.io/v2/status/java/" + \
-            host + ":" + str(port)
+        url = "https://api.mcstatus.io/v2/status/java/" + host + ":" + str(port)
 
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
@@ -97,7 +96,7 @@ class Player:
 
         Args:
             ip (str): server ip
-            port (int, optional): server port. Defaults to 25565.
+            port (int, optional): server port. Default to 25565.
 
         Returns:
             str: list of players

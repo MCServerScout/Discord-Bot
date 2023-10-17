@@ -19,7 +19,7 @@ class Apps(Extension):
         cstats,
         azure_client_id,
         azure_redirect_uri,
-        **kwargs,
+        **__,
     ):
         super().__init__()
 

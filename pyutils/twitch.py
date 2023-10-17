@@ -10,7 +10,7 @@ class Twitch:
         self.client_secret = client_secret
 
     async def async_get_streamers(
-        self, client_id: str, client_secret: str, lang: str = None
+        self, client_id: str = None, client_secret: str = None, lang: str = None
     ) -> list:
         token_url = "https://id.twitch.tv/oauth2/token"
         streams_url = "https://api.twitch.tv/helix/streams"
@@ -19,6 +19,12 @@ class Twitch:
             client_id = self.client_id
         if self.client_secret is not None:
             client_secret = self.client_secret
+
+        if client_id is None or client_secret is None:
+            self.logger.error(
+                "[twitch.asyncGetStreamers] Client ID or secret not provided"
+            )
+            return []
 
         # Get access token
         async with aiohttp.ClientSession() as session:
@@ -32,8 +38,7 @@ class Twitch:
                 access_token = token_data["access_token"]
 
         # Fetch Minecraft streams
-        headers = {"Client-ID": client_id,
-                   "Authorization": f"Bearer {access_token}"}
+        headers = {"Client-ID": client_id, "Authorization": f"Bearer {access_token}"}
         params = {
             "game_id": "27471",
             "first": 100,
@@ -93,8 +98,7 @@ class Twitch:
             if stream == {}:
                 return stream
 
-            self.logger.info(
-                f"Found stream: {stream['user_name']} - {stream['title']}")
+            self.logger.info(f"Found stream: {stream['user_name']} - {stream['title']}")
             stream = {
                 "name": stream["user_login"],
                 "viewer_count": stream["viewer_count"],

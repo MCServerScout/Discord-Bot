@@ -98,7 +98,7 @@ async def main():
                 ]
             }
         },
-        {"$sort": {"lastSeen": 1}},
+        {"$sort": {"lastSeen": -1}},
     ]
 
     # whitelist can be False, True, or None (not online to test)
@@ -108,7 +108,7 @@ async def main():
     link, vCode = mcLib.get_activation_code_url(azure_client_id, azure_redirect_uri)
     logger.print(f"Please visit {link} and enter the code below")
 
-    access_code = input("Code: ")
+    access_code = input("Code: ").strip()
 
     # then we need to get the token
     result = await mcLib.get_minecraft_token_async(
@@ -128,9 +128,9 @@ async def main():
             sType = await mcLib.join(
                 ip=server["ip"],
                 port=server["port"],
-                version=server["version"],
                 player_username=uname,
                 mine_token=token,
+                version=server["version"]["protocol"],
             )
         except Exception as e:
             logger.print(f"Error joining {server['ip']}")
@@ -143,12 +143,18 @@ async def main():
             databaseLib.update_one(
                 {"_id": server["_id"]}, {"$set": {"whitelist": True}}
             )
-        elif sType.status == "PREMIUM":
+        elif sType.status == "PREMIUM" or sType.status == "MODDED":
             logger.print(f"Premium: {server['ip']}")
             databaseLib.update_one(
                 {"_id": server["_id"]}, {"$set": {"whitelist": False}}
             )
+        elif sType.status == "HONEY_POT":
+            logger.print(f"Honey Pot: {server['ip']}")
+            databaseLib.update_one(
+                {"_id": server["_id"]}, {"$set": {"whitelist": True}}
+            )
         else:
+            logger.print(f"Unknown: {server['ip']} ({sType.status})", end="\r")
             databaseLib.update_one(
                 {"_id": server["_id"]}, {"$set": {"whitelist": None}}
             )

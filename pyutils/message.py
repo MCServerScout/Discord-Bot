@@ -9,6 +9,7 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
+# noinspection PyProtectedMember
 from sentry_sdk import trace
 
 from Extensions.Colors import *
@@ -50,8 +51,8 @@ class Message:
                 interactions.Button(): Mods
             ]
         """
-        if len(args) != 8:
-            disabled = list([True] * 8)
+        if len(args) != 9:
+            disabled = list([True] * 9)
         else:
             disabled = list(args)
 
@@ -109,6 +110,12 @@ class Message:
                     label="Join",
                     custom_id="join",
                     disabled=disabled[7],
+                ),
+                interactions.Button(
+                    style=interactions.ButtonStyle.SECONDARY,
+                    label="Streams",
+                    custom_id="streams",
+                    disabled=disabled[8],
                 ),
             ),
         ]
@@ -196,7 +203,6 @@ class Message:
             # get the server status
             is_online = "🔴"
             data["cracked"] = None
-            streams = []
             if type(pipeline) is dict and fast:
                 # set all values to default
                 data["description"] = {"text": "..."}
@@ -208,14 +214,12 @@ class Message:
                 data["lastSeen"] = 0
             elif not fast:
                 try:
-                    status = self.server.update(
-                        host=data["ip"], port=data["port"])
+                    status = self.server.update(host=data["ip"], port=data["port"])
 
                     if status is None:
                         # server is offline
                         data["cracked"] = None
-                        data["description"] = self.text.motd_parse(
-                            data["description"])
+                        data["description"] = self.text.motd_parse(data["description"])
                         self.logger.debug("Server is offline")
                     else:
                         self.logger.debug("Server is online")
@@ -227,33 +231,13 @@ class Message:
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
                 except Exception as e:
-                    self.logger.print(
-                        f"Full traceback: {traceback.format_exc()}")
+                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
-
-                # try and see if any of the players are live-streaming
-                if "sample" in data["players"]:
-                    self.logger.debug("Checking for streams")
-                    users_streaming: list[str] = await self.twitch.get_users_streaming()
-                    for player in data["players"]["sample"]:
-                        if (
-                            player["lastSeen"] - time.time() < 180
-                            and "§" not in player["name"]
-                            and player["name"]
-                        ):
-                            if player["name"] in users_streaming:
-                                self.logger.debug("Found stream")
-                                streams.append(
-                                    await self.twitch.get_stream(player["name"])
-                                )
-                    else:
-                        self.logger.debug("No streams found")
             else:
                 # isonline is yellow
                 is_online = "🟡"
                 if "description" in data.keys():
-                    data["description"] = self.text.motd_parse(
-                        data["description"])
+                    data["description"] = self.text.motd_parse(data["description"])
                 else:
                     data["description"] = {"text": "n/a"}
 
@@ -362,14 +346,16 @@ class Message:
                     inline=True,
                 )
 
-            # add the streams
-            if len(streams) > 0:
+            # add whitelist
+            if "whitelist" in data.keys():
+                is_w = "Yes" if data["whitelist"] else "No"
+                if is_w == "Yes":
+                    embed.color = PINK
+                    embed.title = embed.title + " (Whitelisted)"
                 embed.add_field(
-                    name="Streams",
-                    value="\n".join(
-                        [f"[{stream['title']}]({stream['url']})" for stream in streams]
-                    ),
-                    inline=False,
+                    name="Whitelisted",
+                    value=is_w,
+                    inline=True,
                 )
 
             return {
@@ -385,6 +371,7 @@ class Message:
                     total_servers <= 1,  # sort
                     not data["hasForgeData"],  # mods
                     data["lastSeen"] <= time.time() - 300,  # join
+                    "sample" not in data["players"],  # streams
                 )
                 if not fast
                 else self.buttons(),
@@ -499,8 +486,7 @@ class Message:
             return None
 
         # grab the index
-        index = int(msg.embeds[0].footer.text.split(
-            "Showing ")[1].split(" of ")[0]) - 1
+        index = int(msg.embeds[0].footer.text.split("Showing ")[1].split(" of ")[0]) - 1
 
         # grab the attachment
         for file in msg.attachments:
