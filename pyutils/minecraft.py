@@ -497,7 +497,8 @@ class Minecraft:
             self.logger.print("Failed to get access token")
             try:
                 error_j = res.json()
-                self.logger.error(error_j["error"], error_j["error_description"])
+                self.logger.error(error_j["error"],
+                                  error_j["error_description"])
             except KeyError:
                 self.logger.error(res.reason)
             return {"type": "error", "error": "Failed to get access token"}
