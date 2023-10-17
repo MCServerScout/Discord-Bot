@@ -135,7 +135,7 @@ class Minecraft:
             handshake.write_ushort(int(port))  # Server port
             handshake.write_varint(2)  # Intention to login
 
-            connection.write_buffer(handshake)
+            self.compress_packet(handshake, comp_thresh, connection)
             self.logger.debug("Sent handshake packet")
 
             # Send login start packet: ID, username, include sig data, has uuid, uuid
@@ -202,9 +202,10 @@ class Minecraft:
                     verify_token = response.read(length)
                 except OSError:
                     self.logger.print("Weird packet")
-                    remaining = response.read(response.remaining())
-                    self.logger.debug(f"Remaining: {remaining}")
-                    return self.ServerType(ip, version, "WEIRD_PACKET")
+                    verify_token = response.read(response.remaining())
+                    self.logger.debug(
+                        f"Length mismatch: {length} != {len(verify_token)}"
+                    )
 
                 shared_secret = os.urandom(16)
 
@@ -218,10 +219,6 @@ class Minecraft:
                 verify_hash = shaHash.hexdigest()
 
                 pubKey = load_der_public_key(public_key, default_backend())
-
-                self.logger.debug(
-                    f"Encryption info:\nserver_id: {server_id}\npublic_key: {public_key}\nverify_token: {verify_token}\nshared_secret: {shared_secret}\nverify_hash: {verify_hash}\npublic key: {pubKey}"
-                )
 
                 self.logger.debug("Sending authentication request")
                 if await self.session_join(
@@ -241,9 +238,7 @@ class Minecraft:
                 encryptionResponse.write_varint(len(encryptedVerifyToken))
                 encryptionResponse.write(encryptedVerifyToken)
 
-                connection.write_buffer(
-                    self.compress_packet(encryptionResponse, comp_thresh)
-                )
+                self.compress_packet(encryptionResponse, comp_thresh, connection)
                 self.logger.debug("Sent encryption response")
 
                 # listen for a set compression packet
@@ -300,9 +295,7 @@ class Minecraft:
 
                         loginAck.write_varint(3)  # Packet ID
 
-                        connection.write_buffer(
-                            self.compress_packet(loginAck, comp_thresh)
-                        )
+                        self.compress_packet(loginAck, comp_thresh, connection)
                     except Exception:
                         self.logger.error(traceback.format_exc())
 
@@ -311,6 +304,11 @@ class Minecraft:
                     self.logger.print("Logged in successfully")
 
                     return self.ServerType(ip, version, "PREMIUM")
+            elif _id == 4:
+                # load plugin request
+                self.logger.debug("Loading plugins")
+
+                return self.ServerType(ip, version, "MODDED")
             else:
                 self.logger.info("Unknown response: " + str(_id))
                 try:
@@ -711,6 +709,12 @@ class Minecraft:
                         return await self.session_join(
                             mine_token, server_hash, _uuid, tries + 1
                         )
+                    elif res.status == 429:
+                        tries += 1
+                        await asyncio.sleep(1)
+                        return await self.session_join(
+                            mine_token, server_hash, _uuid, tries
+                        )
                     else:
                         self.logger.print("Failed to authenticate account")
                         self.logger.error(res.status, await res.text())
@@ -720,7 +724,7 @@ class Minecraft:
             self.logger.error(traceback.format_exc())
 
     @staticmethod
-    def compress_packet(packet: Connection, threshold) -> Connection:
+    def compress_packet(packet: Connection, threshold, connection: Connection) -> None:
         """
         Compresses a packet if it is over the threshold in the format of:
 
@@ -732,13 +736,14 @@ class Minecraft:
         Args:
             packet (Connection): the packet to compress
             threshold (int): the threshold to compress at
+            connection (Connection): the connection to write to
 
         Returns:
             Connection: the compressed packet
         """
 
         if threshold <= 0:
-            return packet
+            connection.write_buffer(packet)
 
         data = packet.flush()
 
@@ -761,27 +766,31 @@ class Minecraft:
 
         # packet length is now the Length of (Data Length) + Compressed length of (Packet ID + Data)
         new_data = Connection()
-        new_data.write_varint(len(cdata) + uncomp_len)  # packet length
-        new_data.write_varint(len(cdata))  # data length
+        new_data.write_varint(len(cdata) + 1)  # packet length
+        new_data.write_varint(uncomp_len)  # data length
         new_data.write(cdata)  # compressed data
 
-        return new_data
+        connection.write(new_data.flush())
 
     def read_compressed(self, con: Connection):
-        length = con.read_varint()
-        data_length = con.read_varint()
+        try:
+            length = con.read_varint()
+            data_length = con.read_varint()
 
-        result = Connection()
-        comp = con.read(length)
-        data = zlib.decompress(comp)
-        if len(data) != data_length:
-            raise Exception("Data length does not match")
+            result = Connection()
+            comp = con.read(length)
+            data = zlib.decompress(comp)
+            if len(data) != data_length:
+                raise Exception("Data length does not match")
 
-        self.logger.debug(f"Data: {data}")
+            self.logger.debug(f"Data: {data}")
 
-        result.receive(data)
+            result.receive(data)
 
-        return result
+            return result
+        except Exception:
+            self.logger.error(traceback.format_exc())
+            return con
 
     def read_chat(self, chat: dict):
         try:
