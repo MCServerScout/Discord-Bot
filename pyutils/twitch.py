@@ -38,7 +38,8 @@ class Twitch:
                 access_token = token_data["access_token"]
 
         # Fetch Minecraft streams
-        headers = {"Client-ID": client_id, "Authorization": f"Bearer {access_token}"}
+        headers = {"Client-ID": client_id,
+                   "Authorization": f"Bearer {access_token}"}
         params = {
             "game_id": "27471",
             "first": 100,
@@ -98,7 +99,8 @@ class Twitch:
             if stream == {}:
                 return stream
 
-            self.logger.info(f"Found stream: {stream['user_name']} - {stream['title']}")
+            self.logger.info(
+                f"Found stream: {stream['user_name']} - {stream['title']}")
             stream = {
                 "name": stream["user_login"],
                 "viewer_count": stream["viewer_count"],

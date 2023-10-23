@@ -9,6 +9,7 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
+
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -214,12 +215,14 @@ class Message:
                 data["lastSeen"] = 0
             elif not fast:
                 try:
-                    status = self.server.update(host=data["ip"], port=data["port"])
+                    status = self.server.update(
+                        host=data["ip"], port=data["port"])
 
                     if status is None:
                         # server is offline
                         data["cracked"] = None
-                        data["description"] = self.text.motd_parse(data["description"])
+                        data["description"] = self.text.motd_parse(
+                            data["description"])
                         self.logger.debug("Server is offline")
                     else:
                         self.logger.debug("Server is online")
@@ -231,13 +234,15 @@ class Message:
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
                 except Exception as e:
-                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
+                    self.logger.print(
+                        f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
             else:
                 # isonline is yellow
                 is_online = "🟡"
                 if "description" in data.keys():
-                    data["description"] = self.text.motd_parse(data["description"])
+                    data["description"] = self.text.motd_parse(
+                        data["description"])
                 else:
                     data["description"] = {"text": "n/a"}
 
@@ -486,7 +491,8 @@ class Message:
             return None
 
         # grab the index
-        index = int(msg.embeds[0].footer.text.split("Showing ")[1].split(" of ")[0]) - 1
+        index = int(msg.embeds[0].footer.text.split(
+            "Showing ")[1].split(" of ")[0]) - 1
 
         # grab the attachment
         for file in msg.attachments:
