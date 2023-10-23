@@ -34,7 +34,7 @@ class Text:
 
         # escape all unicode chars
         text = "".join(
-            char
+            char.encode("unicode_escape").decode("utf-8")
             if unicodedata.category(char) in ("Cc", "Cf", "Cn", "Co", "Cs")
             else char
             for char in text
@@ -356,9 +356,11 @@ class Text:
 
         ex `(1, 2)` -> ((0, 1), (0, 2))
            `(1, 3]` -> ((0, 1), (1, 3))
+           `(1, )` -> ((0, 1), ())
+           `[ , 3)` -> ((), (0, 3))
 
         Returns:
-            tuple: First tuple group is the lower bound, second is the upper bound
+            tuple: the first tuple group is the lower bound, the second is the upper bound
               The tuple groups have two ints, one for is equal (1) or not (0), and the other is the number
         """
         out = [(), ()]
@@ -373,12 +375,12 @@ class Text:
                         int(rng[0][1:]),
                     )
                 else:
-                    out[0] = (
+                    out[1] = (
                         int(rng[0].endswith(")")),
                         int(rng[0][1:-1]),
                     )
             elif len(rng) == 2:
-                # two sided limit
+                # two-sided limit
                 out[0] = (
                     int(rng[0].startswith("(")),
                     int(rng[0][1:]),

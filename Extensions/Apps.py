@@ -1,6 +1,6 @@
 from interactions import Extension, message_context_menu, ContextMenuContext
 
-from .Colors import *
+from .Colors import *  # skipcq: PYL-W0614
 
 
 class Apps(Extension):

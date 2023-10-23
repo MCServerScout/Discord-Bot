@@ -18,7 +18,7 @@ from interactions import (
     Attachment,
 )
 
-from .Colors import *
+from .Colors import *  # skipcq: PYL-W0614
 
 
 class Commands(Extension):
@@ -182,8 +182,7 @@ class Commands(Extension):
             # filter out servers that have max players less than zero
             pipeline[0]["$match"]["$and"].append({"players.max": {"$gt": 0}})
             # filter out servers that have more than 150k players online
-            pipeline[0]["$match"]["$and"].append(
-                {"players.online": {"$lt": 150000}})
+            pipeline[0]["$match"]["$and"].append({"players.online": {"$lt": 150000}})
 
             if player is not None:
                 if len(player) < 16:
@@ -242,8 +241,7 @@ class Commands(Extension):
                     )
             if max_players is not None:
                 if max_players.isnumeric():
-                    pipeline[0]["$match"]["$and"].append(
-                        {"players.max": max_players})
+                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
                 elif (
                     max_players.startswith(("[", "("))
                     and max_players.endswith(("]", ")"))
@@ -367,8 +365,7 @@ class Commands(Extension):
                     }
                 )
             if has_favicon is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"hasFavicon": has_favicon})
+                pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
             if logged_players is not None:
                 pipeline[0]["$match"]["$and"].extend(
                     [
@@ -377,8 +374,7 @@ class Commands(Extension):
                     ]
                 )
                 if max_players.isnumeric():
-                    pipeline[0]["$match"]["$and"].append(
-                        {"players.max": max_players})
+                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
                 elif (
                     max_players.startswith(("[", "("))
                     and max_players.endswith(("]", ")"))
@@ -460,14 +456,12 @@ class Commands(Extension):
                         {"ip": {"$regex": f"^{ip}$", "$options": "i"}}
                     )
             if country is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"geo": {"$exists": True}})
+                pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
                 pipeline[0]["$match"]["$and"].append(
                     {"geo.country": {"$regex": f"^{country}$", "$options": "i"}}
                 )
             if whitelisted is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"whitelist": whitelisted})
+                pipeline[0]["$match"]["$and"].append({"whitelist": whitelisted})
 
             total = self.databaseLib.count(pipeline)
 
@@ -601,8 +595,7 @@ class Commands(Extension):
                 )
                 await msg.delete(context=ctx)
                 return
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -669,7 +662,7 @@ class Commands(Extension):
                 try:
                     modal_ctx = await ctx.bot.wait_for_modal(timeout=90, modal=modal)
                 except asyncio.TimeoutError:
-                    self.logger.print("Timed out")
+                    self.logger.print(f"Timed out")
                     await modal_ctx.send(
                         embed=self.messageLib.standard_embed(
                             title="Error",
@@ -757,8 +750,7 @@ class Commands(Extension):
             msg = await msg.edit(
                 embed=self.messageLib.standard_embed(
                     title="Loading...",
-                    description="Found " +
-                    str(total) + " servers in the database",
+                    description="Found " + str(total) + " servers in the database",
                     color=BLUE,
                 ),
             )
@@ -813,8 +805,7 @@ class Commands(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -957,8 +948,7 @@ class Commands(Extension):
                     ephemeral=True,
                 )
         except Exception as err:
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -984,7 +974,7 @@ class Commands(Extension):
         await ctx.defer()
 
         try:
-            self.logger.debug("Getting stats")
+            self.logger.debug(f"Getting stats")
             main_embed = self.messageLib.standard_embed(
                 title="Stats",
                 description="General stats about the database",
@@ -1015,15 +1005,13 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
                 {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
             ]
-            total_players = self.databaseLib.aggregate(
-                pipeline).try_next()["total"]
+            total_players = self.databaseLib.aggregate(pipeline).try_next()["total"]
 
             main_embed.add_field(
                 name="Players",
@@ -1130,8 +1118,7 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1164,8 +1151,7 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1216,8 +1202,7 @@ class Commands(Extension):
 
             main_embed.add_field(
                 name="Has Favicon",
-                value=self.textLib.percent_bar(
-                    has_favicon[0]["count"], total_servers),
+                value=self.textLib.percent_bar(has_favicon[0]["count"], total_servers),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1229,8 +1214,7 @@ class Commands(Extension):
                 {"$match": {"hasForgeData": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            has_forge_data = list(self.databaseLib.aggregate(pipeline))[
-                0]["count"]
+            has_forge_data = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             main_embed.add_field(
                 name="Has Forge Data",
@@ -1246,20 +1230,17 @@ class Commands(Extension):
                 {"$match": {"whitelist": {"$exists": True}}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            have_whitelist = list(self.databaseLib.aggregate(pipeline))[
-                0]["count"]
+            have_whitelist = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             pipeline = [
                 {"$match": {"whitelist": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[
-                0]["count"]
+            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             main_embed.add_field(
                 name="Whitelisted",
-                value=self.textLib.percent_bar(
-                    whitelist_enabled, have_whitelist),
+                value=self.textLib.percent_bar(whitelist_enabled, have_whitelist),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1281,8 +1262,7 @@ class Commands(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(

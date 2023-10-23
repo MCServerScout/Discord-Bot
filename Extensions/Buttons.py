@@ -18,11 +18,10 @@ from interactions import (
     ButtonStyle,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
-from .Colors import *
+from .Colors import *  # skipcq: PYL-W0614
 
 
 class Buttons(Extension):
