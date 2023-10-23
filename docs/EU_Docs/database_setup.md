@@ -26,4 +26,8 @@
 
 ## Hosting a database yourself
 
-Follow [this guide](https://www.prisma.io/dataguide/mongodb/setting-up-a-local-mongodb-database)
+1. Follow [this guide](https://www.prisma.io/dataguide/mongodb/setting-up-a-local-mongodb-database)
+2. Open the cli to mongosh
+3. Run `use MCSS` to create the MCSS database
+4. Run `db.createCollection("scannedServers")` to create the scannedServers collection
+5. Now paste the connection string into the `MONGO_URL` variable in `privVars.py`

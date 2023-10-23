@@ -86,8 +86,10 @@ def download_zip():
 
     os.mkdir(git_dir)
 
-    subprocess.call(["wget", zip_url, "-O", zip_file])
-    # subprocess.call(["unzip", zip_file, "-d", git_dir])
+    resp = requests.get(zip_url)
+    with open(zip_file, "wb") as f:
+        f.write(resp.content)
+
     with zipfile.ZipFile(zip_file, "r") as zip_ref:
         zip_ref.extractall(git_dir)
 
