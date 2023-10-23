@@ -873,7 +873,8 @@ class Buttons(Extension):
         raw_streams = await self.twitchLib.async_get_streamers()
 
         users_streaming: list[str] = [i["user_name"] for i in raw_streams]
-        server_players = list({player["name"] for player in data["players"]["sample"]})
+        server_players = list({player["name"]
+                              for player in data["players"]["sample"]})
 
         streaming_players = list(
             set(server_players)
