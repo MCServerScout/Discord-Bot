@@ -191,9 +191,8 @@ class Server:
             self.logger.warning(err)
             self.logger.print(f"{traceback.format_exc()}")
 
-            self.update_db(status) if status is not None else None
-
             if status is not None:
+                self.update_db(status)
                 return status
             else:
                 return None

@@ -116,7 +116,7 @@ class Minecraft:
                 async with httpSession.get(
                     url,
                     headers={
-                        "Authorization": "Bearer {}".format(mine_token),
+                        "Authorization": f"Bearer {mine_token}",
                         "Content-Type": "application/json",
                     },
                 ) as res:
@@ -533,7 +533,7 @@ class Minecraft:
             async with httpSession.post(
                 url,
                 json={
-                    "identityToken": "XBL3.0 x={};{}".format(xuid, xstsToken),
+                    "identityToken": f"XBL3.0 x={xuid};{xstsToken}",
                 },
                 headers={
                     "Content-Type": "application/json",
@@ -556,7 +556,7 @@ class Minecraft:
             async with httpSession.get(
                 url,
                 headers={
-                    "Authorization": "Bearer {}".format(minecraftToken),
+                    "Authorization": f"Bearer {minecraftToken}",
                     "Content-Type": "application/json",
                     "Accept": "application/json",
                 },
@@ -670,7 +670,7 @@ class Minecraft:
         res4 = requests.post(
             url,
             json={
-                "identityToken": "XBL3.0 x={};{}".format(xuid, xstsToken),
+                "identityToken": f"XBL3.0 x={xuid};{xstsToken}",
             },
             headers={
                 "Content-Type": "application/json",
@@ -693,7 +693,7 @@ class Minecraft:
         res5 = requests.get(
             url,
             headers={
-                "Authorization": "Bearer {}".format(minecraftToken),
+                "Authorization": f"Bearer {minecraftToken}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
             },
@@ -912,9 +912,7 @@ class Minecraft:
 
             if len(data) != uncomp_len:
                 self.logger.print(
-                    "Length mismatch when decompressing: {} != {}".format(
-                        len(data), uncomp_len
-                    )
+                    f"Length mismatch when decompressing: {len(data)} != {uncomp_len}"
                 )
 
             out = Connection()
