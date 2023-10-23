@@ -116,7 +116,8 @@ class Server:
                 # set the status to the database values
                 db_val = self.db.col.find_one({"ip": host, "port": port})
                 status = db_val.copy()
-                status["description"] = self.text.motd_parse(status["description"])
+                status["description"] = self.text.motd_parse(
+                    status["description"])
                 status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
                 if "sample" in status["players"]:
                     players = []
@@ -147,14 +148,16 @@ class Server:
                 if "sample" in status2["players"]:
                     players = []
                     for player in status2["players"]["sample"]:
-                        player["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
+                        player["lastSeen"] = int(
+                            datetime.datetime.utcnow().timestamp())
                         players.append(self.Player(**player))
                     status2["players"]["sample"] = players
                 status = self.text.update_dict(status, status2)
                 self.logger.info(f"Got status for {host}: {status}")
 
             server_type = (
-                self.join(ip=host, port=port, version=status["version"]["protocol"])
+                self.join(ip=host, port=port,
+                          version=status["version"]["protocol"])
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
@@ -180,7 +183,8 @@ class Server:
                     _id = mod_ids[mod_channels.index(mod)]
 
                     mods.append(
-                        {"name": name, "version": version, "required": req, "id": _id}
+                        {"name": name, "version": version,
+                            "required": req, "id": _id}
                     )
                 status["mods"] = mods
 
@@ -250,7 +254,8 @@ class Server:
                 self.logger.warning("Connection error")
                 return None
             elif res_id != 0:
-                self.logger.warning("Invalid packet ID received: " + str(res_id))
+                self.logger.warning(
+                    "Invalid packet ID received: " + str(res_id))
                 return None
             elif res_id == 0:
                 length = response.read_varint()
@@ -319,7 +324,8 @@ class Server:
             elif _id == 3:
                 self.logger.print("Setting compression")
                 compression_threshold = response.read_varint()
-                self.logger.print(f"Compression threshold: {compression_threshold}")
+                self.logger.print(
+                    f"Compression threshold: {compression_threshold}")
 
                 response = connection.read_buffer()
                 _id: int = response.read_varint()

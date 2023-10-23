@@ -128,7 +128,8 @@ class Minecraft:
                             self.logger.print("Account does not own the game")
                             return self.ServerType(ip, version, "NO_GAME")
                     else:
-                        self.logger.print("Failed to check if account owns the game")
+                        self.logger.print(
+                            "Failed to check if account owns the game")
                         self.logger.error(res.text)
                         return self.ServerType(ip, version, "BAD_TOKEN")
 
@@ -290,7 +291,8 @@ class Minecraft:
 
                 # send encryption response
                 self.logger.debug("Sending encryption response")
-                encryptedSharedSecret = pubKey.encrypt(shared_secret, PKCS1v15())
+                encryptedSharedSecret = pubKey.encrypt(
+                    shared_secret, PKCS1v15())
                 encryptedVerifyToken = pubKey.encrypt(verify_token, PKCS1v15())
 
                 encryptionResponse = Connection()
@@ -300,7 +302,8 @@ class Minecraft:
                 encryptionResponse.write_varint(len(encryptedVerifyToken))
                 encryptionResponse.write(encryptedVerifyToken)
 
-                self.compress_packet(encryptionResponse, connection, comp_thresh)
+                self.compress_packet(encryptionResponse,
+                                     connection, comp_thresh)
                 self.logger.debug("Sent encryption response")
 
                 # listen for a set compression packet
@@ -354,14 +357,16 @@ class Minecraft:
                     return self.ServerType(ip, version, "ERRORED")
                 elif _id < 0:
                     # all packet ids must be positive and less than 0x70 (not in(70), but rather int(112))
-                    self.logger.print("This server is a honey pot: " + str(_id))
+                    self.logger.print(
+                        "This server is a honey pot: " + str(_id))
                     return self.ServerType(ip, version, "HONEY_POT")
                 elif _id == 2:
                     self.logger.print("Logged in successfully")
 
                     uuid1 = response.read_ulong()
                     uuid2 = response.read_ulong()
-                    uuid = f"{uuid1:016x}-{uuid2:016x}"  # convert to hex and add dashes
+                    # convert to hex and add dashes
+                    uuid = f"{uuid1:016x}-{uuid2:016x}"
                     self.logger.debug("UUID:", uuid)
 
                     uname = response.read_utf()
@@ -492,7 +497,8 @@ class Minecraft:
                 if res2.status == 200:
                     xblToken = (await res2.json())["Token"]
                 else:
-                    self.logger.print("Failed to verify account: ", res2.status)
+                    self.logger.print(
+                        "Failed to verify account: ", res2.status)
                     self.logger.error(res2.reason)
                     self.logger.error(res2.text)
                     return {"type": "error", "error": "Failed to verify account"}
@@ -600,7 +606,8 @@ class Minecraft:
             self.logger.print("Failed to get access token")
             try:
                 error_j = res.json()
-                self.logger.error(error_j["error"], error_j["error_description"])
+                self.logger.error(error_j["error"],
+                                  error_j["error_description"])
             except KeyError:
                 self.logger.error(res.reason)
             return {"type": "error", "error": "Failed to get access token"}
@@ -781,7 +788,8 @@ class Minecraft:
     async def session_join(self, mine_token, server_hash, _uuid, tries=0):
         try:
             if tries > 5:
-                self.logger.print("Failed to authenticate account after 5 tries")
+                self.logger.print(
+                    "Failed to authenticate account after 5 tries")
                 return 1
             async with aiohttp.ClientSession() as httpSession:
                 url = "https://sessionserver.mojang.com/session/minecraft/join"
