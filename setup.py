@@ -19,13 +19,9 @@ async def install_requirements():
         with open("requirements.txt", "wb") as f:
             f.write(await resp.read())
 
-    proc = await asyncio.create_subprocess_shell(
+    await asyncio.create_subprocess_shell(
         "pip install -Ur requirements.txt",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
     )
-    stdout, stderr = await proc.communicate()
-    print(f"[stdout]\n{stdout.decode()}")
 
 
 async def create_files():

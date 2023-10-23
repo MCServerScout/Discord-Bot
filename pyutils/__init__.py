@@ -65,8 +65,7 @@ class Utils:
             ipinfo_token=info_token,
         )
 
-        self.player = Player(logger=self.logger,
-                             server=self.server, db=self.database)
+        self.player = Player(logger=self.logger, server=self.server, db=self.database)
         self.message = Message(
             logger=self.logger,
             db=self.database,
@@ -79,4 +78,5 @@ class Utils:
             logger=self.logger,
             player=self.player,
             server=self.server,
+            text=self.text,
         )

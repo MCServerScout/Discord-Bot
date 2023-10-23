@@ -144,7 +144,7 @@ class Text:
             return "§a"
         elif color == "yellow":
             return "§e"
-        elif color == "blue" or color == "aqua":
+        elif color in ("blue", "aqua"):
             return "§9"
         elif color == "pink":
             return "§d"
@@ -221,6 +221,46 @@ class Text:
 
         self.logger.error(f"Unknown protocol version: {protocol}")
         return "Unknown"
+
+    def protocol_int(self, protocol: str) -> int:
+        """Returns the protocol version from a string
+
+        Args:
+            protocol (str): The protocol version
+
+        Returns:
+            int: The protocol version
+        """
+        match protocol:
+            case "1.20.2":
+                return 764
+            case "1.20.1":
+                return 763
+            case "1.20":
+                return 763
+            case "1.19.4":
+                return 762
+            case "1.19.3":
+                return 761
+            case "1.19.2":
+                return 760
+            case "1.19.1":
+                return 760
+            case "1.19":
+                return 759
+            case "1.18.2":
+                return 758
+            case "1.18.1":
+                return 757
+            case "1.18":
+                return 757
+
+        for version in minecraft_data.common().protocolVersions:
+            if version["minecraftVersion"] == protocol:
+                return version["version"]
+
+        self.logger.error(f"Unknown protocol version: {protocol}")
+        return -1
 
     def motd_parse(self, motd: dict) -> dict:
         """Parses a motd dict to remove color codes

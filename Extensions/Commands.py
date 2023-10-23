@@ -323,7 +323,7 @@ class Commands(Extension):
                 # validate that the description is a valid regex
                 try:
                     re.compile(description)
-                    for rng in re.findall("\\{\d+}", description):
+                    for rng in re.findall(r"\{\d+}", description):
                         if int(rng[1:-1]) > 1000:
                             await msg.edit(
                                 embed=self.messageLib.standard_embed(
@@ -334,7 +334,7 @@ class Commands(Extension):
                                 components=self.messageLib.buttons(),
                             )
                             return
-                except re.error | ValueError:
+                except (re.error, ValueError):
                     await msg.edit(
                         embed=self.messageLib.standard_embed(
                             title="Error",

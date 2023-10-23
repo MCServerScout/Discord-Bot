@@ -154,7 +154,7 @@ async def main():
                 {"_id": server["_id"]}, {"$set": {"whitelist": True}}
             )
         else:
-            logger.print(f"Unknown: {server['ip']} ({sType.status})", end="\r")
+            # logger.print(f"Unknown: {server['ip']} ({sType.status})", end="\r")
             databaseLib.update_one(
                 {"_id": server["_id"]}, {"$set": {"whitelist": None}}
             )

@@ -360,7 +360,7 @@ class Buttons(Extension):
         try:
             org = ctx.message
 
-            index, pipeline = await self.messageLib.get_pipe(org)
+            _, pipeline = await self.messageLib.get_pipe(org)
 
             self.logger.print(f"sort called")
 
@@ -460,16 +460,16 @@ class Buttons(Extension):
                 )
 
                 # loop through the pipeline and replace the sort method
-                for i in range(len(pipeline)):
-                    if "$sort" in pipeline[i] or "$sample" in pipeline[i]:
+                for i, pipe in enumerate(pipeline):
+                    if "$sort" in pipe or "$sample" in pipe:
                         pipeline[i] = sort_method
                         break
                 else:
                     pipeline.append(sort_method)
 
                 # loop through the pipeline and remove the limit
-                for i in range(len(pipeline)):
-                    if "$limit" in pipeline[i]:
+                for i, pipe in enumerate(pipeline):
+                    if "$limit" in pipe:
                         pipeline.pop(i)
                         break
 
@@ -762,7 +762,6 @@ class Buttons(Extension):
 
             # try and get the minecraft token
             try:
-                # res = await mcLib.get_minecraft_token_async(
                 res = await self.mcLib.get_minecraft_token_async(
                     clientID=self.azure_client_id,
                     redirect_uri=self.azure_redirect_uri,
@@ -863,9 +862,7 @@ class Buttons(Extension):
         raw_streams = await self.twitchLib.async_get_streamers()
 
         users_streaming: list[str] = [i["user_name"] for i in raw_streams]
-        server_players = list(
-            set([player["name"] for player in data["players"]["sample"]])
-        )
+        server_players = list({player["name"] for player in data["players"]["sample"]})
 
         streaming_players = list(
             set(server_players)
