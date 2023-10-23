@@ -669,7 +669,7 @@ class Commands(Extension):
                 try:
                     modal_ctx = await ctx.bot.wait_for_modal(timeout=90, modal=modal)
                 except asyncio.TimeoutError:
-                    self.logger.print(f"Timed out")
+                    self.logger.print("Timed out")
                     await modal_ctx.send(
                         embed=self.messageLib.standard_embed(
                             title="Error",
@@ -984,7 +984,7 @@ class Commands(Extension):
         await ctx.defer()
 
         try:
-            self.logger.debug(f"Getting stats")
+            self.logger.debug("Getting stats")
             main_embed = self.messageLib.standard_embed(
                 title="Stats",
                 description="General stats about the database",
