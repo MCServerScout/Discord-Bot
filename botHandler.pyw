@@ -5,7 +5,7 @@ import subprocess
 import sys
 import time
 import traceback
-import zlib
+import zipfile
 
 import requests
 
@@ -88,11 +88,8 @@ def download_zip():
 
     subprocess.call(["wget", zip_url, "-O", zip_file])
     # subprocess.call(["unzip", zip_file, "-d", git_dir])
-    with open(zip_file, "rb") as f:
-        contents = f.read()
-        contents = zlib.decompress(contents, 16 + zlib.MAX_WBITS)
-        with open(zip_file, "wb") as n:
-            n.write(contents)
+    with zipfile.ZipFile(zip_file, "r") as zip_ref:
+        zip_ref.extractall(git_dir)
 
 
 def install_requirements():
