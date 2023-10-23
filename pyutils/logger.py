@@ -25,7 +25,7 @@ class StreamToLogger:
         for line in buf.rstrip().splitlines():
             self.logger.log(self.level, line.rstrip())
 
-    def flush(self):
+    def flush(self):  # skipcq: PTC-W0049
         pass
 
     def read(self):
@@ -90,8 +90,7 @@ class Logger:
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("log.log", mode="a",
-                                 encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
             ],
         )
 

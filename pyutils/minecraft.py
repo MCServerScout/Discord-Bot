@@ -374,7 +374,7 @@ class Minecraft:
                         has_signature = response.read_bool()
                         if has_signature:
                             signature_length = response.read_varint()
-                            signature = response.read(signature_length)
+                            _ = response.read(signature_length)
 
                         props[name] = value
 
@@ -1060,7 +1060,7 @@ class Minecraft:
                 response = self.read_compressed(connection)
                 _id: int = response.read_varint()
 
-            if _id == 2 or _id == 1:
+            if _id in (2, 1):
                 return True
 
             if _id == 0:

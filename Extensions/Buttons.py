@@ -18,7 +18,6 @@ from interactions import (
     ButtonStyle,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -70,7 +69,7 @@ class Buttons(Extension):
 
             await ctx.defer(edit_origin=True)
 
-            self.logger.print(f"next page called")
+            self.logger.print("next page called")
 
             msg = await ctx.edit_origin(
                 embed=self.messageLib.standard_embed(
@@ -132,7 +131,7 @@ class Buttons(Extension):
             index, pipeline = await self.messageLib.get_pipe(org)
             await ctx.defer(edit_origin=True)
 
-            self.logger.print(f"previous page called")
+            self.logger.print("previous page called")
 
             msg = await ctx.edit_origin(
                 embed=self.messageLib.standard_embed(
@@ -193,7 +192,7 @@ class Buttons(Extension):
             host, port = org.embeds[0].title.split(" ")[1].split(":")
             await ctx.defer(ephemeral=True)
 
-            self.logger.print(f"players called")
+            self.logger.print("players called")
 
             player_list = await self.playerLib.async_player_list(host, port)
 
@@ -270,7 +269,7 @@ class Buttons(Extension):
         try:
             org = ctx.message
 
-            self.logger.print(f"jump called")
+            self.logger.print("jump called")
             # get the files attached to the message
             index, pipeline = await self.messageLib.get_pipe(org)
 
@@ -367,7 +366,7 @@ class Buttons(Extension):
 
             _, pipeline = await self.messageLib.get_pipe(org)
 
-            self.logger.print(f"sort called")
+            self.logger.print("sort called")
 
             # get the pipeline
             self.logger.print(f"pipeline: {pipeline}")
