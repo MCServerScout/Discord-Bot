@@ -490,7 +490,7 @@ class Buttons(Extension):
 
                 await msg.delete(context=ctx)
         except AttributeError:
-            self.logger.print(f"AttributeError")
+            self.logger.print("AttributeError")
         except Exception as err:
             if "403|Forbidden" in str(err):
                 await ctx.send(
@@ -540,7 +540,7 @@ class Buttons(Extension):
 
             index, pipeline = await self.messageLib.get_pipe(org)
 
-            self.logger.print(f"mods called")
+            self.logger.print("mods called")
 
             await ctx.defer(ephemeral=True)
 
@@ -614,7 +614,7 @@ class Buttons(Extension):
     @component_callback("join")
     @trace
     async def join(self, ctx: ComponentContext):
-        self.logger.print(f"join called.")
+        self.logger.print("join called.")
 
         try:
             # step one get the server info
@@ -637,7 +637,7 @@ class Buttons(Extension):
                 },
             ]
 
-            self.logger.print(f"join called")
+            self.logger.print("join called")
 
             await ctx.defer(ephemeral=True)
 
@@ -718,7 +718,7 @@ class Buttons(Extension):
             oorg = ctx.channel.get_message(org_org_id)
             self.logger.print(f"org: {oorg}")
 
-            self.logger.print(f"submit called")
+            self.logger.print("submit called")
             # get the files attached to the message
             index, pipeline = await self.messageLib.get_pipe(oorg)
 
@@ -863,7 +863,7 @@ class Buttons(Extension):
         org = ctx.message
         index, pipeline = await self.messageLib.get_pipe(org)
 
-        self.logger.print(f"streams called")
+        self.logger.print("streams called")
 
         await ctx.defer(ephemeral=True)
 
