@@ -23,6 +23,10 @@ It is a work in progress, and I will be adding more features as time goes on.
   - Geolocation
   - Whitelist
 
+## Setup
+
+Follow the instructions [here](docs/EU_Docs/setup.md) to set up the bot and db.
+
 ## TODO
 
 - [ ] Make it work well

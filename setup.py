@@ -23,6 +23,15 @@ async def install_requirements():
         "pip install -Ur requirements.txt",
     )
 
+    # download the botHandler
+    async with aiohttp.ClientSession() as session, session.get(
+        "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/botHandler.pyw"
+    ) as resp:
+        with open("botHandler.py", "wb") as f:
+            f.write(await resp.read())
+
+    os.mkdir("Discord-Bot")
+
 
 async def create_files():
     text = """#  Path: privVars.py
@@ -30,13 +39,8 @@ async def create_files():
 DISCORD_TOKEN = "..."
 DISCORD_WEBHOOK = "..."
 MONGO_URL = "..."
-# db_name = "MCSS"  # optional
-# col_name = "scannedServers"  # optional
 client_id = "..."  # twitch client id
 client_secret = "..."  # twitch client secret
-# DEBUG = False  # optional
-IP_INFO_TOKEN = "..."  # ipinfo.io token
-# cstats = ""  # optional, custom text added to the stats message
 
 # scanner settings
 max_threads = 10
