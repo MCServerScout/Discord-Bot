@@ -2,68 +2,26 @@
 
 * Python>=3.10
 * linux (for the botHandler)
-* Pre-setup database, instructions can be found [here](database_setup.md)
+* Pre-setup database instructions can be found [here](database_setup.md)
 * Read and understand the [Terms Of Service](https://github.com/MCServerScout/Discord-Bot/blob/master/TOS.md)
 * Read and understand the [Privacy Policy](https://github.com/MCServerScout/Discord-Bot/blob/master/PRIVACY.md)
 
 # Automatic Setup
 
 1. Download the file
-   named `botHandler` [HERE](https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/botHandler.pyw)
-2. Make your file so that `botHandler.pyw` and `privVars.py` are in the same folder:
+   named `setup.py` [HERE](https://raw.githubusercontent.com/MCServerScout/Discord-Bot/dev-builds/setup.py)
+2. Your folder structure should look like this:
 
 ```
 folderNameHere
 │   botHandler.pyw
 │   privVars.py
+│   setup.py
 │
 └───Discord-Bot
 ```
 
-3. Create and edit a file named ```privVars.py``` and paste the following text:
-
-```python
-# Base Settings (Required)
-DISCORD_TOKEN = (
-    "Very Secret Token"
-)
-MONGO_URL = "mongodb://pilot1782:Hunter2@127.0.0.1:27017"
-
-# Database settings
-# db_name = "MCSS"
-# col_name = "scannedServers"
-
-# DISCORD_WEBHOOK = "..."
-# Twitch API settings
-# client_id = "..."
-# client_secret = "..."
-# IPInfo API settings
-# IP_INFO_TOKEN = "..."
-
-# Debug settings
-# DEBUG = False
-
-# scanner settings
-# max_threads = 10
-# max_pps = 3000
-
-# fun settings
-# cstats = "..."
-
-# Azure AD settings
-# azure_client_id = "..."
-# azure_redirect_uri = "..."
-
-# error logging
-# SENTRY_TOKEN = "..."
-
-# SENTRY_URI = "..."
-
-# handler settings
-# dev = True
-# target = "scanner"
-# autoupdate = True
-```
+3. Open the file named `privVars.py` and edit the variables that have `...` as their value to the correct values
 
 4. Edit the variables such that they contain the correct information.
 
@@ -107,7 +65,7 @@ The command for python might be under a different name, here are the most common
 * `DEBUG = False`
   * Whether to use debugging in the log, this will add a lot more to the log file and can be used if you have issues.
 * `cstats: str`
-  * Adds a custom field to the stats message
+  * Adds a custom field to the stat message
 
 ## Database
 
@@ -149,8 +107,53 @@ The command for python might be under a different name, here are the most common
 ## Handler
 
 * `dev: bool`
-  * Whether or not to use the dev branch instead of the master branch
+  * Whether to use the dev branch instead of the master branch
 * `target: str = "scanner" | "bot" | "rescanner"`
   * What the handler should launch
 * `autoupdate: bool`
-  * Should the handler keep itself up to date
+  * Should the handler keep itself up to date?
+
+### Full Example
+
+```python
+# Base Settings (Required)
+DISCORD_TOKEN = (
+    "Very Secret Token"
+)
+MONGO_URL = "mongodb://pilot1782:Hunter2@127.0.0.1:27017"
+
+# Database settings
+# db_name = "MCSS"
+# col_name = "scannedServers"
+
+# DISCORD_WEBHOOK = "..."
+# Twitch API settings
+# client_id = "..."
+# client_secret = "..."
+# IPInfo API settings
+# IP_INFO_TOKEN = "..."
+
+# Debug settings
+# DEBUG = False
+
+# scanner settings
+# max_threads = 10
+# max_pps = 3000
+
+# fun settings
+# cstats = "..."
+
+# Azure AD settings
+# azure_client_id = "..."
+# azure_redirect_uri = "..."
+
+# error logging
+# SENTRY_TOKEN = "..."
+
+# SENTRY_URI = "..."
+
+# handler settings
+# dev = True
+# target = "scanner"
+# autoupdate = True
+```
