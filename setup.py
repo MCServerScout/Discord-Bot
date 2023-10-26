@@ -60,6 +60,12 @@ max_pps = 1000
     else:
         print("assets folder already exists")
 
+    if not os.path.exists("assets/graphs"):
+        os.mkdir("assets/graphs")
+        print("Created assets/graphs folder")
+    else:
+        print("assets/graphs folder already exists")
+
     # populate the assets folder with the default images
     if not os.path.exists("assets/DefFavicon.png"):
         async with aiohttp.ClientSession() as session, session.get(
