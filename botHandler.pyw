@@ -82,7 +82,11 @@ def download_zip():
     git_dir = os.path.join(os.getcwd(), git_dir)
     if os.path.exists(git_dir):
         # force and recursive remove of dir git_dir
-        os.rmdir(git_dir)
+        for root, dirs, files in os.walk(git_dir, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
 
     os.mkdir(git_dir)
 
