@@ -88,6 +88,8 @@ def download_zip():
             for name in dirs:
                 os.rmdir(os.path.join(root, name))
 
+        os.rmdir(git_dir)
+
     os.mkdir(git_dir)
 
     resp = requests.get(zip_url)
