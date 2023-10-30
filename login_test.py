@@ -100,7 +100,8 @@ mcLib = utils.mc
 async def main():
     # we need a minecraft token, to join the server
     # first a link
-    link, vCode = mcLib.get_activation_code_url(azure_client_id, azure_redirect_uri)
+    link, vCode = mcLib.get_activation_code_url(
+        azure_client_id, azure_redirect_uri)
     logger.print(f"Please visit {link} and enter the code below")
 
     access_code = input("Code: ").strip()
