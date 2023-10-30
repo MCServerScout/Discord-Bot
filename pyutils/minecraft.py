@@ -92,6 +92,10 @@ class Minecraft:
         version: int = -1,
     ) -> ServerType:
         try:
+            # ----
+            # Pre-join checks
+            # ----
+
             # get info on the server
             server = mcstatus.JavaServer.lookup(ip + ":" + str(port))
             version = server.status().version.protocol if version == -1 else version
@@ -106,7 +110,7 @@ class Minecraft:
                 self.logger.print("Player UUID not found")
                 return self.ServerType(ip, version, "bad uuid")
 
-            _uuid = _uuid.replace("-", "")
+            _duuid = _uuid.replace("-", "")
             _uuid = (
                 f"{_uuid[:8]}-{_uuid[8:12]}-{_uuid[12:16]}-{_uuid[16:20]}-{_uuid[20:]}"
             )
@@ -128,10 +132,13 @@ class Minecraft:
                             self.logger.print("Account does not own the game")
                             return self.ServerType(ip, version, "NO_GAME")
                     else:
-                        self.logger.print(
-                            "Failed to check if account owns the game")
+                        self.logger.print("Failed to check if account owns the game")
                         self.logger.error(res.text)
                         return self.ServerType(ip, version, "BAD_TOKEN")
+
+            # ----
+            # C->S: Handshake
+            # ----
 
             # connect to the server via tcp socket
             connection = TCPSocketConnection((ip, port))
@@ -149,6 +156,10 @@ class Minecraft:
             connection.write_buffer(handshake)
             self.logger.debug("Sent handshake packet")
 
+            # ----
+            # c->S: Login Start
+            # ----
+
             # Send login start packet: ID, username, include sig data, has uuid, uuid
             loginStart = Connection()
 
@@ -161,6 +172,7 @@ class Minecraft:
             if version > 758:
                 # older protocols don't want the uuid
                 # https://wiki.vg/index.php?title=Protocol&oldid=16918#Login_Start
+                self.logger.debug("Sending uuid")
 
                 if version <= 760:
                     # a few want signature data
@@ -173,13 +185,17 @@ class Minecraft:
                     loginStart.write_bool(True)  # has uuid
 
                 # write uuid by splitting it into two 64-bit integers
-                uuid1 = int(_uuid.replace("-", "")[:16], 16)
-                uuid2 = int(_uuid.replace("-", "")[16:], 16)
+                uuid1 = int(_duuid[:16], 16)
+                uuid2 = int(_duuid[16:], 16)
                 loginStart.write_ulong(uuid1)
                 loginStart.write_ulong(uuid2)
 
             connection.write_buffer(loginStart)
             self.logger.debug("Sent login start packet")
+
+            # ----
+            # S->C: Encryption Request and/or Compression
+            # ----
 
             # Read response
             try:
@@ -190,7 +206,8 @@ class Minecraft:
 
             _id: int = response.read_varint()
             self.logger.debug("Received packet ID:", _id)
-            if _id == 3:
+
+            if _id == 0x03:
                 self.logger.print("Setting compression")
                 comp_thresh = response.read_varint()
                 self.logger.print(f"Compression threshold: {comp_thresh}")
@@ -198,10 +215,10 @@ class Minecraft:
                 response = self.read_compressed(connection)
                 _id: int = response.read_varint()
 
-            if _id == 2:
+            if _id == 0x02:
                 self.logger.print("Logged in successfully")
                 return self.ServerType(ip, version, "CRACKED")
-            elif _id == 0:
+            elif _id == 0x00:
                 self.logger.print(f"Failed to login, vers: {version}")
                 reason = json.loads(response.read_utf())
                 reason = self.read_chat(reason)
@@ -224,10 +241,25 @@ class Minecraft:
                     )
 
                 return self.ServerType(ip, version, "UNKNOWN")
-            elif _id == 1:
+            elif _id == 0x04:
+                # load plugin request
+                self.logger.debug("Loading plugins")
+
+                message_id, channel, data = self.read_plugin(connection)
+
+                self.logger.debug("Message ID:", message_id)
+                self.logger.debug("Channel:", channel)
+                self.logger.debug("Data:", data)
+
+                return self.ServerType(ip, version, "MODDED")
+            elif _id == 0x01:
                 self.logger.debug("Encryption requested")
                 if mine_token is None:
                     return self.ServerType(ip, version, "PREMIUM")
+
+                # ----
+                # Setup our encryption
+                # ----
 
                 # Read encryption request
                 length = response.read_varint()
@@ -251,6 +283,8 @@ class Minecraft:
 
                 # change verify_token to bytes form bytearray
                 verify_token = bytes(verify_token)
+                public_key = bytes(public_key)
+                server_id = bytes(server_id)
 
                 # create the server hash
                 # https://wiki.vg/Protocol_Encryption#Client
@@ -282,17 +316,28 @@ class Minecraft:
                 encryptor = cipher.encryptor()
                 decryptor = cipher.decryptor()
 
+                # ----
+                # Client Auth
+                # ----
+
                 # send a request to mojang servers to request that we are joining a server
                 self.logger.debug("Sending authentication request")
                 if await self.session_join(
-                    mine_token=mine_token, server_hash=verify_hash, _uuid=_uuid
+                    mine_token=mine_token,
+                    server_hash=verify_hash,
+                    _uuid=_duuid,
+                    name=player_username,
                 ):
                     self.logger.print("Failed to authenticate account")
+                    return self.ServerType(ip, version, "BAD_AUTH")
+
+                # ----
+                # Encryption Response
+                # ----
 
                 # send encryption response
                 self.logger.debug("Sending encryption response")
-                encryptedSharedSecret = pubKey.encrypt(
-                    shared_secret, PKCS1v15())
+                encryptedSharedSecret = pubKey.encrypt(shared_secret, PKCS1v15())
                 encryptedVerifyToken = pubKey.encrypt(verify_token, PKCS1v15())
 
                 encryptionResponse = Connection()
@@ -302,130 +347,61 @@ class Minecraft:
                 encryptionResponse.write_varint(len(encryptedVerifyToken))
                 encryptionResponse.write(encryptedVerifyToken)
 
-                self.compress_packet(encryptionResponse,
-                                     connection, comp_thresh)
+                self.compress_packet(encryptionResponse, connection, comp_thresh)
                 self.logger.debug("Sent encryption response")
 
-                # listen for a set compression packet
-                try:
-                    _id = 0x71
-                    weird_ps = 0
-                    # keep looping until we get a packet ID that is valid
-                    while _id > 0x70:
-                        if comp_thresh > 0:
-                            response = self.read_compressed(connection)
-                        else:
-                            response = connection.read_buffer()
+                # ----
+                # Login Success and/or Set Compression
+                # ----
 
-                        # decrypt the packet
-                        data = response.read(response.remaining())
-                        response = self.decrypt_data(data, decryptor)
+                unc = self.read_enc(connection, decryptor)
+                if comp_thresh > 0:
+                    unc = self.read_compressed(unc)
 
-                        _id = response.read_varint()
-                        if _id >= 1000:
-                            weird_ps += 1
-                            if weird_ps > 2:
-                                self.logger.print(
-                                    "Server is sending weird packets and probably modded"
-                                )
-                                return self.ServerType(ip, version, "MODDED")
-                            continue
-                        self.logger.debug("Received packet ID:", _id)
-                except OSError:
-                    self.logger.print("Invalid session")
-                    return self.ServerType(ip, version, "BAD_SESSION")
+                _id = unc.read_varint()
+                self.logger.debug("Received packet ID:", _id)
 
-                if _id == 3:
-                    self.logger.print("Setting compression")
-                    comp_thresh = response.read_varint()
-                    self.logger.print(
-                        f"Compression threshold (after enc): {comp_thresh}"
-                    )
+                if _id == 0x03:
+                    self.logger.print("Keep alive Packet")
 
-                    response = self.read_compressed(connection)
-                    _id: int = response.read_varint()
+                    keep_id = unc.read_varint()
+                    self.logger.debug("Keep alive ID:", keep_id)
 
-                if _id == 0:
-                    self.logger.print(f"Failed to login, vers: {version}")
-                    reason = json.loads(response.read_utf())
-                    reason = self.read_chat(reason)
+                    # send keep alive packet
+                    keep_alive = Connection()
+
+                    keep_alive.write_varint(0x03)
+                    keep_alive.write_varint(keep_id)
+
+                    self.compress_packet(keep_alive, connection, comp_thresh, encryptor)
+
+                    # read response
+                    unc = self.read_enc(connection, decryptor)
+                    if comp_thresh > 0:
+                        unc = self.read_compressed(unc)
+
+                    _id = unc.read_varint()
+                    self.logger.debug("Received packet ID:", _id)
+
+                if _id == 0x00:
+                    reason = self.read_chat(unc.read_utf())
                     self.logger.print(reason)
+                ...
 
-                    if "whitelist" in reason.lower() or " ban " in reason.lower():
-                        return self.ServerType(ip, version, "WHITELISTED")
+                return self.ServerType(ip, version, "PREMIUM")
 
-                    return self.ServerType(ip, version, "ERRORED")
-                elif _id < 0:
-                    # all packet ids must be positive and less than 0x70 (not in(70), but rather int(112))
-                    self.logger.print(
-                        "This server is a honey pot: " + str(_id))
-                    return self.ServerType(ip, version, "HONEY_POT")
-                elif _id == 2:
-                    self.logger.print("Logged in successfully")
+            # ----
+            # Something went wrong
+            # ----
 
-                    uuid1 = response.read_ulong()
-                    uuid2 = response.read_ulong()
-                    # convert to hex and add dashes
-                    uuid = f"{uuid1:016x}-{uuid2:016x}"
-                    self.logger.debug("UUID:", uuid)
+            self.logger.info("Unknown response: " + str(_id))
+            try:
+                reason = response.read_utf()
+            except UnicodeDecodeError:
+                reason = "Unknown"
 
-                    uname = response.read_utf()
-
-                    remaining_properties = response.read_varint()
-                    props = {}
-                    for _ in range(remaining_properties):
-                        name = response.read_utf()
-                        value = response.read_utf()
-                        has_signature = response.read_bool()
-                        if has_signature:
-                            signature_length = response.read_varint()
-                            _ = response.read(signature_length)
-
-                        props[name] = value
-
-                    self.logger.debug("Username:", uname)
-                    self.logger.debug("Properties:", props)
-
-                    try:
-                        # send a login acknowledgement
-                        self.logger.debug("Sending login ack")
-                        loginAck = Connection()
-
-                        loginAck.write_varint(3)  # Packet ID
-
-                        self.compress_packet(
-                            loginAck, comp_thresh, connection, encryptor
-                        )
-                    except Exception:
-                        self.logger.error(traceback.format_exc())
-
-                    return self.ServerType(ip, version, "PREMIUM")
-                else:
-                    # TODO: figure out why this is
-                    # the server is probably sending config or play packets for some reason
-                    self.logger.print("Logged in successfully")
-
-                    return self.ServerType(ip, version, "PREMIUM")
-            elif _id == 4:
-                # load plugin request
-                self.logger.debug("Loading plugins")
-
-                message_id, channel, data = self.read_plugin(connection)
-
-                self.logger.debug("Message ID:", message_id)
-                self.logger.debug("Channel:", channel)
-                self.logger.debug("Data:", data)
-
-                return self.ServerType(ip, version, "MODDED")
-            else:
-                self.logger.info("Unknown response: " + str(_id))
-                try:
-                    reason = response.read_utf()
-                except UnicodeDecodeError:
-                    reason = "Unknown"
-
-                self.logger.info("Reason: " + reason)
-                return self.ServerType(ip, version, "UNKNOWN: " + reason)
+            self.logger.info("Reason: " + reason)
+            return self.ServerType(ip, version, "UNKNOWN: " + reason)
         except TimeoutError:
             return self.ServerType(ip, version, "OFFLINE:Timeout")
         except ConnectionRefusedError:
@@ -497,8 +473,7 @@ class Minecraft:
                 if res2.status == 200:
                     xblToken = (await res2.json())["Token"]
                 else:
-                    self.logger.print(
-                        "Failed to verify account: ", res2.status)
+                    self.logger.print("Failed to verify account: ", res2.status)
                     self.logger.error(res2.reason)
                     self.logger.error(res2.text)
                     return {"type": "error", "error": "Failed to verify account"}
@@ -606,8 +581,7 @@ class Minecraft:
             self.logger.print("Failed to get access token")
             try:
                 error_j = res.json()
-                self.logger.error(error_j["error"],
-                                  error_j["error_description"])
+                self.logger.error(error_j["error"], error_j["error_description"])
             except KeyError:
                 self.logger.error(res.reason)
             return {"type": "error", "error": "Failed to get access token"}
@@ -785,11 +759,10 @@ class Minecraft:
             cast(Literal["plain", "S256"], code_challenge_method),
         )
 
-    async def session_join(self, mine_token, server_hash, _uuid, tries=0):
+    async def session_join(self, mine_token, server_hash, _uuid, name, tries=0):
         try:
             if tries > 5:
-                self.logger.print(
-                    "Failed to authenticate account after 5 tries")
+                self.logger.print("Failed to authenticate account after 5 tries")
                 return 1
             async with aiohttp.ClientSession() as httpSession:
                 url = "https://sessionserver.mojang.com/session/minecraft/join"
@@ -797,7 +770,10 @@ class Minecraft:
                     url,
                     json={
                         "accessToken": mine_token,
-                        "selectedProfile": _uuid.replace("-", ""),
+                        "selectedProfile": {
+                            "id": _uuid.replace("-", ""),
+                            "name": name,
+                        },
                         "serverId": server_hash,
                     },
                     headers={
@@ -806,7 +782,7 @@ class Minecraft:
                 ) as res:
                     if res.status == 204:  # success
                         self.logger.debug(
-                            "Authenticated account: " + (await res.text())
+                            "Authenticated account successfully " + (await res.text())
                         )
                         return 0
                     elif res.status == 403:  # bad something
@@ -818,13 +794,16 @@ class Minecraft:
                         self.logger.print("Service unavailable")
                         await asyncio.sleep(1)
                         return await self.session_join(
-                            mine_token, server_hash, _uuid, tries + 1
+                            mine_token, server_hash, _uuid, name, tries + 1
                         )
                     elif res.status == 429:
                         tries += 1
-                        await asyncio.sleep(1)
+                        await asyncio.sleep(5)
+                        self.logger.debug(
+                            "Rate limited, trying again: " + (await res.text())
+                        )
                         return await self.session_join(
-                            mine_token, server_hash, _uuid, tries
+                            mine_token, server_hash, _uuid, name, tries
                         )
                     else:
                         self.logger.print("Failed to authenticate account")
@@ -849,19 +828,18 @@ class Minecraft:
             Packet ID
             Data
 
-        Args:
-            packet (Connection): the packet to compress
-            threshold (int): the threshold to compress at
-            connection (Connection): the connection to write to
-            encryptor (Cipher.encryptor): the encryptor to use if you want to encrypt the packet
+        :param packet: The packet to compress
+        :param connection: The connection to write to
+        :param threshold: The threshold to compress at
+        :param encryptor: The encryptor to encrypt the packet with
 
-        Returns:
-            Connection: the compressed packet
+        :return: None
         """
 
         if threshold <= 0:
             if encryptor:
                 packet = self.encrypt_data(packet.flush(), encryptor)
+                assert packet is not None
 
             connection.write_buffer(packet)
             return
@@ -880,6 +858,7 @@ class Minecraft:
 
             if encryptor:
                 new_data = self.encrypt_data(new_data.flush(), encryptor)
+                assert new_data is not None
 
             connection.write_buffer(new_data)
             return
@@ -893,12 +872,23 @@ class Minecraft:
 
         if encryptor:
             packet = self.encrypt_data(packet.flush(), encryptor)
+            assert packet is not None
 
         connection.write_buffer(packet)
 
-    def read_compressed(self, con: Connection):
+    def read_compressed(self, con: Connection | TCPSocketConnection):
+        """
+        Reads a compressed packet from the connection.
+
+        :param con: The connection to read from
+
+        :return: The uncompressed packet
+        """
         try:
-            data = con.read_buffer()
+            if isinstance(con, TCPSocketConnection):
+                data = con.read_buffer()
+            else:
+                data = con
 
             uncomp_len = data.read_varint()
             cdata = data.read(data.remaining())
@@ -923,8 +913,13 @@ class Minecraft:
             self.logger.error(traceback.format_exc())
             raise err
 
-    def read_chat(self, chat: dict):
+    def read_chat(self, chat: dict | str):
         try:
+            if isinstance(chat, str):
+                try:
+                    chat = json.loads(chat)
+                except json.JSONDecodeError:
+                    return chat
             out = ""
             if "text" in chat:
                 out += chat["text"]
@@ -972,19 +967,24 @@ class Minecraft:
 
     def decrypt_data(self, data: bytes, decryptor: Cipher.decryptor):
         try:
-            unc_data = decryptor.update(data) + decryptor.finalize()
+            assert len(data) > 0
+
+            unc_data = decryptor.update(data)
+
+            assert len(unc_data) > 0
+
             out = Connection()
             out.receive(unc_data)
             out.write(unc_data)
 
             return out
         except Exception:
-            self.logger.error(traceback.format_exc())
-            return data
+            self.logger.error(traceback.format_exc(), data)
+            return None
 
     def encrypt_data(self, data: bytes, encryptor: Cipher.encryptor):
         try:
-            enc_data = encryptor.update(data) + encryptor.finalize()
+            enc_data = encryptor.update(data)
             out = Connection()
             out.receive(enc_data)
             out.write(enc_data)
@@ -992,92 +992,32 @@ class Minecraft:
             return out
         except Exception:
             self.logger.error(traceback.format_exc())
-            return data
+            return
 
-    def can_join(self, ip: str, port: int, version: int, uname: str):
-        try:
-            uuid = self.player.get_uuid(uname)
-            if not uuid:
-                return False
+    def read_enc(self, conn: TCPSocketConnection, decryptor: Cipher.decryptor):
+        """
+        Reads an encrypted packet from the connection.
 
-            uuid = uuid.replace("-", "")
-            uuid = f"{uuid[:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:]}"
+        :param conn: The connection to read from
+        :param decryptor: the decryptor to decrypt with
 
-            # connect to the server via tcp socket
-            connection = TCPSocketConnection((ip, port))
-
-            handshake = Connection()
-
-            handshake.write_varint(0)  # Packet ID
-            handshake.write_varint(version)  # Protocol version
-            handshake.write_utf(ip)  # Server address
-            handshake.write_ushort(int(port))  # Server port
-            handshake.write_varint(2)  # Intention to login
-
-            connection.write_buffer(handshake)
-
-            # Send login start packet: ID, username, include sig data, has uuid, uuid
-            loginStart = Connection()
-
-            loginStart.write_varint(0)  # Packet ID
-            if len(uname) > 16:
-                self.logger.print("Username too long")
-                return False
-
-            loginStart.write_utf(uname)  # Username
-
-            if version > 758:
-                # older protocols don't want the uuid
-                # https://wiki.vg/index.php?title=Protocol&oldid=16918#Login_Start
-
-                if version <= 760:
-                    # a few want signature data
-                    # https://wiki.vg/index.php?title=Protocol&oldid=17753#Login_Start
-                    loginStart.write_bool(False)
-
-                if version in [760, 761, 762, 763]:
-                    # these want the uuid sometimes
-                    # https://wiki.vg/index.php?title=Protocol&oldid=18375#Login_Start
-                    loginStart.write_bool(True)
-
-                # write uuid by splitting it into two 64-bit integers
-                uuid1 = int(uuid.replace("-", "")[:16], 16)
-                uuid2 = int(uuid.replace("-", "")[16:], 16)
-                loginStart.write_ulong(uuid1)
-                loginStart.write_ulong(uuid2)
-
-            connection.write_buffer(loginStart)
-
-            # Read response
+        :return: The decrypted packet
+        """
+        data = []
+        while True:
             try:
-                response = connection.read_buffer()
+                data.append(conn.read(1))
             except OSError:
-                self.logger.print("No response from server")
-                return False
+                self.logger.print(f"Finished reading packet after {len(data)} bytes")
+                break
+        data = b"".join(data)
 
-            _id: int = response.read_varint()
-            self.logger.debug("Received packet ID:", _id)
+        unc = self.decrypt_data(data, decryptor)
 
-            if _id == 3:
-                self.logger.print("Setting compression")
-                comp_thresh = response.read_varint()
-                self.logger.print(f"Compression threshold: {comp_thresh}")
+        assert unc is not None
 
-                response = self.read_compressed(connection)
-                _id: int = response.read_varint()
+        self.logger.debug(
+            f"Received {len(data)} bytes, decrypted to {unc.read_varint()} bytes"
+        )
 
-            if _id in (2, 1):
-                return True
-
-            if _id == 0:
-                self.logger.print(f"Failed to login, vers: {version}")
-                reason = json.loads(response.read_utf())
-                reason = self.read_chat(reason)
-                self.logger.print(reason)
-
-                return reason
-
-            return False
-        except Exception:
-            self.logger.error(traceback.format_exc())
-            return False
+        return unc

@@ -41,7 +41,8 @@ from pyutils.scanner import Scanner
     azure_redirect_uri,
     SENTRY_TOKEN,
     SENTRY_URI,
-) = ["..." for _ in range(13)]
+    upload_serv,
+) = ["..." for _ in range(14)]
 
 DEBUG = False
 try:
@@ -141,6 +142,7 @@ kwargs = {
     "azure_redirect_uri": azure_redirect_uri,
     "client_id": client_id,
     "client_secret": client_secret,
+    "upload_serv": upload_serv,
 }
 for ext in exts:
     try:
