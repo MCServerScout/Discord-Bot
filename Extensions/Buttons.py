@@ -18,6 +18,7 @@ from interactions import (
     ButtonStyle,
 )
 from interactions.ext.paginators import Paginator
+
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -873,7 +874,7 @@ class Buttons(Extension):
 
         users_streaming: list[str] = [i["user_name"] for i in raw_streams]
         server_players = [player["name"]
-                              for player in data["players"]["sample"]]
+                          for player in data["players"]["sample"]]
 
         streaming_players = list(
             set(server_players)
