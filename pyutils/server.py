@@ -116,7 +116,11 @@ class Server:
                 # set the status to the database values
                 db_val = self.db.col.find_one({"ip": host, "port": port})
                 status = db_val.copy()
-                status["description"] = self.text.motd_parse(status["description"])
+                status["description"] = (
+                    self.text.motd_parse(status["description"])
+                    if "description" in status
+                    else ""
+                )
                 status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
                 if "sample" in status["players"]:
                     players = []
@@ -166,7 +170,11 @@ class Server:
             status["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
             status["hasFavicon"] = "favicon" in status
             status["hasForgeData"] = server_type.get_type() == "MODDED"
-            status["description"] = self.text.motd_parse(status["description"])
+            status["description"] = (
+                self.text.motd_parse(status["description"])
+                if "description" in status
+                else ""
+            )
 
             if "forgeData" in status:
                 mod_channels = status["forgeData"]["channels"]
