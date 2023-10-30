@@ -243,7 +243,8 @@ class Commands(Extension):
                     )
             if max_players is not None:
                 if max_players.isnumeric():
-                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                    pipeline[0]["$match"]["$and"].append(
+                        {"players.max": max_players})
                 elif (
                     max_players.startswith(("[", "("))
                     and max_players.endswith(("]", ")"))
@@ -367,7 +368,8 @@ class Commands(Extension):
                     }
                 )
             if has_favicon is not None:
-                pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
+                pipeline[0]["$match"]["$and"].append(
+                    {"hasFavicon": has_favicon})
             if logged_players is not None:
                 pipeline[0]["$match"]["$and"].extend(
                     [
@@ -376,7 +378,8 @@ class Commands(Extension):
                     ]
                 )
                 if max_players.isnumeric():
-                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                    pipeline[0]["$match"]["$and"].append(
+                        {"players.max": max_players})
                 elif (
                     max_players.startswith(("[", "("))
                     and max_players.endswith(("]", ")"))
@@ -458,12 +461,14 @@ class Commands(Extension):
                         {"ip": {"$regex": f"^{ip}$", "$options": "i"}}
                     )
             if country is not None:
-                pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
+                pipeline[0]["$match"]["$and"].append(
+                    {"geo": {"$exists": True}})
                 pipeline[0]["$match"]["$and"].append(
                     {"geo.country": {"$regex": f"^{country}$", "$options": "i"}}
                 )
             if whitelisted is not None:
-                pipeline[0]["$match"]["$and"].append({"whitelist": whitelisted})
+                pipeline[0]["$match"]["$and"].append(
+                    {"whitelist": whitelisted})
 
             total = self.databaseLib.count(pipeline)
 
@@ -597,7 +602,8 @@ class Commands(Extension):
                 )
                 await msg.delete(context=ctx)
                 return
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -745,7 +751,8 @@ class Commands(Extension):
             msg = await msg.edit(
                 embed=self.messageLib.standard_embed(
                     title="Loading...",
-                    description="Found " + str(total) + " servers in the database",
+                    description="Found " +
+                    str(total) + " servers in the database",
                     color=BLUE,
                 ),
             )
@@ -800,7 +807,8 @@ class Commands(Extension):
                 )
                 return
 
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -943,7 +951,8 @@ class Commands(Extension):
                     ephemeral=True,
                 )
         except Exception as err:
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -1000,13 +1009,15 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
                 {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
             ]
-            total_players = self.databaseLib.aggregate(pipeline).try_next()["total"]
+            total_players = self.databaseLib.aggregate(
+                pipeline).try_next()["total"]
 
             main_embed.add_field(
                 name="Players",
@@ -1113,7 +1124,8 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1146,7 +1158,8 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1197,7 +1210,8 @@ class Commands(Extension):
 
             main_embed.add_field(
                 name="Has Favicon",
-                value=self.textLib.percent_bar(has_favicon[0]["count"], total_servers),
+                value=self.textLib.percent_bar(
+                    has_favicon[0]["count"], total_servers),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1209,7 +1223,8 @@ class Commands(Extension):
                 {"$match": {"hasForgeData": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            has_forge_data = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+            has_forge_data = list(self.databaseLib.aggregate(pipeline))[
+                0]["count"]
 
             main_embed.add_field(
                 name="Has Forge Data",
@@ -1225,17 +1240,20 @@ class Commands(Extension):
                 {"$match": {"whitelist": {"$exists": True}}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            have_whitelist = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+            have_whitelist = list(self.databaseLib.aggregate(pipeline))[
+                0]["count"]
 
             pipeline = [
                 {"$match": {"whitelist": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[
+                0]["count"]
 
             main_embed.add_field(
                 name="Whitelisted",
-                value=self.textLib.percent_bar(whitelist_enabled, have_whitelist),
+                value=self.textLib.percent_bar(
+                    whitelist_enabled, have_whitelist),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1257,7 +1275,8 @@ class Commands(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -1297,7 +1316,8 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1337,7 +1357,8 @@ class Commands(Extension):
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
             cracked = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+                list(self.databaseLib.aggregate(pipeline))[
+                    0]["count"] / total_servers
             )
 
             # get the percentage of servers that have a favicon
@@ -1346,7 +1367,8 @@ class Commands(Extension):
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
             has_favicon = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+                list(self.databaseLib.aggregate(pipeline))[
+                    0]["count"] / total_servers
             )
 
             # get the percentage of servers that have forge data
@@ -1355,7 +1377,8 @@ class Commands(Extension):
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
             has_forge_data = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+                list(self.databaseLib.aggregate(pipeline))[
+                    0]["count"] / total_servers
             )
 
             # get the percentage of servers that are whitelisted
@@ -1364,7 +1387,8 @@ class Commands(Extension):
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
             is_whitelist = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+                list(self.databaseLib.aggregate(pipeline))[
+                    0]["count"] / total_servers
             )
 
             # get the percentage of servers that enforce secure chat
@@ -1373,7 +1397,8 @@ class Commands(Extension):
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
             enforces_secure_chat = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+                list(self.databaseLib.aggregate(pipeline))[
+                    0]["count"] / total_servers
             )
 
             data = [
@@ -1381,7 +1406,8 @@ class Commands(Extension):
                 {"label": "Has Favicon", "size": has_favicon * 100},
                 {"label": "Has Forge Data", "size": has_forge_data * 100},
                 {"label": "Whitelisted", "size": is_whitelist * 100},
-                {"label": "Enforces Secure Chat", "size": enforces_secure_chat * 100},
+                {"label": "Enforces Secure Chat",
+                    "size": enforces_secure_chat * 100},
             ]
             # sort data
             data = sorted(data, key=lambda pnt: pnt["size"], reverse=True)
@@ -1390,7 +1416,8 @@ class Commands(Extension):
             misc_fig.write_image("assets/graphs/misc.png")
             msg = await msg.edit(
                 embed=embed,
-                files=[File("assets/graphs/vers.png"), File("assets/graphs/misc.png")],
+                files=[File("assets/graphs/vers.png"),
+                       File("assets/graphs/misc.png")],
             )
 
             # get the top 2000 servers based on players.online
@@ -1400,7 +1427,8 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                             {"geo.lat": {"$exists": True}},
                             {"geo.lon": {"$exists": True}},
                         ]
@@ -1441,7 +1469,8 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                             {"geo.country": {"$exists": True}},
                         ]
                     }
@@ -1463,7 +1492,8 @@ class Commands(Extension):
                     to="ISO3",
                 )
 
-            world_fig = graph.draw_choropleth(country_players, "Players Per Country")
+            world_fig = graph.draw_choropleth(
+                country_players, "Players Per Country")
 
             world_fig.write_image("assets/graphs/world.png")
             msg = await msg.edit(
@@ -1485,7 +1515,8 @@ class Commands(Extension):
                             {"players.online": {"$gt": 0}},
                             {"players.max": {"$gt": 0}},
                             {"players.max": {"$lt": 200000}},
-                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {
+                                "$nin": ["Unknown", "UNKNOWN", None]}},
                             {"geo.lat": {"$exists": True}},
                             {"geo.lon": {"$exists": True}},
                         ]
@@ -1537,7 +1568,8 @@ class Commands(Extension):
                     html_string = f.read()
                     r = requests.post(
                         self.upload_serv,
-                        files={"file": ("graph.html", html_string, "text/html")},
+                        files={
+                            "file": ("graph.html", html_string, "text/html")},
                     )
                     print(r.status_code)
         except Exception as err:
@@ -1552,7 +1584,8 @@ class Commands(Extension):
                 )
                 return
 
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(
+                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
