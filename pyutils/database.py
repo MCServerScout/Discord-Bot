@@ -6,7 +6,6 @@ import pymongo
 import sentry_sdk
 from pymongo.command_cursor import CommandCursor
 from pymongo.results import UpdateResult
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -112,7 +111,6 @@ class Database:
             self.logger.print(f"No matches for query: {query}")
             return None
 
-    @trace
     def count(
         self,
         pipeline: list,

@@ -10,3 +10,4 @@ minecraft_data~=3.20
 plotly~=5.18.0
 country_converter~=1.0.0
 kaleido~=0.2.1
+discord-py-interactions~=5.10.0

@@ -113,6 +113,7 @@ bot = Client(
     logger=logger,
     intents=Intents.DEFAULT,
     disable_dm_commands=True,
+    send_command_tracebacks=False,
 )
 bot.load_extension(
     "interactions.ext.sentry", token=SENTRY_TOKEN, dsn=SENTRY_URI
@@ -212,7 +213,7 @@ async def on_ready():
 async def on_command_completion(event):
     sentry_sdk.add_breadcrumb(
         category="command",
-        message=f"Command {event.ctx.invoke_target} completed, with args {[arg for arg in event.ctx.kwargs]}",
+        message=f"Command {event.ctx.invoke_target} completed",
     )
     sentry_sdk.set_tag("command", event.ctx.invoke_target)
 
@@ -254,6 +255,7 @@ if __name__ == "__main__":
             time.sleep(5)
             asyncio.run(bot.close())
         else:
+            logger.debug(traceback.format_exc())
             logger.critical(e)
             logger.print("Stopping bot")
             asyncio.run(bot.close())

@@ -90,13 +90,12 @@ class Logger:
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("log.log", mode="a",
-                                 encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
             ],
         )
 
-        self.log = logging.getLogger("STDOUT")
-        self.out = StreamToLogger(self.log, level)
+        self.stdout = logging.getLogger("STDOUT")
+        self.out = StreamToLogger(self.stdout, level)
         sys.stdout = self.out
         sys.stderr = self.out
 
@@ -130,6 +129,10 @@ class Logger:
         """Same level as print but no console output"""
         message = f"[{self.stack_trace(inspect.stack())}] {message}"
         self.logging.info(message)
+
+    def log(self, *args, **kwargs):
+        """Overload for log"""
+        self.logging.log(*args, **kwargs)
 
     def error(self, *message, **_):
         message = " ".join([str(arg) for arg in message])
