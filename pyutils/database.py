@@ -6,6 +6,7 @@ import pymongo
 import sentry_sdk
 from pymongo.command_cursor import CommandCursor
 from pymongo.results import UpdateResult
+
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -40,9 +41,11 @@ class Database:
             new_pipeline.append({"$limit": 1})
 
             result = self.aggregate(new_pipeline, allowDiskUse=True).try_next()
-            sentry_sdk.set_context("database", {"pipeline": pipeline, "index": index})
+            sentry_sdk.set_context(
+                "database", {"pipeline": pipeline, "index": index})
 
-            sentry_sdk.set_measurement("duration", time.time() - tStart, "seconds")
+            sentry_sdk.set_measurement(
+                "duration", time.time() - tStart, "seconds")
 
             return result
         except StopIteration:
