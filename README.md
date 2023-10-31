@@ -49,6 +49,12 @@ You can use multiple filters at once, and the bot will find a server that matche
 
 This command gives stats about the database
 
+### Graph
+
+`/graph`
+
+This command will show you a graph of various statistics about the server.
+
 ### Streamers
 
 `/streamers`
