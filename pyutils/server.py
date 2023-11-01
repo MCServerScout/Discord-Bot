@@ -58,6 +58,16 @@ class Server:
             yield "id", self.id
             yield "lastSeen", self.lastSeen
 
+        def __getitem__(self, item):
+            if item == "name":
+                return self.name
+            elif item == "id":
+                return self.id
+            elif item == "lastSeen":
+                return self.lastSeen
+            else:
+                raise KeyError(f"Invalid key: {item}")
+
     def __init__(
         self,
         db: "Database",

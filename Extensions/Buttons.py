@@ -17,6 +17,11 @@ from interactions import (
     Button,
     ButtonStyle,
 )
+from interactions.client.utils import (
+    ansi_block,
+    ansi_format,
+    AnsiColors,
+)
 from interactions.ext.paginators import Paginator
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
@@ -223,9 +228,29 @@ class Buttons(Extension):
                     title = player.name
                     if player.lastSeen != 0:
                         title += f" ({datetime.datetime.fromtimestamp(player.lastSeen).strftime('%Y-%m-%d %H:%M')})"
+
+                    body = f"UUID: {player.id}"
+                    uuid_int = int(player.id.replace("-", ""), 16)
+
+                    is_valid = all(
+                        (
+                            len(player.name) < 16,
+                            len(player.id.replace("-", "")) == 36,
+                            uuid_int > 0,
+                            player.lastSeen != 0,
+                        )
+                    )
+
+                    body = ansi_block(
+                        ansi_format(
+                            color=(AnsiColors.GREEN if is_valid else AnsiColors.RED),
+                        )
+                        + body
+                    )
+
                     mbd.add_field(
                         name=title,
-                        value=f"UUID: `{player.id}`",
+                        value=body,
                         inline=False,
                     )
                 players.append(mbd)
@@ -884,8 +909,8 @@ class Buttons(Extension):
         if len(streams) == 0:
             await ctx.send(
                 embed=self.messageLib.standard_embed(
-                    title="Error",
-                    description="No streams found",
+                    title="No Streams",
+                    description="No active streams found, if this is incorrect please try again in a few minutes",
                     color=RED,
                 ),
                 ephemeral=True,

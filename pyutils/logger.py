@@ -3,6 +3,7 @@ import inspect
 import logging
 import re
 import sys
+import time
 
 import aiohttp
 import sentry_sdk
@@ -43,18 +44,21 @@ class StreamToLogger:
 
 
 def filter_msg(msg: str) -> str | None:
-    if (
-        "To sign in, use a web browser to open the page" in msg
-        or "email_modal" in msg
-        or "heartbeat" in msg.lower()
-        or "Sending data to websocket: {" in msg
-        or "event.ctx.responses" in msg
-        or re.match(
-            r"(POST|PATCH)::https://discord.com/api/v\d{1,2}/\S+\s[1-5][0-9]{2}",
-            msg,
+    if any(
+        (
+            "To sign in, use a web browser to open the page" in msg,
+            "email_modal" in msg,
+            "heartbeat" in msg.lower(),
+            "Sending data to websocket: {" in msg,
+            "event.ctx.responses" in msg,
+            re.match(
+                r"(POST|PATCH)::https://discord.com/api/v\d{1,2}/\S+\s[1-5][0-9]{2}",
+                msg,
+            )
+            is not None,
+            msg.startswith("[http_client."),
+            re.match(r"^\s*\^\s*$", msg) is not None,
         )
-        is not None
-        or msg.startswith("[http_client.")
     ):
         return
     return msg
@@ -231,3 +235,17 @@ class Logger:
     def clear():
         with open("log.log", "w") as f:
             f.write("")
+
+    def timer(self, func: callable, *args, **kwargs):
+        start = time.perf_counter()
+        res = func(*args, **kwargs)
+        end = time.perf_counter()
+        self.debug(f"Function {func.__name__} took {end - start} seconds")
+        return res
+
+    async def async_timer(self, func: callable, *args, **kwargs):
+        start = time.perf_counter()
+        res = await func(*args, **kwargs)
+        end = time.perf_counter()
+        self.debug(f"Function {func.__name__} took {end - start} seconds")
+        return res

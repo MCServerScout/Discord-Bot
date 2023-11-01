@@ -1,6 +1,7 @@
 """Useful functions for sending messages to the user."""
 import base64
 import datetime
+import io
 import time
 import traceback
 from typing import List, Optional, Tuple
@@ -9,7 +10,6 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -142,10 +142,11 @@ class Message:
                 "components": [interactions.ActionRow], # The buttons
             }
         """
+        start = time.perf_counter()
 
         data = {"ip": "n/a", "description": {"text": "n/a"}}
         try:
-            if type(pipeline) is dict:
+            if isinstance(pipeline, dict):
                 self.logger.print("Server data provided")
                 # server is not in db, and we got the server data
                 data = self.text.update_dict(data, pipeline)
@@ -165,7 +166,7 @@ class Message:
                     }
             else:
                 # server is in db
-                total_servers = self.db.count(pipeline)
+                total_servers = self.logger.timer(self.db.count, pipeline)
 
                 if total_servers == 0:
                     self.logger.print("No servers found")
@@ -181,8 +182,11 @@ class Message:
                 if index >= total_servers:
                     index = 0
 
+                doc = self.logger.timer(self.db.get_doc_at_index, pipeline, index)
+
                 data = self.text.update_dict(
-                    data, self.db.get_doc_at_index(pipeline, index)
+                    data,
+                    doc,
                 )
 
                 if data is None:
@@ -196,14 +200,10 @@ class Message:
                         "components": self.buttons(),
                     }
 
-                if index >= total_servers:
-                    index = 0
-
-                data = self.db.get_doc_at_index(pipeline, index)
-
             # get the server status
             is_online = "🔴"
             data["cracked"] = None
+            # if we just have server info and we want a quick response
             if type(pipeline) is dict and fast:
                 # set all values to default
                 data["description"] = {"text": "..."}
@@ -213,16 +213,17 @@ class Message:
                 data["cracked"] = None
                 data["hasForgeData"] = False
                 data["lastSeen"] = 0
+            # if we have server ip and we want a quick response
             elif not fast:
                 try:
-                    status = self.server.update(
-                        host=data["ip"], port=data["port"])
+                    status = self.logger.timer(
+                        self.server.update, host=data["ip"], port=data["port"]
+                    )
 
                     if status is None:
                         # server is offline
                         data["cracked"] = None
-                        data["description"] = self.text.motd_parse(
-                            data["description"])
+                        data["description"] = self.text.motd_parse(data["description"])
                         self.logger.debug("Server is offline")
                     else:
                         self.logger.debug("Server is online")
@@ -234,15 +235,14 @@ class Message:
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
                 except Exception as e:
-                    self.logger.print(
-                        f"Full traceback: {traceback.format_exc()}")
+                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
+            # if we have server ip and we want a full response
             else:
                 # isonline is yellow
                 is_online = "🟡"
                 if "description" in data.keys():
-                    data["description"] = self.text.motd_parse(
-                        data["description"])
+                    data["description"] = self.text.motd_parse(data["description"])
                 else:
                     data["description"] = {"text": "n/a"}
 
@@ -363,9 +363,26 @@ class Message:
                     inline=True,
                 )
 
+            # add possible streams
+            twitch_count = 0
+            if "sample" in data["players"]:
+                # loop through and count how many usernames have twitch accounts
+                names = []
+                for player in data["players"]["sample"]:
+                    names.append(player["name"])
+
+                twitch_count = sum(await self.twitch.is_twitch_user(*names))
+
+                if twitch_count > 0:
+                    embed.add_field(
+                        name="Possible Streams",
+                        value=f"{twitch_count} streams",
+                        inline=True,
+                    )
+
             return {
                 "embed": embed,
-                "components": self.buttons(
+                "components": self.buttons(  # These are whether the buttons are disabled
                     index + 1 >= total_servers,  # next
                     index <= 0,  # previous
                     total_servers <= 1,  # jump
@@ -376,10 +393,17 @@ class Message:
                     total_servers <= 1,  # sort
                     not data["hasForgeData"],  # mods
                     data["lastSeen"] <= time.time() - 300,  # join
-                    "sample" not in data["players"],  # streams
+                    twitch_count <= 0,  # streams
                 )
                 if not fast
                 else self.buttons(),
+                "files": [
+                    interactions.File("assets/favicon.png"),
+                    interactions.File(
+                        file_name="pipeline.ason",
+                        file=io.BytesIO(json_util.dumps(pipeline).encode("utf-8")),
+                    ),
+                ],
             }
         except KeyError as e:
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
@@ -435,7 +459,10 @@ class Message:
         msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
-        stuff = await self.async_embed(pipeline=pipeline, index=index, fast=True)
+        stuff = await self.logger.async_timer(
+            self.async_embed, pipeline=pipeline, index=index, fast=True
+        )
+
         if stuff is None:
             await msg.edit(
                 embed=self.standard_embed(
@@ -449,16 +476,14 @@ class Message:
 
         # then send the embed
         await msg.edit(
-            embed=stuff["embed"],
-            components=stuff["components"],
-            files=[
-                interactions.File("assets/favicon.png"),
-                interactions.File("pipeline.ason"),
-            ],
+            **stuff,
         )
 
         # then call the asyncEmbed function again with slow
-        stuff = await self.async_embed(pipeline=pipeline, index=index, fast=False)
+        stuff = await self.logger.async_timer(
+            self.async_embed, pipeline=pipeline, index=index, fast=False
+        )
+
         if stuff is None:
             await msg.edit(
                 embed=self.standard_embed(
@@ -471,14 +496,7 @@ class Message:
             return
 
         # then send the embed
-        await msg.edit(
-            embed=stuff["embed"],
-            components=stuff["components"],
-            files=[
-                interactions.File("assets/favicon.png"),
-                interactions.File("pipeline.ason"),
-            ],
-        )
+        await msg.edit(**stuff)
 
     @staticmethod
     async def get_pipe(msg: interactions.Message) -> Optional[Tuple[int, dict]]:
@@ -491,8 +509,7 @@ class Message:
             return None
 
         # grab the index
-        index = int(msg.embeds[0].footer.text.split(
-            "Showing ")[1].split(" of ")[0]) - 1
+        index = int(msg.embeds[0].footer.text.split("Showing ")[1].split(" of ")[0]) - 1
 
         # grab the attachment
         for file in msg.attachments:

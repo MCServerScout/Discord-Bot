@@ -220,6 +220,16 @@ async def on_command_completion(event):
 
 @listen(CommandError, disable_default_listeners=True)
 async def on_command_error(event):
+    filters = ["HTTPEXCEPTION", "403|Forbidden || Missing Access"]
+
+    if any(fil in str(event.error) for fil in filters):
+        # log at a lower level as to prevent log spam
+        logger.error(event.error)
+        await event.ctx.send(
+            "An error occurred while running the command", ephemeral=True
+        )
+        return
+
     sentry_sdk.add_breadcrumb(
         category="command",
         message=f"Command {event.ctx.invoke_target} errored, with args {[arg for arg in event.ctx.kwargs]}",
