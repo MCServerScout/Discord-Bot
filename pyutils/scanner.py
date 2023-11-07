@@ -67,8 +67,7 @@ class Scanner:
                 host = hosts[ip]
                 for port in host:
                     if port["status"] == "open":
-                        self.logger.debug(
-                            f"Found open port {port['port']} on {ip}")
+                        self.logger.debug(f"Found open port {port['port']} on {ip}")
                         self.que.put(ip + ":" + str(port["port"]))
                         self.counts[-1] += 1
         except Exception as err:
