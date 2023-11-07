@@ -5,6 +5,8 @@ import traceback
 from threading import Thread
 
 import aiohttp
+import country_converter
+import requests
 import sentry_sdk
 from interactions import (
     slash_command,
@@ -16,9 +18,20 @@ from interactions import (
     Modal,
     SlashCommandChoice,
     Attachment,
+    File,
 )
 
-from .Colors import *
+from .Colors import *  # skipcq: PYL-W0614
+
+base_match = {
+    "$match": {
+        "$and": [
+            {"players.max": {"$gt": 0}},
+            {"players.online": {"$lt": 150000}},
+            {"players.online": {"$gte": 0}},
+        ]
+    }
+}
 
 
 class Commands(Extension):
@@ -39,6 +52,7 @@ class Commands(Extension):
         azure_redirect_uri,
         client_id,
         client_secret,
+        upload_serv,
         **__,
     ):
         super().__init__()
@@ -57,6 +71,7 @@ class Commands(Extension):
         self.azure_redirect_uri = azure_redirect_uri
         self.client_id = client_id
         self.client_secret = client_secret
+        self.upload_serv = upload_serv
 
     @slash_command(
         name="find",
@@ -175,17 +190,12 @@ class Commands(Extension):
 
             # default pipeline
             pipeline = [
-                {"$match": {"$and": []}},
-                {"$sample": {"size": 1}},
+                base_match,
+                {"$sample": {"size": 10000}},
             ]
 
-            # filter out servers that have max players less than zero
-            pipeline[0]["$match"]["$and"].append({"players.max": {"$gt": 0}})
-            # filter out servers that have more than 150k players online
-            pipeline[0]["$match"]["$and"].append(
-                {"players.online": {"$lt": 150000}})
-
             if player is not None:
+                player = player.strip()
                 if len(player) < 16:
                     # get the uuid of the player
                     uuid = await self.playerLib.async_get_uuid(player)
@@ -214,17 +224,8 @@ class Commands(Extension):
                         components=self.messageLib.buttons(),
                     )
 
-                # insert dashes every 8 characters
-                uuid = (
-                    uuid[0:8]
-                    + "-"
-                    + uuid[8:12]
-                    + "-"
-                    + uuid[12:16]
-                    + "-"
-                    + uuid[16:20]
-                    + "-"
-                    + uuid[20:32]
+                self.logger.debug(
+                    f"Finding servers with player {player} on them ({uuid})"
                 )
 
                 pipeline[0]["$match"]["$and"].append(
@@ -242,8 +243,7 @@ class Commands(Extension):
                     )
             if max_players is not None:
                 if max_players.isnumeric():
-                    pipeline[0]["$match"]["$and"].append(
-                        {"players.max": max_players})
+                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
                 elif (
                     max_players.startswith(("[", "("))
                     and max_players.endswith(("]", ")"))
@@ -325,7 +325,7 @@ class Commands(Extension):
                 # validate that the description is a valid regex
                 try:
                     re.compile(description)
-                    for rng in re.findall("\\{\d+}", description):
+                    for rng in re.findall(r"\{\d+}", description):
                         if int(rng[1:-1]) > 1000:
                             await msg.edit(
                                 embed=self.messageLib.standard_embed(
@@ -336,7 +336,7 @@ class Commands(Extension):
                                 components=self.messageLib.buttons(),
                             )
                             return
-                except re.error | ValueError:
+                except (re.error, ValueError):
                     await msg.edit(
                         embed=self.messageLib.standard_embed(
                             title="Error",
@@ -367,8 +367,7 @@ class Commands(Extension):
                     }
                 )
             if has_favicon is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"hasFavicon": has_favicon})
+                pipeline[0]["$match"]["$and"].append({"hasFavicon": has_favicon})
             if logged_players is not None:
                 pipeline[0]["$match"]["$and"].extend(
                     [
@@ -377,8 +376,7 @@ class Commands(Extension):
                     ]
                 )
                 if max_players.isnumeric():
-                    pipeline[0]["$match"]["$and"].append(
-                        {"players.max": max_players})
+                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
                 elif (
                     max_players.startswith(("[", "("))
                     and max_players.endswith(("]", ")"))
@@ -460,14 +458,12 @@ class Commands(Extension):
                         {"ip": {"$regex": f"^{ip}$", "$options": "i"}}
                     )
             if country is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"geo": {"$exists": True}})
+                pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
                 pipeline[0]["$match"]["$and"].append(
                     {"geo.country": {"$regex": f"^{country}$", "$options": "i"}}
                 )
             if whitelisted is not None:
-                pipeline[0]["$match"]["$and"].append(
-                    {"whitelist": whitelisted})
+                pipeline[0]["$match"]["$and"].append({"whitelist": whitelisted})
 
             total = self.databaseLib.count(pipeline)
 
@@ -601,8 +597,7 @@ class Commands(Extension):
                 )
                 await msg.delete(context=ctx)
                 return
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -737,14 +732,7 @@ class Commands(Extension):
             # get the servers
             # by case-insensitive name of streamer and players.sample is greater than 0
             pipeline = [
-                {
-                    "$match": {
-                        "$and": [
-                            {"players.sample.name": {"$in": names}},
-                            {"players.sample": {"$exists": True}},
-                        ]
-                    }
-                },
+                base_match,
                 {
                     "$project": {
                         "_id": 1,
@@ -757,8 +745,7 @@ class Commands(Extension):
             msg = await msg.edit(
                 embed=self.messageLib.standard_embed(
                     title="Loading...",
-                    description="Found " +
-                    str(total) + " servers in the database",
+                    description="Found " + str(total) + " servers in the database",
                     color=BLUE,
                 ),
             )
@@ -813,8 +800,7 @@ class Commands(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -957,8 +943,7 @@ class Commands(Extension):
                     ephemeral=True,
                 )
         except Exception as err:
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -1015,15 +1000,13 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
                 {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
             ]
-            total_players = self.databaseLib.aggregate(
-                pipeline).try_next()["total"]
+            total_players = self.databaseLib.aggregate(pipeline).try_next()["total"]
 
             main_embed.add_field(
                 name="Players",
@@ -1130,8 +1113,7 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1164,8 +1146,7 @@ class Commands(Extension):
                         "$and": [
                             {"players.online": {"$lt": 150000}},
                             {"players.online": {"$gt": 0}},
-                            {"version.name": {
-                                "$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
                         ]
                     }
                 },
@@ -1216,8 +1197,7 @@ class Commands(Extension):
 
             main_embed.add_field(
                 name="Has Favicon",
-                value=self.textLib.percent_bar(
-                    has_favicon[0]["count"], total_servers),
+                value=self.textLib.percent_bar(has_favicon[0]["count"], total_servers),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1229,8 +1209,7 @@ class Commands(Extension):
                 {"$match": {"hasForgeData": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            has_forge_data = list(self.databaseLib.aggregate(pipeline))[
-                0]["count"]
+            has_forge_data = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             main_embed.add_field(
                 name="Has Forge Data",
@@ -1246,20 +1225,17 @@ class Commands(Extension):
                 {"$match": {"whitelist": {"$exists": True}}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            have_whitelist = list(self.databaseLib.aggregate(pipeline))[
-                0]["count"]
+            have_whitelist = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             pipeline = [
                 {"$match": {"whitelist": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[
-                0]["count"]
+            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[0]["count"]
 
             main_embed.add_field(
                 name="Whitelisted",
-                value=self.textLib.percent_bar(
-                    whitelist_enabled, have_whitelist),
+                value=self.textLib.percent_bar(whitelist_enabled, have_whitelist),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1281,14 +1257,308 @@ class Commands(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
                 embed=self.messageLib.standard_embed(
                     title="Error",
                     description="An error occurred while trying to get stats",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+
+    @slash_command(
+        name="graph",
+        description="Get the stats but as a graph",
+    )
+    async def graph(self, ctx: SlashContext):
+        try:
+            import pyutils.graph as graph
+
+            await ctx.defer()
+            embed = self.messageLib.standard_embed(
+                title="Graph",
+                description=f"Graphs of the database\n{self.cstats}",
+                color=BLUE,
+            )
+            msg = await ctx.send(
+                embed=embed,
+            )
+
+            # get the total number of servers
+            total_servers = self.databaseLib.col.count_documents({})
+
+            # get the top 20 versions
+            pipeline = [
+                {
+                    "$match": {
+                        "$and": [
+                            {"players.online": {"$lt": 150000}},
+                            {"players.online": {"$gt": 0}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                        ]
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$version.name",
+                        "label": {"$first": "$version.name"},
+                        "size": {"$sum": 1},
+                    }
+                },
+                {"$sort": {"size": -1}},
+                {"$limit": 20},
+            ]
+            versions = list(self.databaseLib.aggregate(pipeline))
+
+            vers_fig = graph.draw_pie(versions, "Versions")
+            self.logger.debug("Made version graph")
+
+            # hide the labels before saving
+            vers_fig.update_layout(
+                showlegend=False,
+            )
+            vers_fig.write_image("assets/graphs/vers.png")
+            # show the labels again
+            vers_fig.update_layout(
+                showlegend=True,
+            )
+
+            msg = await msg.edit(
+                embed=embed,
+                files=[File("assets/graphs/vers.png")],
+            )
+
+            # get the percentage of servers that are cracked
+            pipeline = [
+                {"$match": {"cracked": True}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            cracked = (
+                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+            )
+
+            # get the percentage of servers that have a favicon
+            pipeline = [
+                {"$match": {"hasFavicon": True}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            has_favicon = (
+                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+            )
+
+            # get the percentage of servers that have forge data
+            pipeline = [
+                {"$match": {"hasForgeData": True}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            has_forge_data = (
+                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+            )
+
+            # get the percentage of servers that are whitelisted
+            pipeline = [
+                {"$match": {"whitelist": True}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            is_whitelist = (
+                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+            )
+
+            # get the percentage of servers that enforce secure chat
+            pipeline = [
+                {"$match": {"enforcesSecureChat": True}},
+                {"$group": {"_id": None, "count": {"$sum": 1}}},
+            ]
+            enforces_secure_chat = (
+                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
+            )
+
+            data = [
+                {"label": "Cracked", "size": cracked * 100},
+                {"label": "Has Favicon", "size": has_favicon * 100},
+                {"label": "Has Forge Data", "size": has_forge_data * 100},
+                {"label": "Whitelisted", "size": is_whitelist * 100},
+                {"label": "Enforces Secure Chat", "size": enforces_secure_chat * 100},
+            ]
+            # sort data
+            data = sorted(data, key=lambda pnt: pnt["size"], reverse=True)
+            misc_fig = graph.draw_bar(data, "Misc")
+            self.logger.debug("Made misc graph")
+            misc_fig.write_image("assets/graphs/misc.png")
+            msg = await msg.edit(
+                embed=embed,
+                files=[File("assets/graphs/vers.png"), File("assets/graphs/misc.png")],
+            )
+
+            # get the top 2000 servers based on players.online
+            pipeline = [
+                {
+                    "$match": {
+                        "$and": [
+                            {"players.online": {"$lt": 150000}},
+                            {"players.online": {"$gt": 0}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"geo.lat": {"$exists": True}},
+                            {"geo.lon": {"$exists": True}},
+                        ]
+                    }
+                },
+                {"$sort": {"players.online": -1}},
+                {"$limit": 2000},
+                {
+                    "$group": {
+                        "_id": "$ip",
+                        "label": {"$first": "$ip"},
+                        "size": {"$first": "$players.online"},
+                        "lat": {"$first": "$geo.lat"},
+                        "lon": {"$first": "$geo.lon"},
+                        "x": {"$max": "$players.max"},
+                        "y": {"$sum": "$players.online"},
+                    }
+                },
+            ]
+            top_servers = list(self.databaseLib.aggregate(pipeline))
+
+            map_fig = graph.draw_geoheatmap(top_servers, "Top Servers")
+            self.logger.debug("Made map graph")
+            map_fig.write_image("assets/graphs/map.png")
+            msg = await msg.edit(
+                embed=embed,
+                files=[
+                    File("assets/graphs/vers.png"),
+                    File("assets/graphs/misc.png"),
+                    File("assets/graphs/map.png"),
+                ],
+            )
+
+            # get the sum of all the server's players.online for each country
+            pipeline = [
+                {
+                    "$match": {
+                        "$and": [
+                            {"players.online": {"$lt": 150000}},
+                            {"players.online": {"$gt": 0}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"geo.country": {"$exists": True}},
+                        ]
+                    }
+                },
+                {
+                    "$group": {
+                        "_id": "$geo.country",
+                        "count": {"$sum": "$players.online"},
+                    }
+                },
+            ]
+            country_players = list(self.databaseLib.aggregate(pipeline))
+
+            for i, country in enumerate(country_players):
+                country_players[i]["label"] = country["_id"]
+                country_players[i]["size"] = country["count"]
+                country_players[i]["ISO-3"] = country_converter.convert(
+                    names=country["_id"],
+                    to="ISO3",
+                )
+
+            world_fig = graph.draw_choropleth(country_players, "Players Per Country")
+
+            world_fig.write_image("assets/graphs/world.png")
+            msg = await msg.edit(
+                embed=embed,
+                files=[
+                    File("assets/graphs/vers.png"),
+                    File("assets/graphs/misc.png"),
+                    File("assets/graphs/map.png"),
+                    File("assets/graphs/world.png"),
+                ],
+            )
+
+            # get the top 2000 servers based on players.online# get the top 2000 servers based on players.online
+            pipeline = [
+                {
+                    "$match": {
+                        "$and": [
+                            {"players.online": {"$lt": 150000}},
+                            {"players.online": {"$gt": 0}},
+                            {"players.max": {"$gt": 0}},
+                            {"players.max": {"$lt": 200000}},
+                            {"version.name": {"$nin": ["Unknown", "UNKNOWN", None]}},
+                            {"geo.lat": {"$exists": True}},
+                            {"geo.lon": {"$exists": True}},
+                        ]
+                    }
+                },
+                {"$sort": {"players.online": -1}},
+                {"$limit": 2000},
+                {
+                    "$group": {
+                        "_id": "$ip",
+                        "label": {"$first": "$ip"},
+                        "size": {"$first": "$players.online"},
+                        "lat": {"$first": "$geo.lat"},
+                        "lon": {"$first": "$geo.lon"},
+                        "x": {"$max": "$players.max"},
+                        "y": {"$sum": "$players.online"},
+                    }
+                },
+            ]
+            top_servers = list(self.databaseLib.aggregate(pipeline))
+
+            top_fig = graph.draw_scatter(top_servers, "Top Servers")
+            top_fig.update_layout(
+                xaxis_title="Max Players",
+                yaxis_title="Online Players",
+            )
+            self.logger.debug("Made top graph")
+            top_fig.write_image("assets/graphs/top.png")
+            msg = await msg.edit(
+                embed=embed,
+                files=[
+                    File("assets/graphs/vers.png"),
+                    File("assets/graphs/misc.png"),
+                    File("assets/graphs/map.png"),
+                    File("assets/graphs/world.png"),
+                    File("assets/graphs/top.png"),
+                ],
+            )
+
+            # save the graphs to an html file
+            graph.save_graphs_html(
+                vers_fig, misc_fig, map_fig, world_fig, top_fig, filename="test.html"
+            )
+            self.logger.debug("Saved graphs to html file")
+
+            if self.upload_serv is not None and self.upload_serv != "...":
+                # upload the html file to a server
+                with open("test.html", "r") as f:
+                    html_string = f.read()
+                    r = requests.post(
+                        self.upload_serv,
+                        files={"file": ("graph.html", html_string, "text/html")},
+                    )
+                    print(r.status_code)
+        except Exception as err:
+            if "403|Forbidden" in str(err):
+                await ctx.send(
+                    embed=self.messageLib.standard_embed(
+                        title="Error",
+                        description="Wrong channel for this bot",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
+
+            await ctx.send(
+                embed=self.messageLib.standard_embed(
+                    title="Error",
+                    description="An error occurred while trying to get the graphs",
                     color=RED,
                 ),
                 ephemeral=True,

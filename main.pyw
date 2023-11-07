@@ -41,7 +41,8 @@ from pyutils.scanner import Scanner
     azure_redirect_uri,
     SENTRY_TOKEN,
     SENTRY_URI,
-) = ["..." for _ in range(13)]
+    upload_serv,
+) = ["..." for _ in range(14)]
 
 DEBUG = False
 try:
@@ -112,6 +113,7 @@ bot = Client(
     logger=logger,
     intents=Intents.DEFAULT,
     disable_dm_commands=True,
+    send_command_tracebacks=False,
 )
 bot.load_extension(
     "interactions.ext.sentry", token=SENTRY_TOKEN, dsn=SENTRY_URI
@@ -141,6 +143,7 @@ kwargs = {
     "azure_redirect_uri": azure_redirect_uri,
     "client_id": client_id,
     "client_secret": client_secret,
+    "upload_serv": upload_serv,
 }
 for ext in exts:
     try:
@@ -210,13 +213,23 @@ async def on_ready():
 async def on_command_completion(event):
     sentry_sdk.add_breadcrumb(
         category="command",
-        message=f"Command {event.ctx.invoke_target} completed, with args {[arg for arg in event.ctx.kwargs]}",
+        message=f"Command {event.ctx.invoke_target} completed",
     )
     sentry_sdk.set_tag("command", event.ctx.invoke_target)
 
 
 @listen(CommandError, disable_default_listeners=True)
 async def on_command_error(event):
+    filters = ["HTTPEXCEPTION", "403|Forbidden || Missing Access"]
+
+    if any(fil in str(event.error) for fil in filters):
+        # log at a lower level as to prevent log spam
+        logger.error(event.error)
+        await event.ctx.send(
+            "An error occurred while running the command", ephemeral=True
+        )
+        return
+
     sentry_sdk.add_breadcrumb(
         category="command",
         message=f"Command {event.ctx.invoke_target} errored, with args {[arg for arg in event.ctx.kwargs]}",
@@ -252,6 +265,7 @@ if __name__ == "__main__":
             time.sleep(5)
             asyncio.run(bot.close())
         else:
+            logger.debug(traceback.format_exc())
             logger.critical(e)
             logger.print("Stopping bot")
             asyncio.run(bot.close())

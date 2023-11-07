@@ -6,7 +6,9 @@ pyutils/__pycache__/*
 log.log
 /out.log
 /testing.py
-/assets/*
+/assets/favicon.png
+/assets/minecraft.png
+/assets/graphs/*
 /pipeline.ason
 scanner.ipynb
 /node_modules/

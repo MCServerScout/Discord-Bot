@@ -98,26 +98,10 @@ mcLib = utils.mc
 
 
 async def main():
-    pipeline = [
-        {
-            "$match": {
-                "$and": [
-                    {"players.sample": {"$exists": True}},
-                    {"players.max": {"$gt": 0}},
-                    {"hasForgeData": False},
-                    {"modpackData": {"$exists": False}},
-                    {"whitelist": {"$exists": False}},
-                ]
-            }
-        },
-        {"$sort": {"lastSeen": -1}},
-    ]
-
-    # whitelist can be False, True, or None (not online to test)
-
     # we need a minecraft token, to join the server
     # first a link
-    link, vCode = mcLib.get_activation_code_url(azure_client_id, azure_redirect_uri)
+    link, vCode = mcLib.get_activation_code_url(
+        azure_client_id, azure_redirect_uri)
     logger.print(f"Please visit {link} and enter the code below")
 
     access_code = input("Code: ").strip()
@@ -131,45 +115,17 @@ async def main():
     uname = result["name"]
 
     # now we can join the server
-    servers = databaseLib.aggregate(pipeline)
-    count = databaseLib.count(pipeline)
-    logger.print(f"Found {count} servers to scan")
+    server = "10.0.0.134"
+    port = 25565
 
-    for server in servers:
-        try:
-            sType = await mcLib.join(
-                ip=server["ip"],
-                port=server["port"],
-                player_username=uname,
-                mine_token=token,
-                version=server["version"]["protocol"],
-            )
-        except Exception as e:
-            logger.print(f"Error joining {server['ip']}")
-            logger.print(e)
-            sentry_sdk.capture_exception(e)
-            continue
+    res = await mcLib.join(
+        ip=server,
+        port=port,
+        player_username=uname,
+        mine_token=token,
+    )
 
-        if sType.status == "WHITELISTED":
-            logger.print(f"Whitelisted: {server['ip']}")
-            databaseLib.update_one(
-                {"_id": server["_id"]}, {"$set": {"whitelist": True}}
-            )
-        elif sType.status == "PREMIUM" or sType.status == "MODDED":
-            logger.print(f"Premium: {server['ip']}")
-            databaseLib.update_one(
-                {"_id": server["_id"]}, {"$set": {"whitelist": False}}
-            )
-        elif sType.status == "HONEY_POT":
-            logger.print(f"Honey Pot: {server['ip']}")
-            databaseLib.update_one(
-                {"_id": server["_id"]}, {"$set": {"whitelist": True}}
-            )
-        else:
-            # logger.print(f"Unknown: {server['ip']} ({sType.status})", end="\r")
-            databaseLib.update_one(
-                {"_id": server["_id"]}, {"$set": {"whitelist": None}}
-            )
+    print(res)
 
 
 if __name__ == "__main__":

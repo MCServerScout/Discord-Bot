@@ -35,11 +35,12 @@ class Server:
             return self._type
 
     class Player(dict):
-        def __init__(self, name: str, _id: str, lastSeen: int = 0):
+        def __init__(self, name: str, id: str, lastSeen: int = 0):
             self.name = name
-            self.id = _id
+            self.id = id
             self.lastSeen = lastSeen
-            dict.__init__(self, name=name, id=_id, lastSeen=lastSeen)
+            dict.__init__(self, name=self.name, id=self.id,
+                          lastSeen=self.lastSeen)
 
         def __repr__(self):
             return f"Player({self.name}, {self.id}, {self.lastSeen})"
@@ -57,6 +58,16 @@ class Server:
             yield "name", self.name
             yield "id", self.id
             yield "lastSeen", self.lastSeen
+
+        def __getitem__(self, item):
+            if item == "name":
+                return self.name
+            elif item == "id":
+                return self.id
+            elif item == "lastSeen":
+                return self.lastSeen
+            else:
+                raise KeyError(f"Invalid key: {item}")
 
     def __init__(
         self,
@@ -116,8 +127,11 @@ class Server:
                 # set the status to the database values
                 db_val = self.db.col.find_one({"ip": host, "port": port})
                 status = db_val.copy()
-                status["description"] = self.text.motd_parse(
-                    status["description"])
+                status["description"] = (
+                    self.text.motd_parse(status["description"])
+                    if "description" in status
+                    else ""
+                )
                 status["cracked"] = db_val["cracked"] if "cracked" in db_val else False
                 if "sample" in status["players"]:
                     players = []
@@ -169,7 +183,11 @@ class Server:
             status["lastSeen"] = int(datetime.datetime.utcnow().timestamp())
             status["hasFavicon"] = "favicon" in status
             status["hasForgeData"] = server_type.get_type() == "MODDED"
-            status["description"] = self.text.motd_parse(status["description"])
+            status["description"] = (
+                self.text.motd_parse(status["description"])
+                if "description" in status
+                else ""
+            )
 
             if "forgeData" in status:
                 mod_channels = status["forgeData"]["channels"]
@@ -195,9 +213,8 @@ class Server:
             self.logger.warning(err)
             self.logger.print(f"{traceback.format_exc()}")
 
-            self.update_db(status) if status is not None else None
-
             if status is not None:
+                self.update_db(status)
                 return status
             else:
                 return None

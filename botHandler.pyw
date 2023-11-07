@@ -5,6 +5,7 @@ import subprocess
 import sys
 import time
 import traceback
+import zipfile
 
 import requests
 
@@ -73,18 +74,30 @@ def seconds_until_midnight_mountain():
 def download_zip():
     print_and_log("\n{}\nUpdating files".format("-" * 10))
     zip_file = "main.zip"
+    zip_file = os.path.join(os.getcwd(), zip_file)
     if os.path.exists(zip_file):
         os.remove(zip_file)
 
     git_dir = "Discord-Bot-main"
+    git_dir = os.path.join(os.getcwd(), git_dir)
     if os.path.exists(git_dir):
         # force and recursive remove of dir git_dir
-        subprocess.call(["rm", "-rf", git_dir])
+        for root, dirs, files in os.walk(git_dir, topdown=False):
+            for name in files:
+                os.remove(os.path.join(root, name))
+            for name in dirs:
+                os.rmdir(os.path.join(root, name))
 
-    subprocess.call(["mkdir", git_dir])
+        os.rmdir(git_dir)
 
-    subprocess.call(["wget", zip_url, "-O", zip_file])
-    subprocess.call(["unzip", zip_file, "-d", git_dir])
+    os.mkdir(git_dir)
+
+    resp = requests.get(zip_url)
+    with open(zip_file, "wb") as f:
+        f.write(resp.content)
+
+    with zipfile.ZipFile(zip_file, "r") as zip_ref:
+        zip_ref.extractall(git_dir)
 
 
 def install_requirements():

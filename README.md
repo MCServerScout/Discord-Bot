@@ -23,6 +23,10 @@ It is a work in progress, and I will be adding more features as time goes on.
   - Geolocation
   - Whitelist
 
+## Setup
+
+Follow the instructions [here](docs/EU_Docs/setup.md) to set up the bot and db.
+
 ## TODO
 
 - [ ] Make it work well
@@ -44,6 +48,12 @@ You can use multiple filters at once, and the bot will find a server that matche
 `/stats`
 
 This command gives stats about the database
+
+### Graph
+
+`/graph`
+
+This command will show you a graph of various statistics about the server.
 
 ### Streamers
 

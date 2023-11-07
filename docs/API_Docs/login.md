@@ -386,3 +386,42 @@ G. Listen for response S->C
 - 0x... < 0: Invalid Packet
   - This is a honeypot and you should disconnect
   - You can also usually tell by checking the players listed in the sample, as they are usually fake
+
+# Full overview
+
+- [X] Client connects to the server
+- [X] C→S: Handshake State=2
+- [X] C→S: Login Start
+- [X] S→C: Encryption Request
+- [X] Client auth
+- [X] C→S: Encryption Response
+- [X] Server auth, both enable encryption
+- [X] S → C: Set Compression (Optional, enables compression)
+- [X] S → C: Login Success
+- [ ] C → S: Login Acknowledged
+- [ ] S → C: Login (play)
+- [ ] S → C: Plugin Message: minecraft:brand with the server's brand (Optional)
+- [ ] S → C: Change Difficulty (Optional)
+- [ ] S → C: Player Abilities (Optional)
+- [ ] C → S: Plugin Message: minecraft:brand with the client's brand (Optional)
+- [ ] C → S: Client Information
+- [ ] S → C: Set Held Item
+- [ ] S → C: Update Recipes
+- [ ] S → C: Update Tags
+- [ ] S → C: Entity Event (for the OP permission level; see Entity statuses#Player)
+- [ ] S → C: Commands
+- [ ] S → C: Recipe
+- [ ] S → C: Player Position
+- [ ] S → C: Player Info (Add Player action)
+- [ ] S → C: Player Info (Update latency action)
+- [ ] S → C: Set Center Chunk
+- [ ] S → C: Light Update (One sent for each chunk in a square centered on the player's position)
+- [ ] S → C: Chunk Data and Update Light (One sent for each chunk in a square centered on the player's position)
+- [ ] S → C: Initialize World Border (Once the world is finished loading)
+- [ ] S → C: Set Default Spawn Position (“home” spawn, not where the client will spawn on login)
+- [ ] S → C: Synchronize Player Position (Required, tells the client they're ready to spawn)
+- [ ] C → S: Confirm Teleportation
+- [ ] C → S: Set Player Position and Rotation (to confirm the spawn position)
+- [ ] C → S: Client Command (sent either before or while receiving chunks, further testing needed, server handles
+  correctly if not sent)
+- [ ] S → C: inventory, entities, etc

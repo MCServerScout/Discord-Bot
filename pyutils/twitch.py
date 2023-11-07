@@ -1,3 +1,6 @@
+import time
+from itertools import zip_longest
+
 import aiohttp
 
 from .logger import Logger
@@ -12,6 +15,16 @@ class Twitch:
     async def async_get_streamers(
         self, client_id: str = None, client_secret: str = None, lang: str = None
     ) -> list:
+        """
+        Get a list of Minecraft streamers
+
+        :param client_id: The Twitch client ID
+        :param client_secret: The Twitch client secret
+        :param lang: The language to filter by
+
+        :return: A list of Minecraft streamers
+        """
+
         token_url = "https://id.twitch.tv/oauth2/token"
         streams_url = "https://api.twitch.tv/helix/streams"
 
@@ -63,6 +76,15 @@ class Twitch:
         return []
 
     async def get_stream(self, user: str) -> dict:
+        """
+        Get a stream
+
+        :param user: The user to get the stream of
+
+        :return: The stream data
+        """
+        start = time.perf_counter()
+
         # Get access token
         token_url = "https://id.twitch.tv/oauth2/token"
         streams_url = "https://api.twitch.tv/helix/streams"
@@ -111,8 +133,55 @@ class Twitch:
                 .replace("{height}", "180"),
             }
 
+        end = time.perf_counter()
+        self.logger.debug(f"Took {end - start:0.4f} seconds")
+
         return stream
 
     async def get_users_streaming(self) -> list[str]:
         streamers = await self.async_get_streamers(self.client_id, self.client_secret)
         return [streamer["user_name"] for streamer in streamers]
+
+    async def is_twitch_user(self, *users: str) -> bool:
+        """
+        Check if a user is a Twitch user
+
+        :param users: The users to check
+
+        :return: Whether the user is a Twitch user
+        """
+        out = []
+
+        # Get access token
+        token_url = "https://id.twitch.tv/oauth2/token"
+        users_url = "https://api.twitch.tv/helix/users"
+
+        async with aiohttp.ClientSession() as session:
+            params = {
+                "client_id": self.client_id,
+                "client_secret": self.client_secret,
+                "grant_type": "client_credentials",
+            }
+            async with session.post(token_url, params=params) as response:
+                token_data = await response.json()
+                access_token = token_data["access_token"]
+
+        for group in zip_longest(*[iter(users)] * 100):
+            # Fetch user
+            headers = {
+                "Client-ID": self.client_id,
+                "Authorization": f"Bearer {access_token}",
+            }
+            params = "?" + \
+                "&".join([f"login={user}" if user else "" for user in group])
+
+            async with aiohttp.ClientSession() as session, session.get(
+                users_url + params, headers=headers
+            ) as response:
+                data = await response.json()
+
+            if "data" in data:
+                for user in data["data"]:
+                    out.append(bool(user))
+
+        return out

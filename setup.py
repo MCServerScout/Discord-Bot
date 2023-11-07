@@ -19,13 +19,18 @@ async def install_requirements():
         with open("requirements.txt", "wb") as f:
             f.write(await resp.read())
 
-    proc = await asyncio.create_subprocess_shell(
+    await asyncio.create_subprocess_shell(
         "pip install -Ur requirements.txt",
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
     )
-    stdout, stderr = await proc.communicate()
-    print(f"[stdout]\n{stdout.decode()}")
+
+    # download the botHandler
+    async with aiohttp.ClientSession() as session, session.get(
+        "https://raw.githubusercontent.com/MCServerScout/Discord-Bot/master/botHandler.pyw"
+    ) as resp:
+        with open("botHandler.py", "wb") as f:
+            f.write(await resp.read())
+
+    os.mkdir("Discord-Bot")
 
 
 async def create_files():
@@ -34,13 +39,8 @@ async def create_files():
 DISCORD_TOKEN = "..."
 DISCORD_WEBHOOK = "..."
 MONGO_URL = "..."
-# db_name = "MCSS"  # optional
-# col_name = "scannedServers"  # optional
 client_id = "..."  # twitch client id
 client_secret = "..."  # twitch client secret
-# DEBUG = False  # optional
-IP_INFO_TOKEN = "..."  # ipinfo.io token
-# cstats = ""  # optional, custom text added to the stats message
 
 # scanner settings
 max_threads = 10
@@ -59,6 +59,12 @@ max_pps = 1000
         print("Created assets folder")
     else:
         print("assets folder already exists")
+
+    if not os.path.exists("assets/graphs"):
+        os.mkdir("assets/graphs")
+        print("Created assets/graphs folder")
+    else:
+        print("assets/graphs folder already exists")
 
     # populate the assets folder with the default images
     if not os.path.exists("assets/DefFavicon.png"):

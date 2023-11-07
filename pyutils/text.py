@@ -34,7 +34,7 @@ class Text:
 
         # escape all unicode chars
         text = "".join(
-            char
+            char.encode("unicode_escape").decode("utf-8")
             if unicodedata.category(char) in ("Cc", "Cf", "Cn", "Co", "Cs")
             else char
             for char in text
@@ -144,7 +144,7 @@ class Text:
             return "§a"
         elif color == "yellow":
             return "§e"
-        elif color == "blue" or color == "aqua":
+        elif color in ("blue", "aqua"):
             return "§9"
         elif color == "pink":
             return "§d"
@@ -221,6 +221,46 @@ class Text:
 
         self.logger.error(f"Unknown protocol version: {protocol}")
         return "Unknown"
+
+    def protocol_int(self, protocol: str) -> int:
+        """Returns the protocol version from a string
+
+        Args:
+            protocol (str): The protocol version
+
+        Returns:
+            int: The protocol version
+        """
+        match protocol:
+            case "1.20.2":
+                return 764
+            case "1.20.1":
+                return 763
+            case "1.20":
+                return 763
+            case "1.19.4":
+                return 762
+            case "1.19.3":
+                return 761
+            case "1.19.2":
+                return 760
+            case "1.19.1":
+                return 760
+            case "1.19":
+                return 759
+            case "1.18.2":
+                return 758
+            case "1.18.1":
+                return 757
+            case "1.18":
+                return 757
+
+        for version in minecraft_data.common().protocolVersions:
+            if version["minecraftVersion"] == protocol:
+                return version["version"]
+
+        self.logger.error(f"Unknown protocol version: {protocol}")
+        return -1
 
     def motd_parse(self, motd: dict) -> dict:
         """Parses a motd dict to remove color codes
@@ -316,9 +356,11 @@ class Text:
 
         ex `(1, 2)` -> ((0, 1), (0, 2))
            `(1, 3]` -> ((0, 1), (1, 3))
+           `(1, )` -> ((0, 1), ())
+           `[ , 3)` -> ((), (0, 3))
 
         Returns:
-            tuple: First tuple group is the lower bound, second is the upper bound
+            tuple: the first tuple group is the lower bound, the second is the upper bound
               The tuple groups have two ints, one for is equal (1) or not (0), and the other is the number
         """
         out = [(), ()]
@@ -333,12 +375,12 @@ class Text:
                         int(rng[0][1:]),
                     )
                 else:
-                    out[0] = (
+                    out[1] = (
                         int(rng[0].endswith(")")),
                         int(rng[0][1:-1]),
                     )
             elif len(rng) == 2:
-                # two sided limit
+                # two-sided limit
                 out[0] = (
                     int(rng[0].startswith("(")),
                     int(rng[0][1:]),

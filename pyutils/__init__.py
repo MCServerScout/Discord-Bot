@@ -79,4 +79,5 @@ class Utils:
             logger=self.logger,
             player=self.player,
             server=self.server,
+            text=self.text,
         )
