@@ -114,8 +114,7 @@ class Buttons(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -176,8 +175,7 @@ class Buttons(Extension):
                 await msg.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -217,7 +215,7 @@ class Buttons(Extension):
             set_tag("players", len(player_list))
 
             player_groups = [
-                list(player_list[i: i + 10]) for i in range(0, len(player_list), 10)
+                list(player_list[i : i + 10]) for i in range(0, len(player_list), 10)
             ]
 
             players = []
@@ -246,8 +244,7 @@ class Buttons(Extension):
 
                     body = ansi_block(
                         ansi_format(
-                            color=(
-                                AnsiColors.GREEN if is_valid else AnsiColors.RED),
+                            color=(AnsiColors.GREEN if is_valid else AnsiColors.RED),
                         )
                         + body
                     )
@@ -274,8 +271,7 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -371,8 +367,7 @@ class Buttons(Extension):
                 await org.delete(context=ctx)
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -529,8 +524,7 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -623,8 +617,7 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -650,12 +643,10 @@ class Buttons(Extension):
                 {
                     "$match": {
                         "$and": [
-                            {"ip": org.embeds[0].title.split(
-                                " ")[1].split(":")[0]},
+                            {"ip": org.embeds[0].title.split(" ")[1].split(":")[0]},
                             {
                                 "port": int(
-                                    org.embeds[0].title.split(
-                                        " ")[1].split(":")[1]
+                                    org.embeds[0].title.split(" ")[1].split(":")[1]
                                 )
                             },
                         ],
@@ -720,8 +711,7 @@ class Buttons(Extension):
                 )
                 return
 
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -867,8 +857,7 @@ class Buttons(Extension):
                 ephemeral=True,
             )
         except Exception as err:
-            self.logger.error(
-                f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
             sentry_sdk.capture_exception(err)
 
             await ctx.send(
@@ -899,8 +888,7 @@ class Buttons(Extension):
         raw_streams = await self.twitchLib.async_get_streamers()
 
         users_streaming: list[str] = [i["user_name"] for i in raw_streams]
-        server_players = [player["name"]
-                          for player in data["players"]["sample"]]
+        server_players = [player["name"] for player in data["players"]["sample"]]
 
         streaming_players = list(
             set(server_players)
