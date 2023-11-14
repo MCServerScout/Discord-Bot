@@ -4,7 +4,6 @@
 """
 
 import asyncio
-import json
 import sys
 import time
 import traceback
@@ -17,7 +16,6 @@ from interactions import (
     Status,
     Activity,
     Client,
-    slash_command,
 )
 from interactions.api.events import Ready, CommandCompletion, CommandError
 from pymongo import MongoClient
@@ -77,7 +75,22 @@ try:
     col = db["scannedServers" if col_name == "..." else col_name]
 
     num_docs = col.count_documents({})
-    num_docs = str(num_docs)[0:2] + "0" * (len(str(num_docs)) - 2)
+
+    units = {
+        0: "",
+        1: "K",
+        2: "M",
+        3: "B",
+    }
+
+    num_docs = "{:.3g}".format(num_docs).split("e+")
+
+    if len(num_docs) == 1:
+        num_docs = int(num_docs[0])
+    else:
+        power = int(num_docs[1])
+        num_docs = float(num_docs[0]) * 10 ** (power % 3)
+        num_docs = f"{num_docs}{units[power // 3]}"
 except ServerSelectionTimeoutError:
     print("Error connecting to database")
     print(traceback.format_exc())
@@ -155,48 +168,7 @@ for ext in exts:
         logger.print(f"Loaded extension {ext}")
         sentry_sdk.add_breadcrumb(category="extensions", message=f"Loaded {ext}")
 
-
-@slash_command(
-    name="help",
-    description="Get help with the bot",
-)
-async def help_cmd(ctx):
-    try:
-        # get a list of all the commands
-        commands = ctx.bot.interaction_tree
-
-        embed = messageLib.standard_embed(
-            title="Help",
-            description="Here is a list of all the commands",
-            color=BLUE,
-        )
-
-        for _, tree in commands.items():
-            for name, com in tree.items():
-                if name == "Refresh":
-                    continue
-                com = com.to_dict()
-                logger.print(f"Found command {name}: {json.dumps(com, indent=4)}")
-
-                options = (
-                    [
-                        f"\n- `{option['name']}`: {option['description']} ({option['type']})"
-                        for option in com["options"]
-                    ]
-                    if "options" in com
-                    else []
-                )
-
-                embed.add_field(
-                    name=f"`/{name}`",
-                    value=f"{com['description']}\n"
-                    + (f"Args:{'  '.join(options)}" if options else ""),
-                    inline=True,
-                )
-        await ctx.send(embed=embed, ephemeral=True, delete_after=60)
-    except Exception as err:
-        logger.critical(err)
-        await ctx.send("An error occurred while running the command", ephemeral=True)
+bot.load_extension("interactions.ext.dynhelp")
 
 
 # -----------------------------------------------------------------------------
@@ -250,11 +222,7 @@ if __name__ == "__main__":
     """
 
     try:
-        if SENTRY_URI:
-            with sentry_sdk.start_transaction(op="bot loop"):
-                bot.start()
-        else:
-            bot.start()
+        bot.start()
     except KeyboardInterrupt:
         logger.print("Keyboard interrupt, stopping bot")
         asyncio.run(bot.close())

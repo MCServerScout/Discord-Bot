@@ -15,3 +15,5 @@ scanner.ipynb
 /package-lock.json
 sync.py
 /botHandler.log
+/.vscode/settings.json
+/test.html

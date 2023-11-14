@@ -2,6 +2,7 @@ import asyncio
 import os
 import re
 import traceback
+from datetime import datetime
 from threading import Thread
 
 import aiohttp
@@ -20,6 +21,7 @@ from interactions import (
     Attachment,
     File,
 )
+from interactions.ext.paginators import Paginator
 
 from .Colors import *  # skipcq: PYL-W0614
 
@@ -175,6 +177,34 @@ class Commands(Extension):
         country: str = None,
         whitelisted: bool = None,
     ):
+        """
+        Find a server by filtering through the database
+
+        Interval notation:
+        - Intervals are a shorthand expression of a range of two numbers
+        - Brackets are inclusive, parentheses are exclusive
+        - Ex:
+            - `[a, b]` is a to b inclusive or `a <= x <= b`
+            - `(a, b)` is a to b exclusive or `a < x < b`
+            - `[a, b)` is a to b inclusive on the left and exclusive on the right or `a <= x < b`
+            - `(a, b]` is a to b exclusive on the left and inclusive on the right or `a < x <= b`
+
+        :param ctx: The context of the command
+        :param str ip: The ip of the server or a subnet mask (ex: 10.0.0.0/24)
+        :param str|int version: The version of the server, can be either the name or the protocol (ex: 1.17.1 or 756)
+        :param str max_players: The max players of the server as an int or range (ex: 10 or [0, 10])
+        :param str online_players: The online players of the server as an int or range (ex: 10 or [0, 10])
+        :param str logged_players: The logged players of the server as an int or range (ex: 10 or [0, 10])
+        :param str player: The player on the server
+        :param str sign: The text of a sign on the server
+        :param str description: The description of the server, via regex: `.*<your input>.*`
+        :param bool cracked: If the server is cracked
+        :param bool has_favicon: If the server has a favicon
+        :param str country: The country of the server in a two char ISO code, ex: us
+        :param bool whitelisted: If the server is whitelisted
+
+        :return: None
+        """
         msg = None
         try:
             await ctx.defer()
@@ -1563,3 +1593,167 @@ class Commands(Extension):
                 ),
                 ephemeral=True,
             )
+
+    @slash_command(
+        name="player",
+        description="Get stats about a player",
+        options=[
+            SlashCommandOption(
+                name="player",
+                description="The player to get stats about (uuid or name)",
+                type=OptionType.STRING,
+                required=True,
+            ),
+        ],
+    )
+    async def player(self, ctx: SlashContext, player: str):
+        """
+        Returns all servers that have this player logged on it,
+        provides the server ip, port, and last time the server and player were online
+        """
+        try:
+            self.logger.debug(f"Getting player: {player}")
+            if len(player) > 16:
+                # player is a uuid
+                uuid = player
+            else:
+                # player is a name
+                uuid = await self.playerLib.async_get_uuid(player)
+
+            await ctx.defer()
+
+            # get the profile
+            profile = await self.playerLib.async_get_profile(uuid)
+
+            if not profile:
+                await ctx.send(
+                    embed=self.messageLib.standard_embed(
+                        title="Error",
+                        description="Player not found",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            uuid = profile["id"].replace("-", "")
+            uuid = f"{uuid[:8]}-{uuid[8:12]}-{uuid[12:16]}-{uuid[16:20]}-{uuid[20:]}"
+
+            pipeline = [
+                {
+                    "$match": {
+                        "players.sample.id": uuid,
+                    }
+                },
+                {
+                    "$project": {
+                        "ip": 1,
+                        "port": 1,
+                        "lastSeen": 1,
+                        "players": {
+                            "$filter": {
+                                "input": "$players.sample",
+                                "as": "player",
+                                "cond": {"$eq": ["$$player.id", uuid]},
+                            }
+                        },
+                    }
+                },
+            ]
+
+            # get the servers
+            servers = list(self.databaseLib.aggregate(pipeline))
+
+            if len(servers) == 0:
+                await ctx.send(
+                    embed=self.messageLib.standard_embed(
+                        title="Error",
+                        description="No servers found",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            # sort the servers by lastSeen
+            servers = sorted(servers, key=lambda serv: serv["lastSeen"], reverse=True)
+
+            header = (
+                "```\n|"
+                + "Server:Port".center(22)
+                + "|"
+                + "Server Online".center(17)
+                + "|"
+                + "Player Online".center(17)
+                + "|"
+                + "\n|"
+                + "-" * 22
+                + "|"
+                + "-" * 17
+                + "|"
+                + "-" * 17
+                + "|"
+            )
+            footer = "\n```"
+
+            server_list = []
+
+            for i, server in enumerate(servers):
+                ip = server["ip"]
+                port = server["port"]
+                player = server["players"][0]
+                lastSeen_ply = player["lastSeen"]
+                lastSeen_serv = server["lastSeen"]
+
+                lastSeen_serv = datetime.fromtimestamp(
+                    lastSeen_serv, tz=datetime.now().astimezone().tzinfo
+                )
+                lastSeen_serv = lastSeen_serv.strftime("%b %d %y %H:%M")
+
+                lastSeen_ply = datetime.fromtimestamp(
+                    lastSeen_ply, tz=datetime.now().astimezone().tzinfo
+                )
+                lastSeen_ply = lastSeen_ply.strftime("%b %d %y %H:%M")
+
+                text = (
+                    "|"
+                    + f"{ip}:{port}".center(22)
+                    + "|"
+                    + lastSeen_serv.center(17)
+                    + "|"
+                    + lastSeen_ply.center(17)
+                    + "|"
+                )
+                server_list.append(text)
+
+            server_list = "\n".join(server_list)
+
+            page = Paginator.create_from_string(
+                ctx.bot, server_list, timeout=180, prefix=header, suffix=footer
+            )
+
+            await page.send(ctx)
+        except Exception as err:
+            if "403|Forbidden" in str(err):
+                await ctx.send(
+                    embed=self.messageLib.standard_embed(
+                        title="Error",
+                        description="Wrong channel for this bot",
+                        color=RED,
+                    ),
+                    ephemeral=True,
+                )
+                return
+
+            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
+            sentry_sdk.capture_exception(err)
+
+            await ctx.send(
+                embed=self.messageLib.standard_embed(
+                    title="Error",
+                    description="An error occurred while trying to get the player",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+            return

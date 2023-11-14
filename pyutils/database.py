@@ -146,6 +146,9 @@ class Database:
             return 0
         return result["count"]
 
+    def aggregate(self, pipeline: list, **kwargs):
+        return self.col.aggregate(pipeline, **kwargs)
+
     def hash_dict(self, d: dict) -> tuple:
         """Returns a hash of a dict
 
