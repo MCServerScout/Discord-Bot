@@ -68,9 +68,6 @@ try:
     client = MongoClient(MONGO_URL)
     db = client["MCSS" if db_name == "..." else db_name]
     col = db["scannedServers" if col_name == "..." else col_name]
-
-    num_docs = col.count_documents({})
-    num_docs = str(num_docs)[0:2] + "0" * (len(str(num_docs)) - 2)
 except ServerSelectionTimeoutError:
     print("Error connecting to database")
     print(traceback.format_exc())

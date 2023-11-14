@@ -35,8 +35,7 @@ class Player:
         Returns:
             bool: True if the server is cracked, False if not
         """
-        url = "https://api.mcstatus.io/v2/status/java/" + \
-            host + ":" + str(port)
+        url = "https://api.mcstatus.io/v2/status/java/" + host + ":" + str(port)
 
         async with aiohttp.ClientSession() as session, session.get(url) as resp:
             if resp.status == 200:
@@ -89,6 +88,23 @@ class Player:
                 )
             else:
                 return ""
+
+    @staticmethod
+    async def async_get_profile(uuid: str) -> dict:
+        """Get the profile of a player
+
+        Args:
+            uuid (str): player uuid
+
+        Returns:
+            dict: player profile
+        """
+        url = "https://sessionserver.mojang.com/session/minecraft/profile/" + uuid
+        async with aiohttp.ClientSession() as session, session.get(url) as resp:
+            if resp.status == 200:
+                return await resp.json()
+            else:
+                return {}
 
     async def async_player_list(
         self, ip: str, port: int = 25565

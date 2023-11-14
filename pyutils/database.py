@@ -5,7 +5,6 @@ from typing import List, Optional
 import pymongo
 import sentry_sdk
 from pymongo.results import UpdateResult
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -145,6 +144,9 @@ class Database:
         if result is None:
             return 0
         return result["count"]
+
+    def aggregate(self, pipeline: list, **kwargs):
+        return self.col.aggregate(pipeline, **kwargs)
 
     def hash_dict(self, d: dict) -> tuple:
         """Returns a hash of a dict

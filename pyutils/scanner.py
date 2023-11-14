@@ -23,29 +23,43 @@ class Scanner:
     def stop(self):
         self.STOP = True
 
-    def start(self, *, ip_ranges: list[str] | str = None):
-        if not ip_ranges:
-            self.logger.error("No ip ranges provided")
-            return
-        else:
-            rngs = []
-            if type(ip_ranges) is str or (
-                type(ip_ranges) is list and len(ip_ranges) == 1
-            ):
-                rng = IPNetwork(ip_ranges)
-                rngs.extend([str(i).split("(")[0] for i in rng.subnet(24)])
-            elif type(ip_ranges) is list:
-                self.logger.debug("Scanning range as is")
-            else:
-                self.logger.error("Invalid ip range type")
-                return
+    def start(self, *, ip_ranges: list[str] | str):
+        assert isinstance(ip_ranges, (list, str)), "ip_ranges must be a list or str"
 
-            ip_ranges = rngs
-            random.shuffle(ip_ranges)
+        ranges = ()
+        if type(ip_ranges) is str or (type(ip_ranges) is list and len(ip_ranges) == 1):
+            self.logger.debug("Fixing subnet")
+            ranges += (self.fix_subnet(ip_ranges),)
+        elif type(ip_ranges) is list:
+            for ip_range in ip_ranges:
+                self.logger.debug("Fixing subnet")
+                fixed = self.fix_subnet(ip_range)
+                if hasattr(fixed, "__iter__"):
+                    ranges += fixed
+                else:
+                    ranges += (fixed,)
+
+        random.shuffle(ranges)
 
         threading.Thread(target=self.stats).start()
         threading.Thread(target=self.test_starter, args=(self.logger,)).start()
-        self.scan_starter(ip_ranges)
+        self.scan_starter(ranges)
+
+    @staticmethod
+    def fix_subnet(ip_range) -> tuple[str] | str:
+        if "/" not in ip_range:
+            ip_range += "/24"
+        else:
+            rng = IPNetwork(ip_range)
+
+            # if the subnet is too big, split it into smaller subnets
+            if rng.size > 2**8:
+                rng = rng.subnet(24)
+                ip_range = (str(i).split("(")[0] for i in rng)
+            else:
+                ip_range = (ip_range,)
+
+        return ip_range
 
     def scan_range(self, ip_range):
         try:

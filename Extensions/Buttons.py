@@ -23,7 +23,6 @@ from interactions.client.utils import (
     AnsiColors,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -236,10 +235,23 @@ class Buttons(Extension):
                     is_valid = all(
                         (
                             len(player.name) < 16,
-                            len(player.id.replace("-", "")) == 36,
+                            len(player.id.replace("-", "")) == 32,
                             uuid_int > 0,
                             player.lastSeen != 0,
                         )
+                    )
+                    self.logger.debug(
+                        f"Valid: {is_valid}"
+                        + str(
+                            (
+                                len(player.name) < 16,
+                                len(player.id.replace("-", "")) == 32,
+                                uuid_int > 0,
+                                player.lastSeen != 0,
+                            )
+                        )
+                        if not is_valid
+                        else ""
                     )
 
                     body = ansi_block(
