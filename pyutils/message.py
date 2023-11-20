@@ -2,6 +2,7 @@
 import base64
 import datetime
 import io
+import socket
 import time
 import traceback
 from typing import List, Optional, Tuple
@@ -10,7 +11,6 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -235,6 +235,14 @@ class Message:
                     # mark online if the server was lastSeen within 5 minutes
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
+
+                    # get the domain name of the ip
+                    try:
+                        domain = socket.gethostbyaddr(data["ip"])[0]
+                        if domain != data["ip"] and data["ip"] not in domain:
+                            data["hostname"] = domain
+                    except socket.herror:
+                        pass
                 except Exception as e:
                     self.logger.print(f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
@@ -311,9 +319,11 @@ class Message:
             # is modded
             embed.add_field(
                 name="Modded",
-                value="Yes"
-                if data["hasForgeData"] or "modpackData" in data.keys()
-                else "No",
+                value=(
+                    "Yes"
+                    if data["hasForgeData"] or "modpackData" in data.keys()
+                    else "No"
+                ),
                 inline=True,
             )
 
@@ -402,7 +412,9 @@ class Message:
                     interactions.File("assets/favicon.png"),
                     interactions.File(
                         file_name="pipeline.ason",
-                        file=io.BytesIO(json_util.dumps(pipeline).encode("utf-8")),
+                        file=io.BytesIO(
+                            json_util.dumps(pipeline, indent=4).encode("utf-8")
+                        ),
                     ),
                 ],
             }
@@ -413,6 +425,9 @@ class Message:
         except Exception as e:
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
             self.logger.error(f"{e}, IP: {data['ip']}")
+            with open("pipeline.ason", "w") as f:
+                f.write(json_util.dumps(pipeline, indent=4))
+            self.logger.error(f"Pipeline saved to `pipeline.ason`")
             return None
 
     def standard_embed(

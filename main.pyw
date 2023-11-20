@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import os
 import sys
 import time
 import traceback
@@ -41,6 +42,11 @@ from pyutils.scanner import Scanner
     SENTRY_URI,
     upload_serv,
 ) = ["..." for _ in range(14)]
+
+# ensure that the path to pyutils is in the path
+pypath = os.path.join(os.path.dirname(__file__), "pyutils")
+if pypath not in sys.path:
+    sys.path.append(pypath)
 
 DEBUG = False
 try:

@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import time
 import traceback
+from threading import Timer
 
 import sentry_sdk
 from interactions import (
@@ -23,11 +24,45 @@ from interactions.client.utils import (
     AnsiColors,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
 from .Colors import *  # skipcq: PYL-W0614
+
+verify_cache = {}
+
+
+class TimedCache(dict):
+    def __init__(self, *_, timeout=60, **kwargs):
+        super().__init__(**kwargs)
+        self.timeout_end = time.perf_counter() + timeout
+        self.timeout = timeout
+
+        self.loop = None
+
+        self.timer = Timer(timeout, self.__del__)
+
+        self.timer.start()
+
+    def __del__(self):
+        self.clear()
+
+    def __reset_timeout(self):
+        self.timer.cancel()
+
+        self.timeout_end = time.perf_counter() + self.timeout
+        self.timer = Timer(self.timeout, self.__del__)
+        self.timer.start()
+
+    def __setitem__(self, key, value):
+        super().__setitem__(key, value)
+        self.__reset_timeout()
+
+    def __getitem__(self, key):
+        try:
+            return super().__getitem__(key)
+        except KeyError:
+            return None
 
 
 class Buttons(Extension):
@@ -466,14 +501,31 @@ class Buttons(Extension):
                 value = menu.ctx.values[0]
                 self.logger.print(f"sort method: {value}")
                 sort_method = {}
+                extra = []  # used to extra that the sort method exists
 
                 match value:
                     case "players":
                         sort_method = {"$sort": {"players.online": -1}}
+                        extra = [{"$match": {"players.online": {"$exists": True}}}]
                     case "sample":
-                        sort_method = {"$sort": {"players.sample": -1}}
+                        sort_method = {"$sort": {"players.sampleSize": -1}}
+                        extra = [
+                            {
+                                "$match": {
+                                    "players.sample": {"$elemMatch": {"$exists": True}}
+                                }
+                            },
+                            {
+                                "$addFields": {
+                                    "sampleSize": {
+                                        "$size": {"$ifNull": ["$players.sample", []]}
+                                    }
+                                }
+                            },
+                        ]
                     case "version":
-                        sort_method = {"$sort": {"version": -1}}
+                        sort_method = {"$sort": {"version.id": -1}}
+                        extra = [{"$match": {"version.id": {"$exists": True}}}]
                     case "last_scan":
                         sort_method = {"$sort": {"lastSeen": -1}}
                     case "random":
@@ -497,6 +549,9 @@ class Buttons(Extension):
                     ),
                     ephemeral=True,
                 )
+
+                extra.extend(pipeline)
+                pipeline = extra
 
                 # loop through the pipeline and replace the sort method
                 for i, pipe in enumerate(pipeline):
@@ -568,6 +623,7 @@ class Buttons(Extension):
     @component_callback("mods")
     @trace
     async def mods(self, ctx: ComponentContext):
+        mod_list = []
         try:
             org = ctx.message
 
@@ -582,7 +638,7 @@ class Buttons(Extension):
 
             host = self.databaseLib.get_doc_at_index(pipeline, index)
 
-            if "mods" not in host.keys():
+            if "mods" not in host.keys() or "modpackData" not in host.keys():
                 await ctx.send(
                     embed=self.messageLib.standard_embed(
                         title="Error",
@@ -593,7 +649,11 @@ class Buttons(Extension):
                 )
                 return
 
-            mod_list = host["mods"]
+            mod_list = (host["mods"] if "mods" in host.keys() else []) + (
+                host["modpackData"]["mods"] if "modpackData" in host.keys() else []
+            )
+
+            self.logger.debug(f"Found {len(mod_list)} mods")
 
             # create a paginator
             pages = []
@@ -618,6 +678,18 @@ class Buttons(Extension):
                     ),
                     ephemeral=True,
                 )
+        except KeyError:
+            await ctx.send(
+                embed=self.messageLib.standard_embed(
+                    title="Error",
+                    description="No mods found",
+                    color=RED,
+                ),
+                ephemeral=True,
+            )
+
+            if mod_list:
+                self.logger.debug(f"Mods: {mod_list}")
         except Exception as err:
             if "403|Forbidden" in str(err):
                 await ctx.send(
@@ -693,13 +765,25 @@ class Buttons(Extension):
                 clientID=self.azure_client_id, redirect_uri=self.azure_redirect_uri
             )
 
+            global verify_cache
+            verify_cache[str(org.id)] = TimedCache(
+                timeout=280,
+                **{
+                    "vCode": vCode,
+                    "org": org,
+                    "pipeline": pipeline,
+                    "index": 0,
+                    "time": time.perf_counter(),
+                },
+            )
+
             # send the url
             embed = self.messageLib.standard_embed(
                 title="Sign in to Microsoft to join",
                 description=f"Open [this link]({url}) to sign in to Microsoft and join the server, then click the `Submit` button below and paste the provided code",
                 color=BLUE,
             )
-            embed.set_footer(text=f"org_id {str(org.id)} vCode {vCode}")
+            embed.set_footer(text=f"org_id {str(org.id)}")
             await ctx.send(
                 embed=embed,
                 components=[
@@ -743,13 +827,28 @@ class Buttons(Extension):
         try:
             org = ctx.message
             org_org_id = org.embeds[0].footer.text.split(" ")[1]
-            vCode = org.embeds[0].footer.text.split(" ")[3]
-            oorg = ctx.channel.get_message(org_org_id)
-            self.logger.print(f"org: {oorg}")
+            Oorg = ctx.channel.get_message(org_org_id)
+            self.logger.print(f"org: {Oorg}")
 
             self.logger.print("submit called")
             # get the files attached to the message
-            index, pipeline = await self.messageLib.get_pipe(oorg)
+            global verify_cache
+            cache = verify_cache[str(Oorg.id)]
+
+            if cache == {}:
+                await ctx.send(
+                    embed=self.messageLib.standard_embed(
+                        title="Error",
+                        description="Timed out",
+                        color=RED,
+                    ),
+                    components=[],
+                )
+                return
+
+            vCode = cache["vCode"]
+            pipeline = cache["pipeline"]
+            index = cache["index"]
 
             # create the text input
             text_input = ShortText(

@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import re
 import traceback
@@ -504,6 +505,9 @@ class Commands(Extension):
                     ),
                     components=self.messageLib.buttons(),
                 )
+                self.logger.debug(f"No servers found, saving pipeline to file")
+                with open("pipeline.json", "w") as f:
+                    f.write(json.dumps(pipeline, indent=4))
                 return
 
             # check how many servers match
