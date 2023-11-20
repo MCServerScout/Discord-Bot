@@ -5,7 +5,8 @@ import sys
 try:
     from pyutils.scanner import Scanner
 except ImportError:
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    sys.path.append(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))
     from pyutils.scanner import Scanner
 
 
