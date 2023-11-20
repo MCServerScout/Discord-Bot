@@ -296,6 +296,9 @@ class Text:
         # replace "digit.digit.digit.digit" with "x.x.x.x"
         text = re.sub(r"\d+\.\d+\.\d+\.\d+", "x.x.x.x", text)
 
+        if text.startswith("motd="):
+            text = text[5:]
+
         return {
             "text": text,
         }

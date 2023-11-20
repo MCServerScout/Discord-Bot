@@ -2,6 +2,7 @@
 import base64
 import datetime
 import io
+import socket
 import time
 import traceback
 from typing import List, Optional, Tuple
@@ -183,7 +184,8 @@ class Message:
                 if index >= total_servers:
                     index = 0
 
-                doc = self.logger.timer(self.db.get_doc_at_index, pipeline, index)
+                doc = self.logger.timer(
+                    self.db.get_doc_at_index, pipeline, index)
 
                 data = self.text.update_dict(
                     data,
@@ -224,7 +226,8 @@ class Message:
                     if status is None:
                         # server is offline
                         data["cracked"] = None
-                        data["description"] = self.text.motd_parse(data["description"])
+                        data["description"] = self.text.motd_parse(
+                            data["description"])
                         self.logger.debug("Server is offline")
                     else:
                         self.logger.debug("Server is online")
@@ -235,15 +238,25 @@ class Message:
                     # mark online if the server was lastSeen within 5 minutes
                     if data["lastSeen"] > time.time() - 300:
                         is_online = "🟢"
+
+                    # get the domain name of the ip
+                    try:
+                        domain = socket.gethostbyaddr(data["ip"])[0]
+                        if domain != data["ip"] and data["ip"] not in domain:
+                            data["hostname"] = domain
+                    except socket.herror:
+                        pass
                 except Exception as e:
-                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
+                    self.logger.print(
+                        f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
             # if we have server ip and we want a full response
             else:
                 # isonline is yellow
                 is_online = "🟡"
                 if "description" in data.keys():
-                    data["description"] = self.text.motd_parse(data["description"])
+                    data["description"] = self.text.motd_parse(
+                        data["description"])
                 else:
                     data["description"] = {"text": "n/a"}
 
@@ -311,9 +324,11 @@ class Message:
             # is modded
             embed.add_field(
                 name="Modded",
-                value="Yes"
-                if data["hasForgeData"] or "modpackData" in data.keys()
-                else "No",
+                value=(
+                    "Yes"
+                    if data["hasForgeData"] or "modpackData" in data.keys()
+                    else "No"
+                ),
                 inline=True,
             )
 
@@ -402,7 +417,9 @@ class Message:
                     interactions.File("assets/favicon.png"),
                     interactions.File(
                         file_name="pipeline.ason",
-                        file=io.BytesIO(json_util.dumps(pipeline).encode("utf-8")),
+                        file=io.BytesIO(
+                            json_util.dumps(pipeline, indent=4).encode("utf-8")
+                        ),
                     ),
                 ],
             }
@@ -413,6 +430,9 @@ class Message:
         except Exception as e:
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
             self.logger.error(f"{e}, IP: {data['ip']}")
+            with open("pipeline.ason", "w") as f:
+                f.write(json_util.dumps(pipeline, indent=4))
+            self.logger.error(f"Pipeline saved to `pipeline.ason`")
             return None
 
     def standard_embed(
@@ -510,7 +530,8 @@ class Message:
             return None
 
         # grab the index
-        index = int(msg.embeds[0].footer.text.split("Showing ")[1].split(" of ")[0]) - 1
+        index = int(msg.embeds[0].footer.text.split(
+            "Showing ")[1].split(" of ")[0]) - 1
 
         # grab the attachment
         for file in msg.attachments:

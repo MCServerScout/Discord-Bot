@@ -1,5 +1,6 @@
 import time
 import traceback
+from itertools import zip_longest
 from typing import List, Optional
 
 import pymongo
@@ -189,8 +190,8 @@ class Database:
 
         return out
 
-    def hash_pipeline(self, pipe: list) -> tuple:
-        """Returns a hash of a pipeline
+    def hashable_pipeline(self, pipe: list) -> tuple:
+        """Returns a hashable pipeline
 
         Args:
             pipe (list[dict]): The pipeline to hash
@@ -203,7 +204,49 @@ class Database:
             for k, v in stage.items():
                 if type(v) is dict:
                     out += (k, self.hash_dict(v))
+                elif type(v) is list:
+                    out += (k, self.hash_list(v))
                 else:
                     out += (k, v)
+
+        return out
+
+    def unhash_dict(self, hashed: tuple) -> dict:
+        """Returns a dict from a hashable object"""
+
+        out = {}
+        for k, v in hashed.items():
+            if type(v) is tuple:
+                out[k] = self.unhash_dict(v)
+            elif type(v) is list:
+                out[k] = self.unhash_list(v)
+            else:
+                out[k] = v
+
+        return out
+
+    def unhash_list(self, hashed: tuple) -> list:
+        """Returns a list from a hashable object"""
+
+        out = []
+        for v in hashed:
+            if type(v) is tuple:
+                out.append(self.unhash_dict(v))
+            elif type(v) is list:
+                out.append(self.unhash_list(v))
+            else:
+                out.append(v)
+
+        return out
+
+    def unhash_pipeline(self, hashed: tuple) -> dict:
+        """Returns a pipeline from a hashable object"""
+
+        out = []
+        for stage, v in zip_longest(hashed[::2], hashed[1::2]):
+            if type(v) is tuple:
+                out.append({stage: self.unhash_dict(v)})
+            else:
+                out.append({stage: v})
 
         return out
