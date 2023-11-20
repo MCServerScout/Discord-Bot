@@ -259,7 +259,7 @@ class Commands(Extension):
                 )
 
                 pipeline[0]["$match"]["$and"].append(
-                    {"players.sample": {"$elemMatch": {"id": uuid}}}
+                    {"players.sample.id": uuid},
                 )
 
             if version is not None:
@@ -484,9 +484,7 @@ class Commands(Extension):
                         )
                         return
                 else:
-                    pipeline[0]["$match"]["$and"].append(
-                        {"ip": {"$regex": f"^{ip}$", "$options": "i"}}
-                    )
+                    pipeline[0]["$match"]["$and"].append({"ip": ip})
             if country is not None:
                 pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
                 pipeline[0]["$match"]["$and"].append(
