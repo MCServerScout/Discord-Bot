@@ -101,6 +101,22 @@ def download_zip():
 
 
 def install_requirements():
+    # remove all the packages listed in requirements.txt
+    print_and_log("\n{}\nUninstalling reqs".format("-" * 10))
+    subprocess.call(
+        [
+            "python3",
+            "-m",
+            "pip",
+            "uninstall",
+            "-y",
+            "-r",
+            "Discord-Bot-main/Discord-Bot-master/requirements.txt"
+            if not dev
+            else "Discord-Bot-main/Discord-Bot-dev-builds/requirements.txt",
+        ]
+    )
+
     print_and_log("\n{}\nInstalling reqs".format("-" * 10))
     subprocess.call(
         [
