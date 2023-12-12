@@ -151,6 +151,14 @@ def save_graphs_html(*graphs, filename):
 
     :return: None
     """
+    if any(
+        (
+            not filename.endswith(".html"),
+            len(graphs) == 0,
+        )
+    ):
+        raise ValueError("Bad filename or graphs")
+
     with open(filename, "w") as f:
         f.write("<html>")
         f.write(

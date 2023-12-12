@@ -45,17 +45,20 @@ def print_and_log(*args, **kwargs):
 
 
 def webhook_send(msg: str, webhook: str, file: str | io.BytesIO = None):
-    if file:
-        requests.post(
-            webhook,
-            json={"content": msg},
-            files={"file": file},
-        )
-    else:
-        requests.post(
-            webhook,
-            json={"content": msg},
-        )
+    try:
+        if file:
+            requests.post(
+                webhook,
+                json={"content": msg},
+                files={"file": file},
+            )
+        else:
+            requests.post(
+                webhook,
+                json={"content": msg},
+            )
+    except Exception:
+        print_and_log(traceback.format_exc())
 
 
 if not dev:
@@ -220,38 +223,30 @@ def main():
 
             if not err.startswith("0"):
                 print_and_log(err)
-                try:
-                    webhook_send(str(err), DISCORD_WEBHOOK)
-                except Exception:
-                    print_and_log(traceback.format_exc())
+                webhook_send(str(err), DISCORD_WEBHOOK)
             else:
                 print_and_log("Exited with code: {}, restarting".format(err))
 
             # upload the log file with the discord webhook
-            try:
-                # compress log.log
-                gz_file = io.BytesIO()
-                with open("log.log", "rb") as f:
-                    with gzip.open(gz_file, "wb") as g:
-                        g.writelines(f)
+            # compress log.log
+            gz_file = io.BytesIO()
+            with open("log.log", "rb") as f:
+                with gzip.open(gz_file, "wb") as g:
+                    g.writelines(f)
 
-                # upload the compressed log file
-                webhook_send(
-                    "Log file",
-                    DISCORD_WEBHOOK,
-                    file=gz_file,
-                )
+            # upload the compressed log file
+            webhook_send(
+                "Log file",
+                DISCORD_WEBHOOK,
+                file=gz_file,
+            )
 
-            except Exception:
-                print_and_log(traceback.format_exc())
             print_and_log("\n{}\nRestarting  after 30 sec".format("-" * 10))
             time.sleep(30)
         except Exception as err:
             print_and_log(traceback.format_exc())
-            try:
-                requests.post(DISCORD_WEBHOOK, json={"content": str(err)})
-            except Exception:
-                print_and_log(traceback.format_exc())
+            webhook_send(str(err), DISCORD_WEBHOOK)
+
             print_and_log("\n{}\nRestarting  after 90 sec".format("-" * 10))
             time.sleep(90)
 

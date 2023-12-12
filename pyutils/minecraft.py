@@ -367,7 +367,7 @@ class Minecraft:
                     keep_id = unc.read_varint()
                     self.logger.debug("Keep alive ID:", keep_id)
 
-                    # send keep alive packet
+                    # send a keep alive packet
                     keep_alive = Connection()
 
                     keep_alive.write_varint(0x03)
@@ -839,7 +839,9 @@ class Minecraft:
         if threshold <= 0:
             if encryptor:
                 packet = self.encrypt_data(packet.flush(), encryptor)
-                assert packet is not None
+                if packet is None:
+                    self.logger.error("Failed to encrypt packet")
+                    return
 
             connection.write_buffer(packet)
             return
@@ -858,7 +860,9 @@ class Minecraft:
 
             if encryptor:
                 new_data = self.encrypt_data(new_data.flush(), encryptor)
-                assert new_data is not None
+                if new_data is None:
+                    self.logger.error("Failed to encrypt packet")
+                    return
 
             connection.write_buffer(new_data)
             return
@@ -872,7 +876,9 @@ class Minecraft:
 
         if encryptor:
             packet = self.encrypt_data(packet.flush(), encryptor)
-            assert packet is not None
+            if packet is None:
+                self.logger.error("Failed to encrypt packet")
+                return
 
         connection.write_buffer(packet)
 
@@ -967,11 +973,17 @@ class Minecraft:
 
     def decrypt_data(self, data: bytes, decryptor: Cipher.decryptor):
         try:
-            assert len(data) > 0
+            if len(data) == 0:
+                return Connection()
+            if len(data) == 1:
+                conn = Connection()
+                conn.receive(data)
+                return conn
 
             unc_data = decryptor.update(data)
 
-            assert len(unc_data) > 0
+            if len(unc_data) == 0:
+                raise Exception("Failed to decrypt packet")
 
             out = Connection()
             out.receive(unc_data)

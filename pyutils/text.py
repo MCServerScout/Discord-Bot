@@ -157,6 +157,7 @@ class Text:
 
     @staticmethod
     def time_now():
+        """Timestamp in a format usable by discord timestamps"""
         # return local time
         return datetime.datetime.now(
             datetime.timezone(
@@ -304,18 +305,24 @@ class Text:
         }
 
     @staticmethod
-    def percent_bar(iteration, total, prefix="", suffix="", length=15, fill="█"):
+    def percent_bar(
+        iteration: int,
+        total: int,
+        prefix: str = "",
+        suffix: str = "",
+        length: int = 15,
+        fill: str = "█",
+    ):
         """
         Call in a loop to create terminal progress bar
-        @params:
-            iteration   - Required  : current iteration (Int)
-            total       - Required  : total iterations (Int)
-            prefix      - Optional  : prefix string (Str)
-            suffix      - Optional  : suffix string (Str)
-            decimals    - Optional  : positive number of decimals in percent complete (Int)
-            length      - Optional  : character length of bar (Int)
-            fill        - Optional  : bar fill character (Str)
-            printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+
+        Args:
+            iteration (int): current iteration
+            total (int): total iterations
+            prefix (str): prefix string.
+            suffix (str): suffix string.
+            length (int): character length of bar.
+            fill (str): bar fill character.
         """
         decimals = 2
         percent = ("{0:." + str(decimals) + "f}").format(

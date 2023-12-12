@@ -237,6 +237,10 @@ class Logger:
             f.write("")
 
     def timer(self, func: callable, *args, **kwargs):
+        if inspect.iscoroutinefunction(func):
+            self.error("Function is a coroutine")
+            return
+
         start = time.perf_counter()
         res = func(*args, **kwargs)
         end = time.perf_counter()
@@ -244,8 +248,12 @@ class Logger:
         return res
 
     async def async_timer(self, func: callable, *args, **kwargs):
+        if not inspect.iscoroutinefunction(func):
+            self.error("Function is not a coroutine")
+            return
+
         start = time.perf_counter()
         res = await func(*args, **kwargs)
         end = time.perf_counter()
-        self.debug(f"Function {func.__name__} took {end - start} seconds")
+        self.debug(f"(ASYNC) Function {func.__name__} took {end - start} seconds")
         return res

@@ -11,7 +11,6 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -37,6 +36,9 @@ class Message:
         self.text = text
         self.server = server
         self.twitch = twitch
+
+        self.timer = self.logger.timer
+        self.async_timer = self.logger.async_timer
 
     @staticmethod
     def buttons(*args: bool | str) -> List[ActionRow]:
@@ -125,13 +127,13 @@ class Message:
 
         return rows
 
-    async def async_embed(
+    async def async_prepare_data(
         self,
         pipeline: list | dict,
-        index: int,
-        fast=True,
-    ) -> Optional[dict]:
-        """Return an embed
+        index: int = 0,
+        fast: bool = True,
+    ) -> dict:
+        """Fetches and process data from a server in the pipeline
 
         Args:
             pipeline (list): The pipeline to use, or the server data
@@ -139,14 +141,17 @@ class Message:
             fast (bool): Whether to return just the database values
 
         Returns:
-            {
-                "embed": interactions.Embed, # The embed
-                "components": [interactions.ActionRow], # The buttons
-            }
+            data (dict): The data to use,
+            contains new fields: `index`, `favicon`, `is_online`, and `hostname`
         """
-        start = time.perf_counter()
 
-        data = {"ip": "n/a", "description": {"text": "n/a"}}
+        data = {
+            "ip": "n/a",
+            "port": 0,
+            "description": {"text": "n/a"},
+            "cracked": None,
+            "is_online": None,
+        }
         try:
             if isinstance(pipeline, dict):
                 self.logger.print("Server data provided")
@@ -155,7 +160,6 @@ class Message:
                 pipeline = {
                     "your mother": "large",
                 }
-                total_servers = 1
 
                 if data is None or data == {}:
                     return {
@@ -168,7 +172,7 @@ class Message:
                     }
             else:
                 # server is in db
-                total_servers = self.logger.timer(self.db.count, pipeline)
+                total_servers = self.timer(self.db.count, pipeline)
 
                 if total_servers == 0:
                     self.logger.print("No servers found")
@@ -184,8 +188,9 @@ class Message:
                 if index >= total_servers:
                     index = 0
 
-                doc = self.logger.timer(
-                    self.db.get_doc_at_index, pipeline, index)
+                data["index"] = index
+
+                doc = self.timer(self.db.get_doc_at_index, pipeline, index)
 
                 data = self.text.update_dict(
                     data,
@@ -204,8 +209,6 @@ class Message:
                     }
 
             # get the server status
-            is_online = "🔴"
-            data["cracked"] = None
             # if we just have server info and we want a quick response
             if type(pipeline) is dict and fast:
                 # set all values to default
@@ -219,15 +222,14 @@ class Message:
             # if we have server ip and we want a quick response
             elif not fast:
                 try:
-                    status = self.logger.timer(
+                    status = self.timer(
                         self.server.update, host=data["ip"], port=data["port"]
                     )
 
                     if status is None:
                         # server is offline
                         data["cracked"] = None
-                        data["description"] = self.text.motd_parse(
-                            data["description"])
+                        data["description"] = self.text.motd_parse(data["description"])
                         self.logger.debug("Server is offline")
                     else:
                         self.logger.debug("Server is online")
@@ -237,7 +239,7 @@ class Message:
 
                     # mark online if the server was lastSeen within 5 minutes
                     if data["lastSeen"] > time.time() - 300:
-                        is_online = "🟢"
+                        data["is_online"] = True
 
                     # get the domain name of the ip
                     try:
@@ -247,36 +249,68 @@ class Message:
                     except socket.herror:
                         pass
                 except Exception as e:
-                    self.logger.print(
-                        f"Full traceback: {traceback.format_exc()}")
+                    self.logger.print(f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
             # if we have server ip and we want a full response
             else:
                 # isonline is yellow
-                is_online = "🟡"
+                data["is_online"] = None
                 if "description" in data.keys():
-                    data["description"] = self.text.motd_parse(
-                        data["description"])
+                    data["description"] = self.text.motd_parse(data["description"])
                 else:
                     data["description"] = {"text": "n/a"}
 
-            # get the server icon
-            if is_online == "🟢" and "favicon" in data.keys():
+            return data
+        except KeyError:
+            self.logger.print(f"Full traceback: {traceback.format_exc()}")
+
+    async def async_embed(
+        self,
+        pipeline: list | dict,
+        index: int = 0,
+        fast: bool = False,
+    ) -> dict | None:
+        """Given a pipeline and index, return an embed
+
+        Args:
+            pipeline (list | dict): The pipeline to use, or the server data
+            index (int): The index of the embed
+            fast (bool): Whether to return just the database values
+
+        Returns:
+            {
+                "embed" (interactions.Embed): The embed to send,
+                "components" (list): The buttons to send,
+                "files" (list): The files to send
+            }
+        """
+        data = {"ip": "n/a", "description": {"text": "n/a"}}
+        try:
+            data = await self.async_timer(
+                self.async_prepare_data,
+                pipeline=pipeline,
+                index=index,
+                fast=fast,
+            )
+            index = data["index"]
+            del data["index"]
+
+            # get the server icon as bytes
+            if "favicon" in data.keys():
                 self.logger.debug("Adding favicon")
                 bits = (
                     data["favicon"].split(",")[1]
                     if "," in data["favicon"]
                     else data["favicon"]
                 )
-                with open("assets/favicon.png", "wb") as f:
-                    f.write(base64.b64decode(bits))
+                favicon = base64.b64decode(bits)
             else:
                 self.logger.debug("Adding default favicon")
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
-                with open("assets/DefFavicon.png", "rb") as f, open(
-                    "assets/favicon.png", "wb"
-                ) as f2:
-                    f2.write(f.read())
+                with open("assets/DefFavicon.png", "rb") as f:
+                    favicon = f.read()
+
+            favicon = io.BytesIO(favicon)
 
             # create the embed
             self.logger.debug("Creating embed")
@@ -284,6 +318,15 @@ class Message:
             domain = ""
             if "hostname" in data:
                 domain = f"**Hostname:** `{data['hostname']}`\n"
+
+            is_online = (
+                "🟡"
+                if data["is_online"] is None
+                else ("🟢" if data["is_online"] else "🔴")
+            )  # yellow if unknown, green if online, red if offline
+            total_servers = self.db.count(pipeline)
+
+            # create the base embed
             embed = self.standard_embed(
                 title=f"{is_online} {data['ip']}:{data['port']}",
                 description=f"{domain}\n```ansi\n{self.text.color_ansi(str(data['description']['text']))}\n```",
@@ -297,8 +340,9 @@ class Message:
                 f"Showing {index + 1} of {total_servers} servers",
             )
             embed.timestamp = self.text.time_now()
-            with open("pipeline.ason", "w") as f:
-                f.write(json_util.dumps(pipeline))
+
+            # -------------------
+            # start adding fields
 
             # add the version
             embed.add_field(
@@ -414,7 +458,10 @@ class Message:
                 if not fast
                 else self.buttons(),
                 "files": [
-                    interactions.File("assets/favicon.png"),
+                    interactions.File(
+                        file_name="favicon.png",
+                        file=favicon,
+                    ),
                     interactions.File(
                         file_name="pipeline.ason",
                         file=io.BytesIO(
@@ -425,14 +472,18 @@ class Message:
             }
         except KeyError as e:
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
-            self.logger.error(f"KeyError: {e}, IP: {data['ip']}, data: {data}")
+            self.logger.error(
+                f"KeyError: {e}, IP: {data['ip']}, data: {data}, pipeline saved"
+            )
+            with open("pipeline.ason", "w") as f:
+                f.write(json_util.dumps(pipeline))
             return None
         except Exception as e:
             self.logger.print(f"Full traceback: {traceback.format_exc()}")
             self.logger.error(f"{e}, IP: {data['ip']}")
             with open("pipeline.ason", "w") as f:
                 f.write(json_util.dumps(pipeline, indent=4))
-            self.logger.error(f"Pipeline saved to `pipeline.ason`")
+            self.logger.error("Pipeline saved to `pipeline.ason`")
             return None
 
     def standard_embed(
@@ -480,7 +531,7 @@ class Message:
         msg: interactions.Message,
     ) -> None:
         # first call the asyncEmbed function with fast
-        stuff = await self.logger.async_timer(
+        stuff = await self.async_timer(
             self.async_embed, pipeline=pipeline, index=index, fast=True
         )
 
@@ -501,7 +552,7 @@ class Message:
         )
 
         # then call the asyncEmbed function again with slow
-        stuff = await self.logger.async_timer(
+        stuff = await self.async_timer(
             self.async_embed, pipeline=pipeline, index=index, fast=False
         )
 
@@ -530,8 +581,7 @@ class Message:
             return None
 
         # grab the index
-        index = int(msg.embeds[0].footer.text.split(
-            "Showing ")[1].split(" of ")[0]) - 1
+        index = int(msg.embeds[0].footer.text.split("Showing ")[1].split(" of ")[0]) - 1
 
         # grab the attachment
         for file in msg.attachments:

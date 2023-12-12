@@ -6,7 +6,6 @@ from typing import List, Optional
 import pymongo
 import sentry_sdk
 from pymongo.results import UpdateResult
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -159,7 +158,7 @@ class Database:
         Returns:
             tuple: the hashable object
         """
-        out = tuple()
+        out = ()
         for k, v in d.items():
             if type(v) is dict:
                 out += (k, self.hash_dict(v))
@@ -179,7 +178,7 @@ class Database:
         Returns:
             tuple: the hashable object
         """
-        out = tuple()
+        out = ()
         for v in l:
             if type(v) is dict:
                 out += (self.hash_dict(v),)
@@ -199,7 +198,7 @@ class Database:
         Returns:
             tuple: the hashable object
         """
-        out = tuple()
+        out = ()
         for stage in pipe:
             for k, v in stage.items():
                 if type(v) is dict:
