@@ -1,5 +1,6 @@
 import asyncio
 import copy
+import io
 import json
 import os
 import re
@@ -1337,6 +1338,8 @@ class Commands(Extension):
                 embed=embed,
             )
 
+            imgs = []
+
             # get the total number of servers
             total_servers = self.databaseLib.col.count_documents({})
 
@@ -1366,19 +1369,15 @@ class Commands(Extension):
             vers_fig = graph.draw_pie(versions, "Versions")
             self.logger.debug("Made version graph")
 
-            # hide the labels before saving
-            vers_fig.update_layout(
-                showlegend=False,
-            )
-            vers_fig.write_image("assets/graphs/vers.png")
-            # show the labels again
-            vers_fig.update_layout(
-                showlegend=True,
-            )
-
-            msg = await msg.edit(
-                embed=embed,
-                files=[File("assets/graphs/vers.png")],
+            vers_file = io.BytesIO()
+            vers_fig.write_image(vers_file, format="png")
+            vers_file.seek(0)
+            imgs.append(
+                File(
+                    file=vers_file,
+                    file_name="vers.png",
+                    content_type="image/png",
+                )
             )
 
             # get the percentage of servers that are cracked
@@ -1437,10 +1436,16 @@ class Commands(Extension):
             data = sorted(data, key=lambda pnt: pnt["size"], reverse=True)
             misc_fig = graph.draw_bar(data, "Misc")
             self.logger.debug("Made misc graph")
-            misc_fig.write_image("assets/graphs/misc.png")
-            msg = await msg.edit(
-                embed=embed,
-                files=[File("assets/graphs/vers.png"), File("assets/graphs/misc.png")],
+
+            misc_file = io.BytesIO()
+            misc_fig.write_image(misc_file, format="png")
+            misc_file.seek(0)
+            imgs.append(
+                File(
+                    file=misc_file,
+                    file_name="misc.png",
+                    content_type="image/png",
+                )
             )
 
             # get the top 2000 servers based on players.online
@@ -1474,14 +1479,16 @@ class Commands(Extension):
 
             map_fig = graph.draw_geoheatmap(top_servers, "Top Servers")
             self.logger.debug("Made map graph")
-            map_fig.write_image("assets/graphs/map.png")
-            msg = await msg.edit(
-                embed=embed,
-                files=[
-                    File("assets/graphs/vers.png"),
-                    File("assets/graphs/misc.png"),
-                    File("assets/graphs/map.png"),
-                ],
+
+            map_file = io.BytesIO()
+            map_fig.write_image(map_file, format="png")
+            map_file.seek(0)
+            imgs.append(
+                File(
+                    file=map_file,
+                    file_name="map.png",
+                    content_type="image/png",
+                )
             )
 
             # get the sum of all the server's players.online for each country
@@ -1514,17 +1521,12 @@ class Commands(Extension):
                 )
 
             world_fig = graph.draw_choropleth(country_players, "Players Per Country")
+            self.logger.debug("Made world graph")
 
-            world_fig.write_image("assets/graphs/world.png")
-            msg = await msg.edit(
-                embed=embed,
-                files=[
-                    File("assets/graphs/vers.png"),
-                    File("assets/graphs/misc.png"),
-                    File("assets/graphs/map.png"),
-                    File("assets/graphs/world.png"),
-                ],
-            )
+            world_file = io.BytesIO()
+            world_fig.write_image(file=world_file, format="png")
+            world_file.seek(0)
+            imgs.append(File(file=world_file, file_name="world.png"))
 
             # get the top 2000 servers based on players.online# get the top 2000 servers based on players.online
             pipeline = [
@@ -1563,16 +1565,15 @@ class Commands(Extension):
                 yaxis_title="Online Players",
             )
             self.logger.debug("Made top graph")
-            top_fig.write_image("assets/graphs/top.png")
+
+            top_file = io.BytesIO()
+            top_fig.write_image(top_file)
+            top_file.seek(0)
+            imgs.append(File(file=top_file, file_name="top.png"))
+
             await msg.edit(
                 embed=embed,
-                files=[
-                    File("assets/graphs/vers.png"),
-                    File("assets/graphs/misc.png"),
-                    File("assets/graphs/map.png"),
-                    File("assets/graphs/world.png"),
-                    File("assets/graphs/top.png"),
-                ],
+                files=imgs,
             )
 
             # save the graphs to an html file

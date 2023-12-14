@@ -9,7 +9,9 @@ import aiohttp
 
 async def install_requirements():
     # check that python is 3.10+
-    if sys.version_info[0] != 3 and sys.version_info[1] < 10:
+    if sys.version_info[0] != 3 or (
+        sys.version_info[0] == 3 and sys.version_info[1] < 10
+    ):
         print("Python 3.10+ is required.")
         sys.exit("Python 3.10+ is required.")
 
@@ -19,9 +21,13 @@ async def install_requirements():
         with open("requirements.txt", "wb") as f:
             f.write(await resp.read())
 
-    await asyncio.create_subprocess_shell(
-        "pip install -Ur requirements.txt",
-    )
+    try:
+        from pip import pipmain
+    except ImportError:
+        from pip._internal.main import pipmain
+
+    print("Installing requirements.txt")
+    pipmain(["install", "-Ur", "requirements.txt"])
 
     # download the botHandler
     async with aiohttp.ClientSession() as session, session.get(

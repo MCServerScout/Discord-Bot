@@ -2,7 +2,15 @@ import country_converter as coco
 import plotly.express as px
 import plotly.io as pio
 
-layout = {"plot_bgcolor": "black", "paper_bgcolor": "black", "font": {"color": "white"}}
+layout = {
+    "plot_bgcolor": "black",
+    "paper_bgcolor": "black",
+    "font": {"color": "white"},
+    "legend": {
+        "bgcolor": "rgba(0, 0, 0, 0)",
+        "font": {"color": "white"},
+    },
+}
 geo_layout = {
     "showcountries": True,
     "countrycolor": "white",

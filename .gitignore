@@ -9,7 +9,7 @@ log.log
 /assets/favicon.png
 /assets/minecraft.png
 /assets/graphs/*
-/pipeline.ason
+/pipeline.json
 scanner.ipynb
 /node_modules/
 /package-lock.json

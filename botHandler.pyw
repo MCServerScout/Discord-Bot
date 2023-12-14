@@ -234,6 +234,9 @@ def main():
                 with gzip.open(gz_file, "wb") as g:
                     g.writelines(f)
 
+            gz_file.seek(0)
+            gz_file.name = "log.log.gz"
+
             # upload the compressed log file
             webhook_send(
                 "Log file",
