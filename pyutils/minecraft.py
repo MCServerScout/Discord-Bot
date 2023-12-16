@@ -3,6 +3,7 @@ import http.server
 import json
 import os
 import secrets
+import socket
 import traceback
 import urllib.parse
 import zlib
@@ -205,7 +206,7 @@ class Minecraft:
                 return self.ServerType(ip, version, "OFFLINE")
 
             _id: int = response.read_varint()
-            self.logger.debug("Received packet ID:", _id)
+            self.logger.debug(f"Received packet ID: int({_id})")
 
             if _id == 0x03:
                 self.logger.print("Setting compression")
@@ -359,7 +360,7 @@ class Minecraft:
                     unc = self.read_compressed(unc)
 
                 _id = unc.read_varint()
-                self.logger.debug("Received packet ID:", _id)
+                self.logger.debug(f"Received packet ID: int({_id})")
 
                 if _id == 0x03:
                     self.logger.print("Keep alive Packet")
@@ -377,15 +378,39 @@ class Minecraft:
 
                     # read response
                     unc = self.read_enc(connection, decryptor)
+                    assert unc.remaining() > 0
                     if comp_thresh > 0:
                         unc = self.read_compressed(unc)
 
+                    assert unc.remaining() > 0
                     _id = unc.read_varint()
-                    self.logger.debug("Received packet ID:", _id)
+                    self.logger.debug(f"Received packet ID: int({_id})")
 
                 if _id == 0x00:
                     reason = self.read_chat(unc.read_utf())
                     self.logger.print(reason)
+
+                    if any(
+                        i in reason.lower() for i in ["fml", "forge", "modded", "mods"]
+                    ):
+                        return self.ServerType(ip, version, "MODDED")
+                    elif any(
+                        i in reason.lower()
+                        for i in [
+                            "whitelist",
+                            "not whitelisted",
+                            "multiplayer.disconnect.not_whitelisted",
+                        ]
+                    ):
+                        return self.ServerType(ip, version, "WHITELISTED")
+                    elif reason.startswith("multiplayer.disconnect.incompatible:"):
+                        return self.ServerType(
+                            ip, version, f"INCOMPATIBLE:{reason.split(':')[1].strip()}"
+                        )
+                    return self.ServerType(ip, version, f"UNKNOWN:{reason}")
+                elif _id == 0x02:
+                    self.logger.print("Logged in successfully")
+                    return self.ServerType(ip, version, "PREMIUM")
                 ...
 
                 return self.ServerType(ip, version, "PREMIUM")
@@ -409,6 +434,9 @@ class Minecraft:
         except TypeError:
             self.logger.error(traceback.format_exc())
             return self.ServerType(ip, version, "OFFLINE:TypeError")
+        except AssertionError:
+            self.logger.error(traceback.format_exc())
+            return self.ServerType(ip, version, "OFFLINE:AssertionError")
         except Exception as e:
             sentry_sdk.capture_exception(e)
             self.logger.debug(traceback.format_exc())
@@ -762,7 +790,7 @@ class Minecraft:
     async def session_join(self, mine_token, server_hash, _uuid, name, tries=0):
         try:
             if tries > 5:
-                self.logger.print("Failed to authenticate account after 5 tries")
+                self.logger.war("Failed to authenticate account after 5 tries")
                 return 1
             async with aiohttp.ClientSession() as httpSession:
                 url = "https://sessionserver.mojang.com/session/minecraft/join"
@@ -798,10 +826,10 @@ class Minecraft:
                         )
                     elif res.status == 429:
                         tries += 1
-                        await asyncio.sleep(5)
-                        self.logger.debug(
+                        self.logger.war(
                             "Rate limited, trying again: " + (await res.text())
                         )
+                        await asyncio.sleep(5)
                         return await self.session_join(
                             mine_token, server_hash, _uuid, name, tries
                         )
@@ -812,6 +840,25 @@ class Minecraft:
             return 1
         except Exception:
             self.logger.error(traceback.format_exc())
+
+    @staticmethod
+    async def send_syn(ip: str, port: int):
+        """
+        Sends a syn packet to the server.
+
+        :param ip: The ip of the server
+        :param port: The port of the server
+
+        :return bool: Whether or not the server responded
+        """
+
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            s.connect((ip, port))
+            # return whether the server responded
+            return True
+        except Exception:
+            return False
 
     def compress_packet(
         self,
@@ -1015,21 +1062,27 @@ class Minecraft:
 
         :return: The decrypted packet
         """
-        data = []
-        while True:
-            try:
-                data.append(conn.read(1))
-            except OSError:
-                self.logger.print(f"Finished reading packet after {len(data)} bytes")
-                break
-        data = b"".join(data)
+        try:
+            data = []
+            while True:
+                try:
+                    data.append(conn.read(1))
+                except OSError:
+                    self.logger.print(
+                        f"Finished reading packet after {len(data)} bytes"
+                    )
+                    break
+            data = b"".join(data)
 
-        unc = self.decrypt_data(data, decryptor)
+            unc = self.decrypt_data(data, decryptor)
 
-        assert unc is not None
+            assert unc is not None
 
-        self.logger.debug(
-            f"Received {len(data)} bytes, decrypted to {unc.read_varint()} bytes"
-        )
+            self.logger.debug(
+                f"Received {len(data)} bytes, decrypted to {unc.read_varint()} bytes"
+            )
 
-        return unc
+            return unc
+        except Exception:
+            self.logger.error(traceback.format_exc())
+            return Connection()

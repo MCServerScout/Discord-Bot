@@ -1,6 +1,9 @@
 import asyncio
 import os
+import queue
 import sys
+import threading
+import time
 import traceback
 
 import sentry_sdk
@@ -94,6 +97,49 @@ serverLib = utils.server
 mcLib = utils.mc
 
 
+async def queue_online_servers(servers, _queue):
+    for server in servers:
+        # check if the server is online
+        # first try and send a syn packet
+        try:
+            assert await mcLib.send_syn(server["ip"], server["port"])
+        except Exception as e:
+            logger.print(f"Error sending syn to {server['ip']}")
+            logger.print(e)
+            sentry_sdk.capture_exception(e)
+            continue
+
+        # next try and get the server status
+        try:
+            status = serverLib.status(server["ip"], server["port"])
+        except Exception as e:
+            logger.print(f"Error getting status for {server['ip']}")
+            logger.print(e)
+            sentry_sdk.capture_exception(e)
+            continue
+
+        if status is None:
+            logger.print(f"Error getting status for {server['ip']}")
+            continue
+
+        # add the server to the list of online servers
+        new_dict = {
+            "_id": server["_id"],
+            "ip": server["ip"],
+            "port": server["port"],
+            "version": status["version"],
+        }
+
+        _queue.put(new_dict)
+
+
+def queue_callback(servers, _queue):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    loop.run_until_complete(queue_online_servers(servers, _queue))
+    loop.close()
+
+
 async def main():
     pipeline = [
         {
@@ -132,41 +178,82 @@ async def main():
     count = databaseLib.count(pipeline)
     logger.print(f"Found {count} servers to scan")
 
-    for server in servers:
-        try:
-            sType = await mcLib.join(
-                ip=server["ip"],
-                port=server["port"],
-                player_username=uname,
-                mine_token=token,
-                version=server["version"]["protocol"],
-            )
-        except Exception as e:
-            logger.print(f"Error joining {server['ip']}")
-            logger.print(e)
-            sentry_sdk.capture_exception(e)
-            continue
+    online_servers = queue.Queue()
 
-        if sType.status == "WHITELISTED":
-            logger.print(f"Whitelisted: {server['ip']}")
-            databaseLib.update_one(
-                {"_id": server["_id"]}, {"$set": {"whitelist": True}}
-            )
-        elif sType.status == "PREMIUM" or sType.status == "MODDED":
-            logger.print(f"Premium: {server['ip']}")
-            databaseLib.update_one(
-                {"_id": server["_id"]}, {"$set": {"whitelist": False}}
-            )
-        elif sType.status == "HONEY_POT":
-            logger.print(f"Honey Pot: {server['ip']}")
-            databaseLib.update_one(
-                {"_id": server["_id"]}, {"$set": {"whitelist": True}}
-            )
-        else:
-            # logger.print(f"Unknown: {server['ip']} ({sType.status})", end="\r")
-            databaseLib.update_one(
-                {"_id": server["_id"]}, {"$set": {"whitelist": None}}
-            )
+    status_thread = threading.Thread(
+        target=queue_callback, args=(servers, online_servers)
+    )
+    status_thread.start()
+
+    num_requests = 0
+    requests_start = 0
+
+    try:
+        while True:
+            server = online_servers.get()
+            # the join function is rate limited, so we need to use round-robin scheduling
+            # the rate limit is 600 per 10 minutes, so we can do 1 per second
+
+            if num_requests >= 600:
+                # we have reached the rate limit, wait until the next 10-minute period
+                logger.print(
+                    "Rate limit reached, waiting until the next 10 minute period"
+                )
+                while time.time() - requests_start < 10 * 60:
+                    await asyncio.sleep(1)
+
+            if requests_start == 0:
+                # initialize the start time
+                requests_start = time.time()
+            elif time.time() - requests_start >= 10 * 60:
+                # reset the start time
+                requests_start = time.time()
+                num_requests = 0
+
+            try:
+                sType = await mcLib.join(
+                    ip=server["ip"],
+                    port=server["port"],
+                    player_username=uname,
+                    mine_token=token,
+                    version=server["version"]["protocol"],
+                )
+            except Exception as e:
+                logger.print(f"Error joining {server['ip']}")
+                logger.print(e)
+                sentry_sdk.capture_exception(e)
+                continue
+
+            if sType.status == "WHITELISTED":
+                logger.print(f"Whitelisted: {server['ip']}")
+                databaseLib.update_one(
+                    {"_id": server["_id"]}, {"$set": {"whitelist": True}}
+                )
+            elif sType.status == "PREMIUM" or sType.status == "MODDED":
+                logger.print(f"(Not Whitelisted) Premium: {server['ip']}")
+                databaseLib.update_one(
+                    {"_id": server["_id"]}, {"$set": {"whitelist": False}}
+                )
+            elif sType.status == "HONEY_POT":
+                logger.print(f"(Fake server) Honey Pot: {server['ip']}")
+                databaseLib.update_one(
+                    {"_id": server["_id"]}, {"$set": {"whitelist": True}}
+                )
+            elif "INCOMPATIBLE" in sType.status:
+                logger.print(f"(Incompatible) {server['ip']} ({sType.status})")
+                databaseLib.update_one(
+                    {"_id": server["_id"]}, {"$set": {"whitelist": None}}
+                )
+            else:
+                databaseLib.update_one(
+                    {"_id": server["_id"]}, {"$set": {"whitelist": None}}
+                )
+                continue
+
+            num_requests += 1
+    except KeyboardInterrupt:
+        logger.print("Exiting...")
+        sys.exit(0)
 
 
 if __name__ == "__main__":
