@@ -103,6 +103,8 @@ async def queue_online_servers(servers, _queue):
         # first try and send a syn packet
         try:
             assert await mcLib.send_syn(server["ip"], server["port"])
+        except AssertionError:
+            continue
         except Exception as e:
             logger.print(f"Error sending syn to {server['ip']}")
             logger.print(e)
@@ -186,26 +188,26 @@ async def main():
     status_thread.start()
 
     num_requests = 0
+    max_requests = 30
     requests_start = 0
+    request_duration = 60
 
     try:
         while True:
             server = online_servers.get()
             # the join function is rate limited, so we need to use round-robin scheduling
-            # the rate limit is 600 per 10 minutes, so we can do 1 per second
+            # the rate limit is 300 per 10 minutes, so we can do 0.5 per second
 
-            if num_requests >= 600:
+            if num_requests >= max_requests:
                 # we have reached the rate limit, wait until the next 10-minute period
-                logger.print(
-                    "Rate limit reached, waiting until the next 10 minute period"
-                )
-                while time.time() - requests_start < 10 * 60:
+                logger.print("Rate limit reached, waiting until the next period")
+                while time.time() - requests_start < request_duration:
                     await asyncio.sleep(1)
 
             if requests_start == 0:
                 # initialize the start time
                 requests_start = time.time()
-            elif time.time() - requests_start >= 10 * 60:
+            elif time.time() - requests_start >= request_duration:
                 # reset the start time
                 requests_start = time.time()
                 num_requests = 0
@@ -229,7 +231,7 @@ async def main():
                 databaseLib.update_one(
                     {"_id": server["_id"]}, {"$set": {"whitelist": True}}
                 )
-            elif sType.status == "PREMIUM" or sType.status == "MODDED":
+            elif sType.status == "PREMIUM":
                 logger.print(f"(Not Whitelisted) Premium: {server['ip']}")
                 databaseLib.update_one(
                     {"_id": server["_id"]}, {"$set": {"whitelist": False}}
@@ -241,6 +243,16 @@ async def main():
                 )
             elif "INCOMPATIBLE" in sType.status:
                 logger.print(f"(Incompatible) {server['ip']} ({sType.status})")
+                databaseLib.update_one(
+                    {"_id": server["_id"]}, {"$set": {"whitelist": None}}
+                )
+            elif sType.status == "CRACKED":
+                logger.print(f"(Cracked) {server['ip']}")
+                databaseLib.update_one(
+                    {"_id": server["_id"]}, {"$set": {"whitelist": False}}
+                )
+            elif sType.status == "MODDED":
+                logger.print(f"(Modded) {server['ip']}")
                 databaseLib.update_one(
                     {"_id": server["_id"]}, {"$set": {"whitelist": None}}
                 )

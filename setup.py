@@ -24,7 +24,7 @@ async def install_requirements():
     try:
         from pip import pipmain
     except ImportError:
-        from pip._internal.main import pipmain
+        from pip._internal.main import main as pipmain
 
     print("Installing requirements.txt")
     pipmain(["install", "-Ur", "requirements.txt"])

@@ -122,7 +122,7 @@ The docs are in the following json format:
     "online": 1,
     "sample": [
       {
-        "id": "c0a80001-0000-0000-0000-000000000000",
+        "id": "00000000-0000-0000-0000-000000000000",
         "name": "Player",
         "lastSeen": 1234567890
       }
@@ -134,6 +134,7 @@ The docs are in the following json format:
     "protocol": 754
   },
   "modpackData": {},
+  "mods": [],
   "preventsChatReports": false,
   "previewsChat": false,
   "forgeData": {},
@@ -143,7 +144,9 @@ The docs are in the following json format:
     "city": "",
     "country": "",
     "hostname": ""
-  }
+  },
+  "whitelist": null,
+  "domain": "example.com"
 }
   ```
 

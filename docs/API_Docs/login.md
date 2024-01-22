@@ -18,12 +18,13 @@ This contains an overview on how the login protocol for minecraft works.
 
 To get your token, you need to follow these steps:
 
-A. Create a url with the following information subsituting and field in brakets, ex: {client_id} -> 1234-1234-1234-1234
+A. Create a url with the following information substituting and field in brackets, ex: {client_id} ->
+1234-1234-1234-1234
 
 ```http request
 GET https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize
 
-client_id={client_id}
+?=client_id={client_id}
 &response_type=code
 &redirect_uri={redirect_uri}
 &response_mode=query
@@ -43,12 +44,14 @@ D. Make a POST request to redeem for an access token:
 ```http request
 POST https://login.microsoftonline.com/consumers/oauth2/v2.0/token
 
-client_id={client_id}
-&scope=XboxLive.signin
-&code={code}
-&redirect_uri={redirect_uri}
-&grant_type=authorization_code
-&client_secret={client_secret}
+{
+    "client_id": {client_id},
+    "scope": XboxLive.signin,
+    "code": {code},
+    "redirect_uri": {redirect_uri},
+    "grant_type": authorization_code,
+    "client_secret": {client_secret}
+}
 ```
 
 E. Save the access token from the response

@@ -32,9 +32,14 @@ class Utils:
         Args:
             col (pymongo.collection.Collection): The collection to use
             discord_webhook (str): The discord webhook to use
-            log (Logger, optional): The logger to use. Defaults to None.
-            debug (bool, optional): Whether to use debug mode. Defaults to True.
-            level (int, optional): The logging level to use. Defaults to 20.
+            log (Logger, optional): The logger to use. Default to None
+            debug (bool, optional): Whether to use debug mode. Default to True
+            level (int, optional): The logging level to use. Default to 20
+            client_id (str, optional): The twitch client id to use. Default to None
+            client_secret (str, optional): The twitch client secret to use. Default to None
+            info_token (str, optional): The ipinfo token to use. Default to None
+            sentry_dsn (str, optional): The sentry dsn to use. Default to None
+            ssdk (sentry_sdk, optional): The sentry_sdk to use. Default to None
         """
         self.col = col
         self.logLevel = level

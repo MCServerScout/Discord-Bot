@@ -59,7 +59,7 @@ class Minecraft:
         """Basic request handler for getting the code from microsoft.
 
         Args:
-            BaseHTTPRequestHandler (_type_): the base request handler
+            BaseHTTPRequestHandler : the base request handler
         """
 
         def do_GET(self):
@@ -91,7 +91,20 @@ class Minecraft:
         player_username: str,
         mine_token: str,
         version: int = -1,
+        session_attempts: int = 5,
     ) -> ServerType:
+        """
+        Joins a minecraft server.
+
+        :param ip: The ip of the server
+        :param port: The port of the server
+        :param player_username: The username of the player
+        :param mine_token: The minecraft token
+        :param version: The protocol version of the server
+        :param session_attempts: The number of times to attempt to authenticate the account
+
+        :return: The server type
+        """
         try:
             # ----
             # Pre-join checks
@@ -206,7 +219,9 @@ class Minecraft:
                 return self.ServerType(ip, version, "OFFLINE")
 
             _id: int = response.read_varint()
-            self.logger.debug(f"Received packet ID: int({_id})")
+            self.logger.debug(
+                f"Received packet ID: int({_id}) hex({self.int2hex(_id)})"
+            )
 
             if _id == 0x03:
                 self.logger.print("Setting compression")
@@ -215,6 +230,9 @@ class Minecraft:
 
                 response = self.read_compressed(connection)
                 _id: int = response.read_varint()
+                self.logger.debug(
+                    f"Received packet ID: int({_id}) hex({self.int2hex(_id)})"
+                )
 
             if _id == 0x02:
                 self.logger.print("Logged in successfully")
@@ -231,7 +249,7 @@ class Minecraft:
                     return self.ServerType(ip, version, "WHITELISTED")
                 elif reason.startswith("multiplayer.disconnect.incompatible:"):
                     vers = reason.split(":")[1].strip()
-                    protocol = self.text.protocol_int(vers)
+                    protocol = await self.vers_n2p(vers)
 
                     return await self.join(
                         ip=ip,
@@ -360,31 +378,24 @@ class Minecraft:
                     unc = self.read_compressed(unc)
 
                 _id = unc.read_varint()
-                self.logger.debug(f"Received packet ID: int({_id})")
+                self.logger.debug(
+                    f"Received packet ID: int({_id}) hex({self.int2hex(_id)})"
+                )
 
                 if _id == 0x03:
-                    self.logger.print("Keep alive Packet")
+                    self.logger.print("Set compression Packet")
 
-                    keep_id = unc.read_varint()
-                    self.logger.debug("Keep alive ID:", keep_id)
+                    comp_thresh = unc.read_varint()
+                    self.logger.print(f"Compression threshold: {comp_thresh}")
 
-                    # send a keep alive packet
-                    keep_alive = Connection()
-
-                    keep_alive.write_varint(0x03)
-                    keep_alive.write_varint(keep_id)
-
-                    self.compress_packet(keep_alive, connection, comp_thresh, encryptor)
-
-                    # read response
                     unc = self.read_enc(connection, decryptor)
-                    assert unc.remaining() > 0
                     if comp_thresh > 0:
                         unc = self.read_compressed(unc)
 
-                    assert unc.remaining() > 0
                     _id = unc.read_varint()
-                    self.logger.debug(f"Received packet ID: int({_id})")
+                    self.logger.debug(
+                        f"Received packet ID: int({_id}) hex({self.int2hex(_id)})"
+                    )
 
                 if _id == 0x00:
                     reason = self.read_chat(unc.read_utf())
@@ -427,19 +438,20 @@ class Minecraft:
 
             self.logger.info("Reason: " + reason)
             return self.ServerType(ip, version, "UNKNOWN: " + reason)
-        except TimeoutError:
-            return self.ServerType(ip, version, "OFFLINE:Timeout")
-        except ConnectionRefusedError:
-            return self.ServerType(ip, version, "OFFLINE:ConnectionRefused")
-        except TypeError:
+        except Exception in (
+            TimeoutError,
+            ConnectionRefusedError,
+            ConnectionResetError,
+            AssertionError,
+        ) as err:
             self.logger.error(traceback.format_exc())
+            return self.ServerType(ip, version, f"OFFLINE:{type(err).__name__}")
+        except TypeError as err:
+            self.logger.exception("TypeError", exception=err)
             return self.ServerType(ip, version, "OFFLINE:TypeError")
-        except AssertionError:
-            self.logger.error(traceback.format_exc())
-            return self.ServerType(ip, version, "OFFLINE:AssertionError")
-        except Exception as e:
-            sentry_sdk.capture_exception(e)
-            self.logger.debug(traceback.format_exc())
+        except Exception as err:
+            sentry_sdk.capture_exception(err)
+            self.logger.exception("Exception", exception=err)
             return self.ServerType(ip, version, "OFFLINE")
 
     async def get_minecraft_token_async(
@@ -787,9 +799,9 @@ class Minecraft:
             cast(Literal["plain", "S256"], code_challenge_method),
         )
 
-    async def session_join(self, mine_token, server_hash, _uuid, name, tries=0):
+    async def session_join(self, mine_token, server_hash, _uuid, name, tries=5):
         try:
-            if tries > 5:
+            if tries <= 0:
                 self.logger.war("Failed to authenticate account after 5 tries")
                 return 1
             async with aiohttp.ClientSession() as httpSession:
@@ -822,7 +834,7 @@ class Minecraft:
                         self.logger.print("Service unavailable")
                         await asyncio.sleep(1)
                         return await self.session_join(
-                            mine_token, server_hash, _uuid, name, tries + 1
+                            mine_token, server_hash, _uuid, name, tries - 1
                         )
                     elif res.status == 429:
                         tries += 1
@@ -849,7 +861,7 @@ class Minecraft:
         :param ip: The ip of the server
         :param port: The port of the server
 
-        :return bool: Whether or not the server responded
+        :return bool: Whether the server responded
         """
 
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -942,6 +954,9 @@ class Minecraft:
                 data = con.read_buffer()
             else:
                 data = con
+
+            assert data is not None
+            assert data.remaining() > 0
 
             uncomp_len = data.read_varint()
             cdata = data.read(data.remaining())
@@ -1073,6 +1088,7 @@ class Minecraft:
                     )
                     break
             data = b"".join(data)
+            assert len(data) > 0
 
             unc = self.decrypt_data(data, decryptor)
 
@@ -1086,3 +1102,53 @@ class Minecraft:
         except Exception:
             self.logger.error(traceback.format_exc())
             return Connection()
+
+    async def vers_n2p(self, vers_name: str) -> int:
+        """
+        Converts a version name to a protocol version.
+
+        :param vers_name: The version name to convert
+
+        :return: The protocol version
+        """
+
+        versions_url = "https://gitlab.bixilon.de/bixilon/minosoft/-/raw/master/src/main/resources/assets/minosoft/mapping/versions.json"
+
+        async with aiohttp.ClientSession() as httpSession:
+            async with httpSession.get(versions_url) as res:
+                if res.status == 200:
+                    versions = await res.json()
+                else:
+                    self.logger.error("Failed to get versions")
+                    return -1
+
+        for i in versions.values():
+            if i["name"] == vers_name:
+                return i["protocol"]
+
+    async def vers_p2n(self, vers: int) -> str:
+        """
+        Converts a protocol version to a version name.
+
+        :param vers: The protocol version to convert
+
+        :return: The version name
+        """
+
+        versions_url = "https://gitlab.bixilon.de/bixilon/minosoft/-/raw/master/src/main/resources/assets/minosoft/mapping/versions.json"
+
+        async with aiohttp.ClientSession() as httpSession:
+            async with httpSession.get(versions_url) as res:
+                if res.status == 200:
+                    versions = await res.json()
+                else:
+                    self.logger.error("Failed to get versions")
+                    return -1
+
+        for i in versions.values():
+            if i["protocol"] == vers:
+                return i["name"]
+
+    @staticmethod
+    def int2hex(num: int):
+        return f"0x{num:02x}"

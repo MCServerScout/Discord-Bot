@@ -24,7 +24,6 @@ from interactions.client.utils import (
     AnsiColors,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -35,6 +34,12 @@ verify_cache = {}
 
 class TimedCache(dict):
     def __init__(self, *_, timeout=60, **kwargs):
+        """
+        A dict that deletes itself after a certain amount of time
+        The timeout resets after every setitem
+
+        :param timeout: The amount of time in seconds before the dict deletes itself
+        """
         super().__init__(**kwargs)
         self.timeout_end = time.perf_counter() + timeout
         self.timeout = timeout
@@ -46,6 +51,8 @@ class TimedCache(dict):
         self.timer.start()
 
     def __del__(self):
+        self.timer.cancel()
+        self.timer = None
         self.clear()
 
     def __reset_timeout(self):
@@ -56,10 +63,12 @@ class TimedCache(dict):
         self.timer.start()
 
     def __setitem__(self, key, value):
+        assert self.timer is not None, "This cache has been deleted"
         super().__setitem__(key, value)
         self.__reset_timeout()
 
     def __getitem__(self, key):
+        assert self.timer is not None, "This cache has been deleted"
         try:
             return super().__getitem__(key)
         except KeyError:

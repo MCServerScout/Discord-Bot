@@ -35,9 +35,9 @@ class Server:
             return self._type
 
     class Player(dict):
-        def __init__(self, name: str, id: str, lastSeen: int = 0):
+        def __init__(self, name: str, _id: str, lastSeen: int = 0):
             self.name = name
-            self.id = id
+            self.id = _id
             self.lastSeen = lastSeen
             dict.__init__(self, name=self.name, id=self.id, lastSeen=self.lastSeen)
 
@@ -225,10 +225,8 @@ class Server:
 
         Args:
             ip (str): The host to connect to
-            port (int, optional): The port to connect to.
-            Default to 25565.
-            version (int, optional): The protocol version to use.
-            Default to -1.
+            port (int, optional): The port to connect to, default is 25565
+            version (int, optional): The protocol version to use, default is -1
 
         Returns:
             Optional[dict]: The status response dict

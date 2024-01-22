@@ -6,7 +6,6 @@ from typing import List, Optional
 import pymongo
 import sentry_sdk
 from pymongo.results import UpdateResult
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -147,6 +146,21 @@ class Database:
             return 0
         return result["count"]
 
+    def get_all_keys(self) -> List[str]:
+        """Gets all the keys in the database"""
+
+        pipeline = [
+            {"$project": {"_id": 0}},
+            {"$project": {"k": {"$objectToArray": "$$ROOT"}}},
+            {"$unwind": "$k"},
+            {"$group": {"_id": None, "keys": {"$addToSet": "$k.k"}}},
+            {"$project": {"_id": 0}},
+        ]
+
+        # get the results
+        results = list(self.col.aggregate(pipeline))[0]["keys"]
+        return results
+
     def aggregate(self, pipeline: list, **kwargs):
         return self.col.aggregate(pipeline, **kwargs)
 
@@ -170,17 +184,17 @@ class Database:
 
         return out
 
-    def hash_list(self, l: list) -> tuple:
+    def hash_list(self, lst: list) -> tuple:
         """Returns a hash of a list
 
         Args:
-            l (list): The list to hash
+            lst (list): The list to hash
 
         Returns:
             tuple: the hashable object
         """
         out = ()
-        for v in l:
+        for v in lst:
             if type(v) is dict:
                 out += (self.hash_dict(v),)
             elif type(v) is list:
@@ -199,6 +213,13 @@ class Database:
         Returns:
             tuple: the hashable object
         """
+        # Conversions:
+        # dict -> tuple(key, hashable)
+        # list -> tuple(hashable)
+        # tuple -> tuple
+        # ex:
+        #   {"$match": {"a": 1}} -> ("$match", ("a", 1))
+
         out = ()
         for stage in pipe:
             for k, v in stage.items():
@@ -215,7 +236,7 @@ class Database:
         """Returns a dict from a hashable object"""
 
         out = {}
-        for k, v in hashed.items():
+        for k, v in zip_longest(hashed[::2], hashed[1::2]):
             if type(v) is tuple:
                 out[k] = self.unhash_dict(v)
             elif type(v) is list:

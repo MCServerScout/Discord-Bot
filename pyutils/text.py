@@ -1,7 +1,6 @@
 import datetime
 import re
 
-import minecraft_data
 import unicodedata
 
 
@@ -207,62 +206,6 @@ class Text:
 
         return out
 
-    def protocol_str(self, protocol: int) -> str:
-        """Returns a string of the protocol version
-
-        Args:
-            protocol (int): The protocol version
-
-        Returns:
-            str: The string of the protocol version
-        """
-        for version in minecraft_data.common().protocolVersions:
-            if version["version"] == protocol:
-                return version["minecraftVersion"]
-
-        self.logger.error(f"Unknown protocol version: {protocol}")
-        return "Unknown"
-
-    def protocol_int(self, protocol: str) -> int:
-        """Returns the protocol version from a string
-
-        Args:
-            protocol (str): The protocol version
-
-        Returns:
-            int: The protocol version
-        """
-        match protocol:
-            case "1.20.2":
-                return 764
-            case "1.20.1":
-                return 763
-            case "1.20":
-                return 763
-            case "1.19.4":
-                return 762
-            case "1.19.3":
-                return 761
-            case "1.19.2":
-                return 760
-            case "1.19.1":
-                return 760
-            case "1.19":
-                return 759
-            case "1.18.2":
-                return 758
-            case "1.18.1":
-                return 757
-            case "1.18":
-                return 757
-
-        for version in minecraft_data.common().protocolVersions:
-            if version["minecraftVersion"] == protocol:
-                return version["version"]
-
-        self.logger.error(f"Unknown protocol version: {protocol}")
-        return -1
-
     def motd_parse(self, motd: dict) -> dict:
         """Parses a motd dict to remove color codes
 
@@ -319,10 +262,10 @@ class Text:
         Args:
             iteration (int): current iteration
             total (int): total iterations
-            prefix (str): prefix string.
-            suffix (str): suffix string.
-            length (int): character length of bar.
-            fill (str): bar fill character.
+            prefix (str): prefix string
+            suffix (str): suffix string
+            length (int): character length of bar
+            fill (str): bar fill character
         """
         decimals = 2
         percent = ("{0:." + str(decimals) + "f}").format(

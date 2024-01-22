@@ -1,6 +1,7 @@
 import asyncio
 import inspect
 import logging
+import os.path
 import re
 import sys
 import time
@@ -167,11 +168,25 @@ class Logger:
         message = f"[{self.stack_trace(inspect.stack())}] {message}"
         self.logging.warning(message)
 
-    def exception(self, message):
-        message = f"[{self.stack_trace(inspect.stack())}] {message}"
-        self.logging.exception(message)
-        self.hook(message)
-        self.print(message, log=False)
+    def exception(self, message, *_, exception: Exception = None):
+        if exception is None:
+            message = f"[{self.stack_trace(inspect.stack())}] {message}"
+            self.logging.exception(message)
+            self.hook(message)
+            self.print(message, log=False)
+        else:
+            # pretty print the exception, function calls, and variables
+            stacks = inspect.trace()
+            msg = ""
+            for stack in stacks:
+                msg += f"{os.path.basename(stack.filename)}.{stack.function}({stack.lineno}): {stack.code_context[0].strip()}\n"
+
+                # get the variables
+                for var in stack.frame.f_locals:
+                    msg += f"    {var}: {stack.frame.f_locals[var]}\n"
+                msg += "\n"
+            msg += f"{exception.__class__.__name__}: {exception}"
+            self.logging.error(msg)
 
     def read(self):
         text1, text2 = "", ""
