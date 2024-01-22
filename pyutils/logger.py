@@ -95,7 +95,8 @@ class Logger:
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a",
+                                 encoding="utf-8", delay=False),
             ],
         )
 
@@ -270,5 +271,6 @@ class Logger:
         start = time.perf_counter()
         res = await func(*args, **kwargs)
         end = time.perf_counter()
-        self.debug(f"(ASYNC) Function {func.__name__} took {end - start} seconds")
+        self.debug(
+            f"(ASYNC) Function {func.__name__} took {end - start} seconds")
         return res
