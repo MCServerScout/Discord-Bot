@@ -24,7 +24,11 @@ from pymongo.errors import ServerSelectionTimeoutError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 import pyutils
-from pyutils.scanner import Scanner
+
+if os.name == "unix":
+    from pyutils.scanner import Scanner
+else:
+    Scanner = None
 
 (
     DISCORD_WEBHOOK,

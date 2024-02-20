@@ -86,6 +86,13 @@ max_pps = 1000
             with open("assets/loading.png", "wb") as f:
                 f.write(await resp.read())
 
+    # create the main git folder
+    if not os.path.exists("Discord-Bot"):
+        os.mkdir("Discord-Bot")
+        print("Created Discord-Bot folder")
+    else:
+        print("Discord-Bot folder already exists")
+
 
 async def main():
     await install_requirements()

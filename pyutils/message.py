@@ -11,7 +11,6 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -239,8 +238,10 @@ class Message:
                         self.logger.info(f"Got status {data}")
 
                     # mark online if the server was lastSeen within 5 minutes
-                    if data["lastSeen"] > time.time() - 300:
+                    if data["lastSeen"] > datetime.datetime.utcnow().timestamp() - 300:
                         data["is_online"] = True
+                    else:
+                        data["is_online"] = False
 
                     # get the domain name of the ip
                     try:

@@ -490,6 +490,30 @@ class Commands(Extension):
                         return
                 else:
                     pipeline[0]["$match"]["$and"].append({"ip": ip})
+
+                    # if the server is not in the db, then try and add it
+                    if self.databaseLib.count(pipeline) == 0:
+                        self.logger.print(
+                            f"Server {ip} not in the database, trying to add it"
+                        )
+                        doc = self.serverLib.update(host=ip)
+                        if doc is None:
+                            await msg.edit(
+                                embed=self.messageLib.standard_embed(
+                                    title="Error",
+                                    description="The server is offline and is not in the database.",
+                                    color=RED,
+                                ),
+                                components=self.messageLib.buttons(),
+                            )
+                            self.logger.print(
+                                f"Server {ip} not in the database and is offline"
+                            )
+                            return
+                        else:
+                            self.logger.print(
+                                f"Server {ip} not in the database, added it"
+                            )
             if country is not None:
                 pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
                 pipeline[0]["$match"]["$and"].append(

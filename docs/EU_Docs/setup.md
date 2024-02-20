@@ -10,24 +10,14 @@
 
 1. Download the file
    named `setup.py` [HERE](https://raw.githubusercontent.com/MCServerScout/Discord-Bot/dev-builds/setup.py)
-2. Your folder structure should look like this:
 
-```
-folderNameHere
-│   botHandler.pyw
-│   privVars.py
-│   setup.py
-│
-└───Discord-Bot
-```
+4. Open the file named `privVars.py` and edit the variables that have `...` as their value to the correct values
 
-3. Open the file named `privVars.py` and edit the variables that have `...` as their value to the correct values
-
-4. Edit the variables such that they contain the correct information.
+5. Edit the variables such that they contain the correct information.
 
 - Any Variables that are commented out are not required but are recommended for full functionality
 
-5. Run the file `botHandler.pyw` via `python3 botHandler.pyw`
+6. Run the file `botHandler.pyw` via `python3 botHandler.pyw`
 
 # Manual Setup
 
