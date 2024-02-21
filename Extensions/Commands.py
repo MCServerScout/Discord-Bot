@@ -26,6 +26,14 @@ from interactions import (
 )
 from interactions.ext.paginators import Paginator
 
+from pyutils.database import Database
+from pyutils.logger import Logger
+from pyutils.message import Message
+from pyutils.minecraft import Minecraft
+from pyutils.player import Player
+from pyutils.server import Server
+from pyutils.text import Text
+from pyutils.twitch import Twitch
 from .Colors import *  # skipcq: PYL-W0614
 
 base_match = {
@@ -43,15 +51,15 @@ class Commands(Extension):
     def __init__(
         self,
         *_,
-        mcLib,
-        messageLib,
-        playerLib,
-        logger,
-        databaseLib,
-        serverLib,
-        twitchLib,
+        mcLib: "Minecraft",
+        messageLib: "Message",
+        playerLib: "Player",
+        logger: "Logger",
+        databaseLib: "Database",
+        serverLib: "Server",
+        twitchLib: "Twitch",
         Scanner,
-        textLib,
+        textLib: "Text",
         cstats,
         azure_client_id,
         azure_redirect_uri,
@@ -1236,7 +1244,7 @@ class Commands(Extension):
                 value="```css\n"
                 + "\n".join(
                     [
-                        f"{self.textLib.protocol_str(i['_id'])}: {round(i['count'] / total_servers * 100, 2)}%"
+                        f"{await self.mcLib.vers_p2n(i['_id'])}: {round(i['count'] / total_servers * 100, 2)}%"
                         for i in top_five_version_ids
                     ]
                 )
