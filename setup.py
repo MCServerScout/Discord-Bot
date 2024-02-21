@@ -94,9 +94,83 @@ max_pps = 1000
         print("Discord-Bot folder already exists")
 
 
+def setup_db():
+    uri = input("Enter the MongoDB URI or press ENTER to skip:\n>")
+    if not uri:
+        return
+
+    with open("privVars.py", "r") as f:
+        lines = f.readlines()
+    for i, line in enumerate(lines):
+        if line.startswith("MONGO_URL"):
+            lines[i] = f'MONGO_URL = "{uri}"\n'
+            break
+    with open("privVars.py", "w") as f:
+        f.writelines(lines)
+
+    from pymongo import MongoClient
+
+    try:
+        client = MongoClient(uri)
+        client.list_database_names()
+    except Exception as e:
+        print(f"Failed to connect to MongoDB: {e}")
+        sys.exit(1)
+
+    # create the MCSS database if it doesn't exist
+    if "MCSS" not in client.list_database_names():
+        db = client["MCSS"]
+        print("Created MCSS database")
+    else:
+        db = client.MCSS
+
+    # create the collection scannedServers if it doesn't exist
+    if "scannedServers" not in db.list_collection_names():
+        db.create_collection("scannedServers")
+        print("Created scannedServers collection")
+
+    # add a bogus entry to the collection if no entries exist
+    if db.scannedServers.count_documents({}) == 0:
+        db.scannedServers.insert_one(
+            {
+                "description": {"text": "A Minecraft Server"},
+                "hasFavicon": False,
+                "hasForgeData": True,
+                "ip": "127.0.0.1",
+                "lastSeen": 0,
+                "cracked": False,
+                "players": {
+                    "max": 20,
+                    "online": 1,
+                    "sample": [
+                        {
+                            "id": "00000000-0000-0000-0000-000000000000",
+                            "name": "Player",
+                            "lastSeen": 1234567890,
+                        }
+                    ],
+                },
+                "port": 25565,
+                "version": {"name": "1.16.5", "protocol": 754},
+                "modpackData": {},
+                "mods": [],
+                "preventsChatReports": False,
+                "previewsChat": False,
+                "forgeData": {},
+                "geo": {"lat": 0, "lon": 0, "city": "", "country": "", "hostname": ""},
+                "whitelist": None,
+                "domain": "example.com",
+            }
+        )
+        print("Added a bogus entry to scannedServers collection")
+
+    print("Database setup complete")
+
+
 async def main():
     await install_requirements()
     await create_files()
+    setup_db()
     print("Setup complete, please edit `privVars.py` before running the scanner.")
 
 
