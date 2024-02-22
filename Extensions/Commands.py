@@ -1092,7 +1092,11 @@ class Commands(Extension):
                 },
                 {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
             ]
-            total_players = self.databaseLib.aggregate(pipeline).try_next()["total"]
+            total_players = self.databaseLib.aggregate(pipeline)
+            if total_players is not None:
+                total_players = total_players.try_next()["total"]
+            else:
+                total_players = 0
 
             main_embed.add_field(
                 name="Players",
@@ -1108,9 +1112,11 @@ class Commands(Extension):
                 {"$unwind": "$players.sample"},
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
-            total_sample_players = self.databaseLib.aggregate(pipeline).try_next()[
-                "total"
-            ]
+            total_sample_players = self.databaseLib.aggregate(pipeline)
+            if total_sample_players is not None:
+                total_sample_players = total_sample_players.try_next()["total"]
+            else:
+                total_sample_players = 0
 
             main_embed.add_field(
                 name="Logged Players",
@@ -1132,9 +1138,11 @@ class Commands(Extension):
                 },
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
-            total_real_players = self.databaseLib.aggregate(pipeline).try_next()[
-                "total"
-            ]
+            total_real_players = self.databaseLib.aggregate(pipeline)
+            if total_real_players is not None:
+                total_real_players = total_real_players.try_next()["total"]
+            else:
+                total_real_players = 0
 
             main_embed.add_field(
                 name="Real Players",
@@ -1154,9 +1162,11 @@ class Commands(Extension):
                 },
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
-            total_fake_players = self.databaseLib.aggregate(pipeline).try_next()[
-                "total"
-            ]
+            total_fake_players = self.databaseLib.aggregate(pipeline)
+            if total_fake_players is not None:
+                total_fake_players = total_fake_players.try_next()["total"]
+            else:
+                total_fake_players = 0
 
             main_embed.add_field(
                 name="Fake Players",
@@ -1175,6 +1185,8 @@ class Commands(Extension):
                 {"$limit": 3},
             ]
             top_three_orgs = list(self.databaseLib.aggregate(pipeline))
+            if top_three_orgs == [] or top_three_orgs is None:
+                top_three_orgs = [{"_id": "None", "count": 0}]
 
             main_embed.add_field(
                 name="Top Three Orgs",
@@ -1208,6 +1220,8 @@ class Commands(Extension):
                 {"$limit": 5},
             ]
             top_five_versions = list(self.databaseLib.aggregate(pipeline))
+            if top_five_versions == [] or top_five_versions is None:
+                top_five_versions = [{"_id": "None", "count": 0}]
 
             main_embed.add_field(
                 name="Top Five Versions",
@@ -1241,6 +1255,8 @@ class Commands(Extension):
                 {"$limit": 5},
             ]
             top_five_version_ids = list(self.databaseLib.aggregate(pipeline))
+            if top_five_version_ids == [] or top_five_version_ids is None:
+                top_five_version_ids = [{"_id": "None", "count": 0}]
 
             main_embed.add_field(
                 name="Top Five Version IDs",
@@ -1263,7 +1279,11 @@ class Commands(Extension):
                 {"$match": {"cracked": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            cracked = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+            cracked = list(self.databaseLib.aggregate(pipeline))
+            if cracked == [] or cracked is None:
+                cracked = 0
+            else:
+                cracked = cracked[0]["count"]
 
             main_embed.add_field(
                 name="Cracked",
@@ -1280,10 +1300,14 @@ class Commands(Extension):
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
             has_favicon = list(self.databaseLib.aggregate(pipeline))
+            if has_favicon == [] or has_favicon is None:
+                has_favicon = 0
+            else:
+                has_favicon = has_favicon[0]["count"]
 
             main_embed.add_field(
                 name="Has Favicon",
-                value=self.textLib.percent_bar(has_favicon[0]["count"], total_servers),
+                value=self.textLib.percent_bar(has_favicon, total_servers),
                 inline=True,
             )
             msg = await msg.edit(
@@ -1295,7 +1319,11 @@ class Commands(Extension):
                 {"$match": {"hasForgeData": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            has_forge_data = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+            has_forge_data = list(self.databaseLib.aggregate(pipeline))
+            if has_forge_data == [] or has_forge_data is None:
+                has_forge_data = 0
+            else:
+                has_forge_data = has_forge_data[0]["count"]
 
             main_embed.add_field(
                 name="Has Forge Data",
@@ -1311,13 +1339,21 @@ class Commands(Extension):
                 {"$match": {"whitelist": {"$exists": True}}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            have_whitelist = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+            have_whitelist = list(self.databaseLib.aggregate(pipeline))
+            if have_whitelist == [] or have_whitelist is None:
+                have_whitelist = 0
+            else:
+                have_whitelist = have_whitelist[0]["count"]
 
             pipeline = [
                 {"$match": {"whitelist": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))[0]["count"]
+            whitelist_enabled = list(self.databaseLib.aggregate(pipeline))
+            if whitelist_enabled == [] or whitelist_enabled is None:
+                whitelist_enabled = 0
+            else:
+                whitelist_enabled = whitelist_enabled[0]["count"]
 
             main_embed.add_field(
                 name="Whitelisted",

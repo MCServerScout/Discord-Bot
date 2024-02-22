@@ -30,6 +30,7 @@ Follow the instructions [here](docs/EU_Docs/setup.md) to set up the bot and db.
 ## TODO
 
 - [ ] Make it work well
+- [ ] Rewrite the minecraft interface to be a pure python implementation
 
 ## Commands
 
