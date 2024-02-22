@@ -2,7 +2,6 @@
 import base64
 import datetime
 import io
-import socket
 import time
 import traceback
 from typing import List, Optional, Tuple
@@ -151,6 +150,7 @@ class Message:
             "description": {"text": "n/a"},
             "cracked": None,
             "is_online": None,
+            "index": 0,
         }
         try:
             if isinstance(pipeline, dict):
@@ -172,9 +172,20 @@ class Message:
                     }
             else:
                 # server is in db
-                total_servers = self.timer(self.db.count, pipeline)
+                data["index"] = index
 
-                if total_servers == 0:
+                tStart = time.perf_counter()
+                num_docs = (
+                    int(pipeline[-1]["$limit"])
+                    if "$limit" in pipeline[-1]
+                    else self.db.count(pipeline)
+                )
+                tEnd = time.perf_counter()
+                self.logger.debug(
+                    f"Got num_docs in {self.logger.auto_range_time(tEnd - tStart)}"
+                )
+
+                if num_docs == 0:
                     self.logger.print("No servers found")
                     return {
                         "embed": self.standard_embed(
@@ -185,10 +196,9 @@ class Message:
                         "components": self.buttons(),
                     }
 
-                if index >= total_servers:
+                if index >= num_docs:
                     index = 0
-
-                data["index"] = index
+                    self.logger.debug("Index was too high, setting to 0")
 
                 doc = self.timer(self.db.get_doc_at_index, pipeline, index)
 
@@ -211,6 +221,7 @@ class Message:
             # get the server status
             # if we just have server info and we want a quick response
             if type(pipeline) is dict and fast:
+                self.logger.debug("Fast response")
                 # set all values to default
                 data["description"] = {"text": "..."}
                 data["players"] = {"online": 0, "max": 0}
@@ -221,6 +232,7 @@ class Message:
                 data["lastSeen"] = 0
             # if we have server ip and we want a quick response
             elif not fast:
+                self.logger.debug("Full response")
                 try:
                     status = self.timer(
                         self.server.update, host=data["ip"], port=data["port"]
@@ -242,14 +254,6 @@ class Message:
                         data["is_online"] = True
                     else:
                         data["is_online"] = False
-
-                    # get the domain name of the ip
-                    try:
-                        domain = socket.gethostbyaddr(data["ip"])[0]
-                        if domain != data["ip"] and data["ip"] not in domain:
-                            data["hostname"] = domain
-                    except socket.herror:
-                        pass
                 except Exception as e:
                     self.logger.print(f"Full traceback: {traceback.format_exc()}")
                     self.logger.error("Error: " + str(e))
@@ -298,14 +302,19 @@ class Message:
             del data["index"]
 
             # get the server icon as bytes
-            if "favicon" in data.keys():
+            if "favicon" in data.keys() and data["favicon"] is not None:
                 self.logger.debug("Adding favicon")
+                tStart = time.perf_counter()
                 bits = (
                     data["favicon"].split(",")[1]
                     if "," in data["favicon"]
                     else data["favicon"]
                 )
                 favicon = base64.b64decode(bits)
+                tEnd = time.perf_counter()
+                self.logger.debug(
+                    f"Decoded favicon in {self.logger.auto_range_time(tEnd - tStart)}"
+                )
             else:
                 self.logger.debug("Adding default favicon")
                 # copy the bytes from 'DefFavicon.png' to 'favicon.png'
@@ -316,6 +325,7 @@ class Message:
 
             # create the embed
             self.logger.debug("Creating embed")
+            tStart = time.perf_counter()
             data["description"] = self.text.motd_parse(data["description"])
             domain = ""
             if "hostname" in data:
@@ -326,7 +336,15 @@ class Message:
                 if data["is_online"] is None
                 else ("🟢" if data["is_online"] else "🔴")
             )  # yellow if unknown, green if online, red if offline
-            total_servers = self.db.count(pipeline)
+            total_servers = (
+                (
+                    pipeline[-1]["$limit"]
+                    if "$limit" in pipeline[-1]
+                    else self.db.count(pipeline)
+                )
+                if type(pipeline) is list
+                else 1
+            )
 
             # create the base embed
             embed = self.standard_embed(
@@ -342,6 +360,11 @@ class Message:
                 f"Showing {index + 1} of {total_servers} servers",
             )
             embed.timestamp = self.text.time_now()
+
+            tEnd = time.perf_counter()
+            self.logger.debug(
+                f"Created base embed in {self.logger.auto_range_time(tEnd - tStart)}"
+            )
 
             # -------------------
             # start adding fields
@@ -425,6 +448,7 @@ class Message:
                     inline=True,
                 )
 
+            tStart = time.perf_counter()
             # add possible streams
             twitch_count = 0
             if "sample" in data["players"]:
@@ -433,7 +457,10 @@ class Message:
                 for player in data["players"]["sample"]:
                     names.append(player["name"])
 
-                twitch_count = sum(await self.twitch.is_twitch_user(*names))
+                twitch_count = sum(
+                    await self.logger.async_timer(self.twitch.is_twitch_user, *names)
+                )
+                # twitch_count = sum(await self.twitch.is_twitch_user(*names))
 
                 if twitch_count > 0:
                     embed.add_field(
@@ -441,6 +468,11 @@ class Message:
                         value=f"{twitch_count} streams",
                         inline=True,
                     )
+
+            tEnd = time.perf_counter()
+            self.logger.debug(
+                f"Added twitch to embed in {self.logger.auto_range_time(tEnd - tStart)}"
+            )
 
             return {
                 "embed": embed,
@@ -532,6 +564,7 @@ class Message:
         pipeline: dict | list,
         msg: interactions.Message,
     ) -> None:
+        t_start = time.perf_counter()
         # first call the asyncEmbed function with fast
         stuff = await self.async_timer(
             self.async_embed, pipeline=pipeline, index=index, fast=True
@@ -568,6 +601,17 @@ class Message:
                 file=None,
             )
             return
+
+        t_end = time.perf_counter()
+
+        # we need to autoscale the units of time so that there are only up to 3 digits before the decimal point
+        seconds = t_end - t_start
+        timeDelta = self.logger.auto_range_time(seconds)
+
+        # add the time it took to load the server to the footer
+        stuff["embed"].set_footer(
+            f"{stuff['embed'].footer.text} | Loaded in {timeDelta}",
+        )
 
         # then send the embed
         await msg.edit(**stuff)
@@ -618,7 +662,11 @@ class Message:
             )
 
             # get the pipeline and index from the message
-            total = self.db.count(pipeline)
+            total = (
+                self.db.count(pipeline)
+                if "$limit" not in pipeline[-1]
+                else pipeline[-1]["$limit"]
+            )
 
             msg = await msg.edit(
                 embed=self.standard_embed(

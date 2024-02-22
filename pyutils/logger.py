@@ -86,6 +86,7 @@ class Logger:
         Args:
             debug (bool, optional): Show debugging. Defaults to False.
         """
+        self.__last_print = None
         self.DEBUG = debug
         self.logging = logging
         self.webhook = discord_webhook
@@ -95,8 +96,7 @@ class Logger:
             format="%(asctime)s %(levelname)s %(name)s: %(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("log.log", mode="a",
-                                 encoding="utf-8", delay=False),
+                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
             ],
         )
 
@@ -213,9 +213,15 @@ class Logger:
         stack_tr = self.stack_trace(inspect.stack())
         if not stack_tr.lower().startswith("logger."):
             msg = f"[{stack_tr}] {msg}"
-        sys.stdout = norm  # output to console
-        print(msg, **kwargs)
-        sys.stdout = self.out  # output to log.log
+
+        if (
+            self.__last_print != msg
+        ):  # prevent duplicate messages and spamming the console
+            sys.stdout = norm  # output to console
+            self.__last_print = msg
+            print(msg, **kwargs)
+            sys.stdout = self.out  # output to log.log
+
         if log:
             self.logging.info(msg)
 
@@ -260,7 +266,9 @@ class Logger:
         start = time.perf_counter()
         res = func(*args, **kwargs)
         end = time.perf_counter()
-        self.debug(f"Function {func.__name__} took {end - start} seconds")
+
+        tDelta = self.auto_range_time(end - start)
+        self.debug(f"Function {func.__name__} took {tDelta}")
         return res
 
     async def async_timer(self, func: callable, *args, **kwargs):
@@ -271,6 +279,37 @@ class Logger:
         start = time.perf_counter()
         res = await func(*args, **kwargs)
         end = time.perf_counter()
-        self.debug(
-            f"(ASYNC) Function {func.__name__} took {end - start} seconds")
+
+        tDelta = self.auto_range_time(end - start)
+        self.debug(f"(ASYNC) Function {func.__name__} took {tDelta}")
         return res
+
+    @staticmethod
+    def auto_range_time(seconds: float) -> str:
+        """
+        Returns a time string for a given number of seconds
+
+        Args:
+            seconds (float): The number of seconds
+
+        Returns:
+            str: The time string
+        """
+
+        units = {
+            "hr": str(int(seconds // 3600)),
+            "min": str(int(seconds // 60)),
+            "s": str(int(seconds)),
+            "ms": str(int(seconds * 1000)),
+            "us": str(int(seconds * 1000000)),
+            "ns": str(int(seconds * 1000000000)),
+        }
+
+        best = f"{units['ns']} ns"
+        units = sorted(units.items(), key=lambda x: len(x[1]))
+        for unit in units:
+            if unit[1] != "0":
+                best = unit
+                break
+
+        return f"{best[1]} {best[0]}"

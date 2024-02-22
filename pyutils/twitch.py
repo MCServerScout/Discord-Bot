@@ -164,21 +164,21 @@ class Twitch:
                 token_data = await response.json()
                 access_token = token_data["access_token"]
 
-        for group in zip_longest(*[iter(users)] * 100):
-            # Fetch user
-            headers = {
-                "Client-ID": self.client_id,
-                "Authorization": f"Bearer {access_token}",
-            }
-            params = "?" + "&".join([f"login={user}" if user else "" for user in group])
+            for group in zip_longest(*[iter(users)] * 100):
+                # Fetch user
+                headers = {
+                    "Client-ID": self.client_id,
+                    "Authorization": f"Bearer {access_token}",
+                }
+                params = "?" + "&".join(
+                    [f"login={user}" if user else "" for user in group]
+                )
 
-            async with aiohttp.ClientSession() as session, session.get(
-                users_url + params, headers=headers
-            ) as response:
-                data = await response.json()
+                async with session.get(users_url + params, headers=headers) as response:
+                    data = await response.json()
 
-            if "data" in data:
-                for user in data["data"]:
-                    out.append(bool(user))
+                if "data" in data:
+                    for user in data["data"]:
+                        out.append(bool(user))
 
         return out

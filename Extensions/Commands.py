@@ -234,7 +234,6 @@ class Commands(Extension):
             # default pipeline
             pipeline = [
                 copy.deepcopy(base_match),
-                {"$sample": {"size": 10000}},
             ]
 
             if player is not None:
@@ -531,6 +530,10 @@ class Commands(Extension):
                 pipeline[0]["$match"]["$and"].append({"whitelist": whitelisted})
 
             total = self.databaseLib.count(pipeline)
+            self.logger.debug(f"Got {total} servers, setting limit")
+
+            # let's add the total to the pipeline as a limit to store the total
+            pipeline.append({"$limit": total})
 
             if total == 0:
                 await msg.edit(
