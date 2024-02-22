@@ -70,12 +70,14 @@ if DISCORD_TOKEN == "...":
 # ---------------------------------------------
 
 # error tracking
-sentry_sdk.init(
-    dsn=SENTRY_URI,
-    traces_sample_rate=1.0,
-    profiles_sample_rate=0.6,
-    integrations=[AioHttpIntegration()],
-) if SENTRY_URI != "..." else None
+if SENTRY_URI != "...":
+    sentry_sdk.init(
+        dsn=SENTRY_URI,
+        traces_sample_rate=1.0,
+        profiles_sample_rate=0.6,
+        integrations=[AioHttpIntegration()],
+    )
+    print("Sentry initialized")
 
 # test the db connection
 print("Connecting to database...")
@@ -102,7 +104,7 @@ try:
         num_docs = float(num_docs[0]) * 10 ** (power % 3)
         num_docs = f"{num_docs}{units[power // 3]}"
 
-    print(f"Database has {num_docs[0]} documents")
+    print(f"Database has {num_docs} documents")
 except ServerSelectionTimeoutError:
     print("Error connecting to database")
     print(traceback.format_exc())
@@ -141,8 +143,8 @@ bot = Client(
     send_command_tracebacks=False,
 )
 bot.load_extension(
-    "interactions.ext.sentry", token=SENTRY_TOKEN, dsn=SENTRY_URI
-) if SENTRY_URI != "..." and SENTRY_TOKEN != "..." else None
+    "interactions.ext.sentry", SENTRY_URI
+) if SENTRY_URI != "..." else None
 
 RED = 0xFF0000  # error
 GREEN = 0x00FF00  # success
