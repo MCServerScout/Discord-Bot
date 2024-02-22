@@ -279,7 +279,6 @@ class Logger:
         start = time.perf_counter()
         res = await func(*args, **kwargs)
         end = time.perf_counter()
-
         tDelta = self.auto_range_time(end - start)
         self.debug(f"(ASYNC) Function {func.__name__} took {tDelta}")
         return res
