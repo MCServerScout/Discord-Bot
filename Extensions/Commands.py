@@ -26,6 +26,14 @@ from interactions import (
 )
 from interactions.ext.paginators import Paginator
 
+from pyutils.database import Database
+from pyutils.logger import Logger
+from pyutils.message import Message
+from pyutils.minecraft import Minecraft
+from pyutils.player import Player
+from pyutils.server import Server
+from pyutils.text import Text
+from pyutils.twitch import Twitch
 from .Colors import *  # skipcq: PYL-W0614
 
 base_match = {
@@ -43,15 +51,15 @@ class Commands(Extension):
     def __init__(
         self,
         *_,
-        mcLib,
-        messageLib,
-        playerLib,
-        logger,
-        databaseLib,
-        serverLib,
-        twitchLib,
+        mcLib: "Minecraft",
+        messageLib: "Message",
+        playerLib: "Player",
+        logger: "Logger",
+        databaseLib: "Database",
+        serverLib: "Server",
+        twitchLib: "Twitch",
         Scanner,
-        textLib,
+        textLib: "Text",
         cstats,
         azure_client_id,
         azure_redirect_uri,
@@ -226,7 +234,6 @@ class Commands(Extension):
             # default pipeline
             pipeline = [
                 copy.deepcopy(base_match),
-                {"$sample": {"size": 10000}},
             ]
 
             if player is not None:
@@ -490,6 +497,30 @@ class Commands(Extension):
                         return
                 else:
                     pipeline[0]["$match"]["$and"].append({"ip": ip})
+
+                    # if the server is not in the db, then try and add it
+                    if self.databaseLib.count(pipeline) == 0:
+                        self.logger.print(
+                            f"Server {ip} not in the database, trying to add it"
+                        )
+                        doc = self.serverLib.update(host=ip)
+                        if doc is None:
+                            await msg.edit(
+                                embed=self.messageLib.standard_embed(
+                                    title="Error",
+                                    description="The server is offline and is not in the database.",
+                                    color=RED,
+                                ),
+                                components=self.messageLib.buttons(),
+                            )
+                            self.logger.print(
+                                f"Server {ip} not in the database and is offline"
+                            )
+                            return
+                        else:
+                            self.logger.print(
+                                f"Server {ip} not in the database, added it"
+                            )
             if country is not None:
                 pipeline[0]["$match"]["$and"].append({"geo": {"$exists": True}})
                 pipeline[0]["$match"]["$and"].append(
@@ -499,6 +530,10 @@ class Commands(Extension):
                 pipeline[0]["$match"]["$and"].append({"whitelist": whitelisted})
 
             total = self.databaseLib.count(pipeline)
+            self.logger.debug(f"Got {total} servers, setting limit")
+
+            # let's add the total to the pipeline as a limit to store the total
+            pipeline.append({"$limit": total})
 
             if total == 0:
                 await msg.edit(
@@ -1212,7 +1247,7 @@ class Commands(Extension):
                 value="```css\n"
                 + "\n".join(
                     [
-                        f"{self.textLib.protocol_str(i['_id'])}: {round(i['count'] / total_servers * 100, 2)}%"
+                        f"{await self.mcLib.vers_p2n(i['_id'])}: {round(i['count'] / total_servers * 100, 2)}%"
                         for i in top_five_version_ids
                     ]
                 )

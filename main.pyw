@@ -24,7 +24,11 @@ from pymongo.errors import ServerSelectionTimeoutError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 import pyutils
-from pyutils.scanner import Scanner
+
+if os.name == "unix":
+    from pyutils.scanner import Scanner
+else:
+    Scanner = None
 
 (
     DISCORD_WEBHOOK,
@@ -97,6 +101,8 @@ try:
         power = int(num_docs[1])
         num_docs = float(num_docs[0]) * 10 ** (power % 3)
         num_docs = f"{num_docs}{units[power // 3]}"
+
+    print(f"Database has {num_docs[0]} documents")
 except ServerSelectionTimeoutError:
     print("Error connecting to database")
     print(traceback.format_exc())

@@ -35,10 +35,10 @@ class Server:
             return self._type
 
     class Player(dict):
-        def __init__(self, name: str, _id: str, lastSeen: int = 0):
-            self.name = name
-            self.id = _id
-            self.lastSeen = lastSeen
+        def __init__(self, **kwargs):
+            self.name = kwargs["name"]
+            self.id = kwargs["id"]
+            self.lastSeen = kwargs["lastSeen"] if "lastSeen" in kwargs else 0
             dict.__init__(self, name=self.name, id=self.id, lastSeen=self.lastSeen)
 
         def __repr__(self):

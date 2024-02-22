@@ -1,9 +1,9 @@
 mcstatus~=11.1
 pymongo~=4.6
-aiohttp~=3.9
+aiohttp~=3.9.4rc0
 asyncio~=3.4
 requests~=2.31
-cryptography~=41.0
+cryptography~=42.0
 ipinfo~=5.0
 netaddr~=0.9
 minecraft_data~=3.20
@@ -13,3 +13,4 @@ kaleido~=0.2
 discord-py-interactions~=5.11
 pytest~=7.4
 interactions-dynamic-help~=1.0
+sentry_sdk~=1.40

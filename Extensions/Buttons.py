@@ -24,7 +24,6 @@ from interactions.client.utils import (
     AnsiColors,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -279,27 +278,17 @@ class Buttons(Extension):
                     body = f"UUID: {player.id}"
                     uuid_int = int(player.id.replace("-", ""), 16)
 
-                    is_valid = all(
-                        (
-                            len(player.name) < 16,
-                            len(player.id.replace("-", "")) == 32,
-                            uuid_int > 0,
-                            player.lastSeen != 0,
-                        )
+                    validations = (
+                        len(player.name) < 16,
+                        len(player.id.replace("-", "")) == 32,
+                        "§" not in player.name,
+                        uuid_int > 0,
+                        player.lastSeen != 0,
                     )
-                    self.logger.debug(
-                        f"Valid: {is_valid}"
-                        + str(
-                            (
-                                len(player.name) < 16,
-                                len(player.id.replace("-", "")) == 32,
-                                uuid_int > 0,
-                                player.lastSeen != 0,
-                            )
-                        )
-                        if not is_valid
-                        else ""
-                    )
+
+                    is_valid = all(validations)
+                    if not is_valid:
+                        self.logger.debug(f"Valid: {is_valid} {validations}")
 
                     body = ansi_block(
                         ansi_format(
@@ -518,6 +507,9 @@ class Buttons(Extension):
                     case "players":
                         sort_method = {"$sort": {"players.online": -1}}
                         extra = [{"$match": {"players.online": {"$exists": True}}}]
+                    case "limit":
+                        sort_method = {"$sort": {"players.max": -1}}
+                        extra = [{"$match": {"players.max": {"$exists": True}}}]
                     case "sample":
                         sort_method = {"$sort": {"players.sampleSize": -1}}
                         extra = [

@@ -106,7 +106,7 @@ The docs are in the following json format:
 ```json
 {
   "_id": {
-    "$oid": "1534978d9f542e403cfa5026"
+    "$oid": "ffffffffffffffffffffffff"
   },
   "description": {
     "text": "A Minecraft Server"
@@ -115,7 +115,7 @@ The docs are in the following json format:
   "hasFavicon": false,
   "hasForgeData": true,
   "ip": "127.0.0.1",
-  "lastSeen": 1682995170,
+  "lastSeen": 1234567890,
   "cracked": false,
   "players": {
     "max": 20,
@@ -128,7 +128,7 @@ The docs are in the following json format:
       }
     ]
   },
-  "port": 25567,
+  "port": 25565,
   "version": {
     "name": "1.16.5",
     "protocol": 754
@@ -148,7 +148,7 @@ The docs are in the following json format:
   "whitelist": null,
   "domain": "example.com"
 }
-  ```
+```
 
 </details>
 

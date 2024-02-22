@@ -6,7 +6,6 @@ from typing import List, Optional
 import pymongo
 import sentry_sdk
 from pymongo.results import UpdateResult
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -29,7 +28,8 @@ class Database:
         self,
         pipeline: list,
         index: int = 0,
-    ) -> Optional[dict]:
+        cursor: bool = False,
+    ) -> Optional[dict | pymongo.cursor.Cursor]:
         try:
             tStart = time.perf_counter()
             new_pipeline = pipeline.copy()
@@ -44,7 +44,7 @@ class Database:
                     del new_pipeline[i]
                 if "$sample" in stage:
                     del new_pipeline[i]
-                    new_pipeline.insert(i, {"$sample": {"size": 1}})
+                    new_pipeline.insert(i, {"$sample": {"size": 2}})
 
             if index > 0:
                 new_pipeline.append({"$limit": index + 1})
@@ -54,7 +54,14 @@ class Database:
 
             result = self.logger.timer(
                 self.col.aggregate, new_pipeline, allowDiskUse=True
-            ).try_next()
+            )
+            if not cursor:
+                result = result.try_next()
+                if result is None:
+                    self.logger.warning(
+                        f"No document found at index: {index} in pipeline: {pipeline} -> {new_pipeline}"
+                    )
+                    return None
 
             sentry_sdk.set_measurement(
                 "duration", time.perf_counter() - tStart, "seconds"
@@ -135,17 +142,10 @@ class Database:
             if "$sample" in stage:
                 limit = {"$limit": stage["$sample"]["size"]}
 
-        new_pipeline = [
-            match,
-            limit,
-            {"$group": {"_id": None, "count": {"$sum": 1}}},
-            {"$project": {"_id": 0, "count": 1}},
-        ]
-
-        result = self.col.aggregate(new_pipeline, allowDiskUse=True).try_next()
+        result = min(self.col.count_documents(match["$match"]), limit["$limit"])
         if result is None:
             return 0
-        return result["count"]
+        return result
 
     def get_all_keys(self) -> List[str]:
         """Gets all the keys in the database"""

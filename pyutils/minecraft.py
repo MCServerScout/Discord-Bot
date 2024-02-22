@@ -1117,14 +1117,15 @@ class Minecraft:
         async with aiohttp.ClientSession() as httpSession:
             async with httpSession.get(versions_url) as res:
                 if res.status == 200:
-                    versions = await res.json()
+                    versions = await res.text()
+                    versions = json.loads(versions)
                 else:
                     self.logger.error("Failed to get versions")
                     return -1
 
         for i in versions.values():
             if i["name"] == vers_name:
-                return i["protocol"]
+                return i["protocol_id"]
 
     async def vers_p2n(self, vers: int) -> str:
         """
@@ -1140,13 +1141,14 @@ class Minecraft:
         async with aiohttp.ClientSession() as httpSession:
             async with httpSession.get(versions_url) as res:
                 if res.status == 200:
-                    versions = await res.json()
+                    versions = await res.text()
+                    versions = json.loads(versions)
                 else:
                     self.logger.error("Failed to get versions")
                     return -1
 
         for i in versions.values():
-            if i["protocol"] == vers:
+            if i["protocol_id"] == vers:
                 return i["name"]
 
     @staticmethod
