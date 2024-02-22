@@ -10,7 +10,6 @@ import aiohttp
 import interactions
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -183,7 +182,7 @@ class Message:
                 )
                 tEnd = time.perf_counter()
                 self.logger.debug(
-                    f"Got num_docs in {self.logger.auto_range_time(tEnd - tStart)}"
+                    f"Got num_docs in {self.logger.auto_range_time(tEnd - tStart)}: {num_docs}"
                 )
 
                 if num_docs == 0:
@@ -337,6 +336,7 @@ class Message:
                 if data["is_online"] is None
                 else ("🟢" if data["is_online"] else "🔴")
             )  # yellow if unknown, green if online, red if offline
+            tStart = time.perf_counter()
             total_servers = (
                 (
                     pipeline[-1]["$limit"]
@@ -345,6 +345,10 @@ class Message:
                 )
                 if type(pipeline) is list
                 else 1
+            )
+            tEnd = time.perf_counter()
+            self.logger.debug(
+                f"Got total_servers in {self.logger.auto_range_time(tEnd - tStart)}: {total_servers}"
             )
 
             # create the base embed

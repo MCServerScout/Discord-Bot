@@ -73,6 +73,7 @@ if DISCORD_TOKEN == "...":
 if SENTRY_URI != "...":
     sentry_sdk.init(
         dsn=SENTRY_URI,
+        enable_tracing=True,
         traces_sample_rate=1.0,
         profiles_sample_rate=0.6,
         integrations=[AioHttpIntegration()],

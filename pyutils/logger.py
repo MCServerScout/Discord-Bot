@@ -210,6 +210,7 @@ class Logger:
 
     def print(self, *args, log=True, **kwargs):
         msg = " ".join([str(arg) for arg in args])
+        msg = filter_msg(msg)
         stack_tr = self.stack_trace(inspect.stack())
         if not stack_tr.lower().startswith("logger."):
             msg = f"[{stack_tr}] {msg}"
