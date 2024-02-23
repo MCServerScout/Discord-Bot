@@ -87,9 +87,7 @@ def test_indexed_doc():
     """Test getting a doc at an index"""
 
     try:
-        doc = pyDB.get_doc_at_index(
-            [{"$match": {}}]
-        )
+        doc = pyDB.get_doc_at_index([{"$match": {}}])
     except Exception:
         print("Error getting doc at index")
         print(traceback.format_exc())
