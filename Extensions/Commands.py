@@ -273,7 +273,6 @@ class Commands(Extension):
                 pipeline[0]["$match"]["$and"].append(
                     {"players.sample.id": uuid},
                 )
-
             if version is not None:
                 if version.isnumeric() and "." not in version:
                     pipeline[0]["$match"]["$and"].append(

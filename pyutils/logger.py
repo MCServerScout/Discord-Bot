@@ -270,6 +270,12 @@ class Logger:
 
         tDelta = self.auto_range_time(end - start)
         self.debug(f"Function {func.__name__} took {tDelta}")
+
+        if self.sentry_sdk is not None:
+            with sentry_sdk.start_transaction(
+                name=f"{func.__name__}", op=f"{func.__name__}"
+            ):
+                sentry_sdk.set_context("timing", {"duration": tDelta})
         return res
 
     async def async_timer(self, func: callable, *args, **kwargs):
@@ -282,6 +288,12 @@ class Logger:
         end = time.perf_counter()
         tDelta = self.auto_range_time(end - start)
         self.debug(f"(ASYNC) Function {func.__name__} took {tDelta}")
+
+        if self.sentry_sdk is not None:
+            with sentry_sdk.start_transaction(
+                name=f"{func.__name__}", op=f"{func.__name__}"
+            ):
+                sentry_sdk.set_context("timing", {"duration": tDelta})
         return res
 
     @staticmethod

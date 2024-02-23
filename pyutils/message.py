@@ -8,6 +8,7 @@ from typing import List, Optional, Tuple
 
 import aiohttp
 import interactions
+import sentry_sdk
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
 # noinspection PyProtectedMember
@@ -523,6 +524,12 @@ class Message:
             with open("pipeline.ason", "w") as f:
                 f.write(json_util.dumps(pipeline, indent=4))
             self.logger.error("Pipeline saved to `pipeline.ason`")
+
+            with sentry_sdk.configure_scope() as scope:
+                scope.add_attachment(
+                    bytes=bytes(json_util.dumps(pipeline, indent=4)),
+                    filename="pipeline.ason",
+                )
             return None
 
     def standard_embed(

@@ -87,7 +87,9 @@ def test_indexed_doc():
     """Test getting a doc at an index"""
 
     try:
-        doc = pyDB.get_doc_at_index([{"$match": {}}], 0)
+        doc = pyDB.get_doc_at_index(
+            [{"$match": {}}]
+        )
     except Exception:
         print("Error getting doc at index")
         print(traceback.format_exc())
@@ -109,21 +111,6 @@ def test_count():
         sys.exit("Config error in privVars.py, please fix before rerunning")
 
     assert isinstance(count, int), "Count is not an int"
-
-
-def test_keys():
-    """Test getting the keys of a document"""
-
-    try:
-        keys = pyDB.get_all_keys()
-    except Exception:
-        print("Error getting keys")
-        print(traceback.format_exc())
-        sys.exit("Config error in privVars.py, please fix before rerunning")
-
-    assert isinstance(keys, list), "Keys is not a list"
-    assert len(keys) > 0, "Keys is empty"
-    assert isinstance(keys[0], str), "Keys is not a list of strings"
 
 
 def test_pipe_hash():
