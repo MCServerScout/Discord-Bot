@@ -14,3 +14,4 @@ discord-py-interactions~=5.11
 pytest~=7.4
 interactions-dynamic-help~=1.0
 sentry_sdk~=1.40.5
+scapy~=2.5.0

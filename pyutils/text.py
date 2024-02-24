@@ -267,6 +267,9 @@ class Text:
             length (int): character length of bar
             fill (str): bar fill character
         """
+        if total == 0:
+            return f"\r{prefix} |{fill * length}| {100}% {suffix}"
+
         decimals = 2
         percent = ("{0:." + str(decimals) + "f}").format(
             100 * (iteration / float(total))

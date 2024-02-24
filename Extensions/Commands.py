@@ -1092,8 +1092,11 @@ class Commands(Extension):
                 {"$group": {"_id": None, "total": {"$sum": "$players.online"}}},
             ]
             total_players = self.databaseLib.aggregate(pipeline)
-            if total_players is not None:
-                total_players = total_players.try_next()["total"]
+            if (
+                total_players is not None
+                and (total_players := total_players.try_next()) is not None
+            ):
+                total_players = total_players["total"]
             else:
                 total_players = 0
 
@@ -1112,14 +1115,18 @@ class Commands(Extension):
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
             total_sample_players = self.databaseLib.aggregate(pipeline)
-            if total_sample_players is not None:
-                total_sample_players = total_sample_players.try_next()["total"]
+            if (
+                total_sample_players is not None
+                and (total_sample_players := total_sample_players.try_next())
+                is not None
+            ):
+                total_sample_players = total_sample_players["total"]
             else:
                 total_sample_players = 0
 
             main_embed.add_field(
                 name="Logged Players",
-                value=f"{total_sample_players:,} ({round(total_sample_players / total_players * 100, 2)}%)",
+                value=f"{total_sample_players:,} ({round(total_sample_players / (total_players + 1e-10) * 100, 2)}%)",
                 inline=True,
             )
             msg = await msg.edit(
@@ -1138,8 +1145,11 @@ class Commands(Extension):
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
             total_real_players = self.databaseLib.aggregate(pipeline)
-            if total_real_players is not None:
-                total_real_players = total_real_players.try_next()["total"]
+            if (
+                total_real_players is not None
+                and (total_real_players := total_real_players.try_next()) is not None
+            ):
+                total_real_players = total_real_players["total"]
             else:
                 total_real_players = 0
 
@@ -1162,8 +1172,11 @@ class Commands(Extension):
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
             total_fake_players = self.databaseLib.aggregate(pipeline)
-            if total_fake_players is not None:
-                total_fake_players = total_fake_players.try_next()["total"]
+            if (
+                total_fake_players is not None
+                and (total_fake_players := total_fake_players.try_next()) is not None
+            ):
+                total_fake_players = total_fake_players["total"]
             else:
                 total_fake_players = 0
 
