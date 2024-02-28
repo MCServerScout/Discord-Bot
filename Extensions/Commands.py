@@ -1468,45 +1468,68 @@ class Commands(Extension):
                 {"$match": {"cracked": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            cracked = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
-            )
+            cracked = self.databaseLib.aggregate(pipeline)
+            if cracked is not None and (cracked := cracked.try_next()) is not None:
+                cracked = cracked["count"] / total_servers
+            else:
+                cracked = 0
 
             # get the percentage of servers that have a favicon
             pipeline = [
                 {"$match": {"hasFavicon": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            has_favicon = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
-            )
+            has_favicon = self.databaseLib.aggregate(pipeline)
+            if (
+                has_favicon is not None
+                and (has_favicon := has_favicon.try_next()) is not None
+            ):
+                has_favicon = has_favicon["count"] / total_servers
+            else:
+                has_favicon = 0
 
             # get the percentage of servers that have forge data
             pipeline = [
                 {"$match": {"hasForgeData": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            has_forge_data = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
-            )
+            has_forge_data = self.databaseLib.aggregate(pipeline)
+            if (
+                has_forge_data is not None
+                and (has_forge_data := has_forge_data.try_next()) is not None
+            ):
+                has_forge_data = has_forge_data["count"] / total_servers
+            else:
+                has_forge_data = 0
 
             # get the percentage of servers that are whitelisted
             pipeline = [
                 {"$match": {"whitelist": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            is_whitelist = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
-            )
+            is_whitelist = self.databaseLib.aggregate(pipeline)
+            if (
+                is_whitelist is not None
+                and (is_whitelist := is_whitelist.try_next()) is not None
+            ):
+                is_whitelist = is_whitelist["count"] / total_servers
+            else:
+                is_whitelist = 0
 
             # get the percentage of servers that enforce secure chat
             pipeline = [
                 {"$match": {"enforcesSecureChat": True}},
                 {"$group": {"_id": None, "count": {"$sum": 1}}},
             ]
-            enforces_secure_chat = (
-                list(self.databaseLib.aggregate(pipeline))[0]["count"] / total_servers
-            )
+            enforces_secure_chat = self.databaseLib.aggregate(pipeline)
+            if (
+                enforces_secure_chat is not None
+                and (enforces_secure_chat := enforces_secure_chat.try_next())
+                is not None
+            ):
+                enforces_secure_chat = enforces_secure_chat["count"] / total_servers
+            else:
+                enforces_secure_chat = 0
 
             data = [
                 {"label": "Cracked", "size": cracked * 100},
