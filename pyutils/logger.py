@@ -60,6 +60,12 @@ def filter_msg(msg: str) -> str | None:
             msg.startswith("[http_client."),
             re.match(r"^\s*\^\s*$", msg) is not None,
         )
+    ) and not any(
+        (
+            "exception" in msg.lower(),
+            "raised" in msg.lower(),
+            "error" in msg.lower(),
+        )
     ):
         return
     return msg
@@ -122,14 +128,27 @@ class Logger:
         else:
             self.sentry_sdk = None
 
-    @staticmethod
-    def stack_trace(stack):
+        self.v_stack = ()
+
+    def stack_trace(self, stack):
         """Returns a stack trace"""
-        return (
+        out = (
             stack[1].filename.replace("\\", "/").split("/")[-1].split(".")[0]
             + "."
             + f"{stack[1].function}"
         )
+        if any((v in out for v in self.v_stack)):
+            # get the full stack trace
+            out = "->".join(
+                [
+                    stack[-i].filename.replace("\\", "/").split("/")[-1].split(".")[0]
+                    + "."
+                    + f"{stack[-i].function}"
+                    for i in range(1, len(stack))
+                ]
+            )
+
+        return out
 
     def info(self, message):
         """Same level as print but no console output"""
@@ -140,10 +159,10 @@ class Logger:
         """Overload for log"""
         self.logging.log(*args, **kwargs)
 
-    def error(self, *message, **_):
+    def error(self, *message, **kwargs):
         message = " ".join([str(arg) for arg in message])
         message = f"[{self.stack_trace(inspect.stack())}] {message}"
-        self.logging.error(message)
+        self.logging.error(message, **kwargs)
         self.print(message, log=False)
 
     def critical(self, *message):
@@ -211,6 +230,10 @@ class Logger:
     def print(self, *args, log=True, **kwargs):
         msg = " ".join([str(arg) for arg in args])
         msg = filter_msg(msg)
+
+        if msg is None:
+            return
+
         stack_tr = self.stack_trace(inspect.stack())
         if not stack_tr.lower().startswith("logger."):
             msg = f"[{stack_tr}] {msg}"
@@ -219,7 +242,8 @@ class Logger:
             self.__last_print != msg
         ):  # prevent duplicate messages and spamming the console
             if (
-                self.__last_print is not None
+                isinstance(msg, str)
+                and self.__last_print is not None
                 and not self.__last_print.endswith("\r")
                 and (msg.endswith("\r") or ("end" in kwargs and kwargs["end"] != "\n"))
                 and msg.endswith("\n")
@@ -228,7 +252,9 @@ class Logger:
                 msg = "\n" + msg
 
             sys.stdout = norm  # output to console
-            self.__last_print = msg + ("" if "end" not in kwargs else kwargs["end"])
+            self.__last_print = str(msg) + (
+                "" if "end" not in kwargs else kwargs["end"]
+            )
             print(msg, **kwargs)
             sys.stdout = self.out  # output to log.log
 
