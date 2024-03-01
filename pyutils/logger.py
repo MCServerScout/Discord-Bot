@@ -218,8 +218,17 @@ class Logger:
         if (
             self.__last_print != msg
         ):  # prevent duplicate messages and spamming the console
+            if (
+                self.__last_print is not None
+                and not self.__last_print.endswith("\r")
+                and (msg.endswith("\r") or ("end" in kwargs and kwargs["end"] != "\n"))
+                and msg.endswith("\n")
+                and ("end" not in kwargs or kwargs["end"] == "\n")
+            ):
+                msg = "\n" + msg
+
             sys.stdout = norm  # output to console
-            self.__last_print = msg
+            self.__last_print = msg + ("" if "end" not in kwargs else kwargs["end"])
             print(msg, **kwargs)
             sys.stdout = self.out  # output to log.log
 

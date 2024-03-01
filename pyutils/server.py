@@ -110,12 +110,20 @@ class Server:
                         status["ip"]
                     ).all  # technically, \
                     # this uses requests and not aiohttp and is not asynchronous
-                    geo["lat"] = float(geo_data["latitude"])
-                    geo["lon"] = float(geo_data["longitude"])
-                    geo["country"] = str(geo_data["country"])
-                    geo["city"] = str(geo_data["city"])
-                    if "org" in geo_data:
-                        geo["org"] = str(geo_data["org"])
+                    if not "bogon" in geo_data or not geo_data["bogon"]:
+                        if "latitude" not in geo_data:
+                            self.logger.warning(
+                                f"Failed to get geo for {host}: {geo_data}"
+                            )
+
+                        geo["lat"] = float(geo_data["latitude"])
+                        geo["lon"] = float(geo_data["longitude"])
+                        geo["country"] = str(geo_data["country"])
+                        geo["city"] = str(geo_data["city"])
+                        if "org" in geo_data:
+                            geo["org"] = str(geo_data["org"])
+                    else:
+                        self.logger.warning(f"Failed to get geo for {host}: {geo_data}")
             except Exception as err:
                 self.logger.warning(f"Failed to get geo for {host}")
                 self.logger.print(err)
@@ -265,7 +273,7 @@ class Server:
                 self.logger.warning("Connection error")
                 return None
             elif res_id != 0:
-                self.logger.warning("Invalid packet ID received: " + str(res_id))
+                self.logger.warning("Invalid packet ID received: " + str(hex(res_id)))
                 return None
             elif res_id == 0:
                 length = response.read_varint()

@@ -2,6 +2,8 @@
 
 [![DeepSource](https://app.deepsource.com/gh/MCServerScout/Discord-Bot.svg/?label=resolved+issues&show_trend=true&token=WBeh3kT2daCAxLlfI8PhPJsD)](https://app.deepsource.com/gh/MCServerScout/Discord-Bot/?ref=repository-badge)
 
+[![WakaTime](https://wakatime.com/share/@Pilot1782/3bcbc4f9-b1d6-40e8-9892-35294148c2b1.png)](https://wakatime.com/@Pilot1782)
+
 This is a Discord bot that I made for my friends and me to use in our Discord server.
 It is a work in progress, and I will be adding more features as time goes on.
 
@@ -13,7 +15,7 @@ It is a work in progress, and I will be adding more features as time goes on.
 - List streamers that are currently streaming on a server
 - Show stats about the database
 - Attempt to join premium servers to test a whitelist
-- Quickly scan all ipv4 addresses for servers (separate program)
+- Quickly scan all ipv4 addresses for servers (separate program in `scanners/...`)
 - Server information:
   - Version (name/protocol)
   - Players (online/max/uuids)

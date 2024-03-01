@@ -1,5 +1,6 @@
 import datetime
 import re
+import traceback
 
 import unicodedata
 
@@ -215,37 +216,59 @@ class Text:
         Returns:
             dict: The parsed motd dict
         """
-        text = ""
-        if "text" in motd:
-            text += motd["text"]
+        try:
 
-        if "extra" in motd:
-            for ext in motd["extra"]:
-                if "color" in ext:
-                    text += self.color_mine(color=ext["color"]) + ext["text"]
-                else:
-                    text += ext["text"]
+            def parse_extra(extra):
+                text = ""
+                last_color = ""
+                for ext in extra:
+                    if "extra" in ext:
+                        text += parse_extra(ext["extra"])
+                    else:
+                        if "color" in ext:
+                            if ext["color"] != last_color:
+                                last_color = ext["color"]
+                                text += self.color_mine(color=ext["color"])
+                            text += ext["text"]
+                        elif "text" in ext:
+                            text += ext["text"]
+                        elif isinstance(ext, str):
+                            text += ext
+                return text
 
-        if type(motd) is str:
-            text = motd
+            text = ""
+            if "text" in motd:
+                text += motd["text"]
 
-        if text == "":
-            text = "Unknown"
+            if "extra" in motd:
+                text += parse_extra(motd["extra"])
 
-        # remove bad chars
-        chars = ["`", "@"]
-        for char in chars:
-            text = text.replace(char, "")
+            if type(motd) is str:
+                text = motd
 
-        # replace "digit.digit.digit.digit" with "x.x.x.x"
-        text = re.sub(r"\d+\.\d+\.\d+\.\d+", "x.x.x.x", text)
+            if text == "":
+                text = "Unknown"
 
-        if text.startswith("motd="):
-            text = text[5:]
+            # remove bad chars
+            chars = ["`", "@"]
+            for char in chars:
+                text = text.replace(char, "")
 
-        return {
-            "text": text,
-        }
+            # replace "digit.digit.digit.digit" with "x.x.x.x"
+            text = re.sub(r"\d+\.\d+\.\d+\.\d+", "x.x.x.x", text)
+
+            if text.startswith("motd="):
+                text = text[5:]
+
+            return {
+                "text": text,
+            }
+        except TypeError:
+            self.logger.error(f"Failed to parse motd: TypeError (motd: {motd})")
+            self.logger.error(traceback.format_exc())
+            return {
+                "text": "Unknown",
+            }
 
     @staticmethod
     def percent_bar(
