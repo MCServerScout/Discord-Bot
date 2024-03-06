@@ -265,7 +265,6 @@ class Server:
             try:
                 response = connection.read_buffer()
             except socket.error:
-                self.logger.warning("Connection error")
                 return None
             res_id = response.read_varint()
 

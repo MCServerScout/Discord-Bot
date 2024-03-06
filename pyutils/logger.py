@@ -229,10 +229,15 @@ class Logger:
 
     def print(self, *args, log=True, **kwargs):
         msg = " ".join([str(arg) for arg in args])
+        msg = str(msg)
         msg = filter_msg(msg)
 
         if msg is None:
             return
+
+        if "end" in kwargs:
+            msg += kwargs["end"]
+            kwargs["end"] = ""
 
         stack_tr = self.stack_trace(inspect.stack())
         if not stack_tr.lower().startswith("logger."):
@@ -241,17 +246,10 @@ class Logger:
         if (
             self.__last_print != msg
         ):  # prevent duplicate messages and spamming the console
-            if (
-                isinstance(msg, str)
-                and self.__last_print is not None
-                and not self.__last_print.endswith("\r")
-                and (msg.endswith("\r") or ("end" in kwargs and kwargs["end"] != "\n"))
-                and msg.endswith("\n")
-                and ("end" not in kwargs or kwargs["end"] == "\n")
-            ):
-                msg = "\n" + msg
-
             sys.stdout = norm  # output to console
+            if self.__last_print is not None and self.__last_print.endswith("\r"):
+                print(f"{' ' * len(self.__last_print)}\r", end="")
+
             self.__last_print = str(msg) + (
                 "" if "end" not in kwargs else kwargs["end"]
             )
@@ -332,30 +330,31 @@ class Logger:
         return res
 
     @staticmethod
-    def auto_range_time(seconds: float) -> str:
+    def auto_range_time(seconds: float, digits: int = 0) -> str:
         """
         Returns a time string for a given number of seconds
 
         Args:
             seconds (float): The number of seconds
+            digits (int, optional): The number of digits to round to. Defaults to 0.
 
         Returns:
             str: The time string
         """
 
         units = {
-            "hr": str(int(seconds // 3600)),
-            "min": str(int(seconds // 60)),
-            "s": str(int(seconds)),
-            "ms": str(int(seconds * 1000)),
-            "us": str(int(seconds * 1000000)),
-            "ns": str(int(seconds * 1000000000)),
+            "hr": str(round(seconds // 3600, digits)),
+            "min": str(round(seconds // 60, digits)),
+            "s": str(round(seconds, digits)),
+            "ms": str(round(seconds * 1000, digits)),
+            "us": str(round(seconds * 1000000, digits)),
+            "ns": str(round(seconds * 1000000000, digits)),
         }
 
         best = f"{units['ns']} ns"
         units = sorted(units.items(), key=lambda x: len(x[1]))
         for unit in units:
-            if unit[1] != "0":
+            if unit[1] != "0" and unit[1] != "0.0":
                 best = unit
                 break
 

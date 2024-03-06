@@ -34,6 +34,14 @@ def check_foo_packets(name: str):
                 f'"id": {expected_id},' in content
             ), f"Expected id to be {expected_id} in {file}"
 
+            assert (
+                "def __info(self):" in content,
+            ), f"Expected __info method to be in {file}"
+
+            assert (
+                "def __dataTypes(self):" in content,
+            ), f"Expected __dataTypes method to be in {file}"
+
     return 1
 
 

@@ -1,12 +1,14 @@
+import asyncio
 import ctypes
 import datetime
-import random
+import itertools
 import socket
+import struct
 import sys
 import time
 import traceback
-from multiprocessing.pool import ThreadPool
 from threading import Thread
+from typing import Iterator
 
 import numpy as np
 import sentry_sdk
@@ -16,6 +18,7 @@ from pymongo.errors import ServerSelectionTimeoutError
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 from pyutils import Utils
+from pyutils.pycraft2.connector import MCSocket
 
 (
     DISCORD_WEBHOOK,
@@ -83,35 +86,47 @@ utils = Utils(
     ssdk=((sentry_sdk,),),
 )
 logger = utils.logger
-databaseLib = utils.database
-playerLib = utils.player
-messageLib = utils.message
-twitchLib = utils.twitch
-textLib = utils.text
 serverLib = utils.server
-mcLib = utils.mc
 
 logger.print("Utils loaded")
+
+# Helpers
+
+
+def grouper(iterator: Iterator, n: int) -> Iterator[list]:
+    while chunk := list(itertools.islice(iterator, n)):
+        yield chunk
+
+
+def is_admin():
+    try:
+        return ctypes.windll.shell32.IsUserAnAdmin()
+    except Exception:
+        return False
 
 
 class IPGenerator:
     def __init__(self, mask: str, port_range: tuple[int] = (25560, 25570)):
-        self.num_ips = IPNetwork(mask).size
+        self.num_ips = IPNetwork(mask).size * (port_range[1] - port_range[0])
+        self.num_ports = port_range[1] - port_range[0]
 
         # the ips are stored as integers for efficiency
         # they are a series of ints from net.first to net.first + net.size
-        self.ips = np.arange(self.num_ips, dtype="uint32") + int(IPNetwork(mask).first)
+        self.addrs = np.arange(self.num_ips, dtype=np.uint64) + int(
+            IPNetwork(mask).first
+        )
 
         self.port_range = port_range
 
         # make the ips list duplicate for the number of ports
-        self.ips = np.repeat(self.ips, len(range(*port_range)))
-        self.ports = list(range(*port_range))
-        random.shuffle(self.ports)
-        np.random.shuffle(self.ips)
+        self.addrs = np.repeat(self.addrs, self.num_ports) * 100_000
+        self.ports = np.arange(*port_range, dtype=np.uint64)
+        self.ports = np.tile(self.ports, self.num_ips)
+        self.addrs = self.addrs.astype(np.uint64)
+        self.addrs += self.ports
+        np.random.shuffle(self.addrs)
 
-        self.used_addr = set()
-        self.valid_addr = set()
+        self.valid_addr = np.array([], dtype=np.uint64)
         self.num_servers = 0
         self.num_mc_servers = 0
 
@@ -119,38 +134,16 @@ class IPGenerator:
         return self
 
     def __next__(self):
-        if len(self.ips) == 0:
-            raise StopIteration
-        ip: int = self.ips[0]
-        self.ips = self.ips[1:]
-        port = random.choice(self.ports)
-        if ip is None:
+        if len(self.addrs) == 0:
             raise StopIteration
 
-        ip = self.__int2ip(ip)
+        addr = self.addrs[0]
+        self.addrs = self.addrs[1:]
 
-        if not self.__can_exclude(f"{ip}:{port}"):
-            for port in self.ports:
-                addr = f"{ip}:{port}"
-                if self.__can_exclude(addr):
-                    self.__exclude(addr)
-                    return addr
-            raise StopIteration
-        else:
-            addr = f"{ip}:{port}"
-            self.__exclude(addr)
-            return addr
+        return self.int2addr(addr)
 
-    def __exclude(self, addr):
-        # do some checks to ensure efficient exclusion
-        assert self.__can_exclude(addr)
-        self.used_addr.add(addr)
-
-    def __can_exclude(self, addr):
-        """
-        This function checks if the address can be excluded from the generator
-        """
-        return addr not in self.used_addr
+    def __getitem__(self, index):
+        return self.int2addr(self.addrs[index])
 
     def validate(self, addr: str | tuple[str, int]):
         """
@@ -159,19 +152,26 @@ class IPGenerator:
         if isinstance(addr, tuple):
             addr = f"{addr[0]}:{addr[1]}"
 
-        self.valid_addr.add(addr)
         self.num_servers += 1
+
+        _addr = self.__addr2int(addr)
+
+        self.valid_addr = np.append(self.valid_addr, _addr)
 
     def get_valid(self):
         """
         This function returns a valid address
         """
-        return self.valid_addr.pop()
+        if self.valid_addr.size == 0:
+            return None
+
+        addr = self.valid_addr[0]
+        self.valid_addr = self.valid_addr[1:]
+        return self.int2addr(addr)
 
     def cancel(self):
-        self.valid_addr.clear()
-        self.used_addr.clear()
-        self.ips = np.array([])
+        self.valid_addr = np.array([], dtype=np.uint64)
+        self.addrs = np.array([], dtype=np.uint64)
 
     @staticmethod
     def __ip2int(ip):
@@ -182,13 +182,7 @@ class IPGenerator:
         :return: int
         """
         # ip -> hex -> bytes -> int
-        return int(
-            b"0x"
-            + b"".join(
-                bytes(f"{hex(i).split('x')[1]:<2}", "utf-8") for i in ip.split(".")
-            ),
-            0,
-        )
+        return struct.unpack("!L", socket.inet_aton(ip))[0]
 
     @staticmethod
     def __int2ip(ip):
@@ -202,52 +196,212 @@ class IPGenerator:
         if isinstance(ip, np.uint32):
             ip = int(ip)
 
-        return ".".join(tuple((str(int(ip.to_bytes(4, "big")[i])) for i in range(4))))
+        return socket.inet_ntoa(struct.pack("!L", ip))
+
+    def __addr2int(self, addr: str):
+        """
+        This function converts an address to an integer
+
+        :param addr: str
+        :return: int
+        """
+        ip, port = addr.split(":")
+        ip = self.__ip2int(ip)
+        port = int(port)
+
+        return ip * 100_000 + port
+
+    def int2addr(self, addr: int):
+        """
+        This function converts an integer to an address
+
+        :param addr: int
+        :return: str
+        """
+        if (
+            isinstance(addr, np.uint64)
+            or isinstance(addr, np.uint32)
+            or isinstance(addr, np.float64)
+        ):
+            addr = int(addr)
+
+        ip = int(addr / 100_000)
+        port = addr - ip * 100_000
+
+        ip = self.__int2ip(ip)
+
+        return f"{ip}:{port}"
 
 
-def scan_range(generator: IPGenerator, timeout: float = 0.2):
+# Pingers
+
+
+async def ping(addr: tuple[str, int], timeout: float = 1):
+    """
+    This function pings a server
+
+    :param addr: tuple[str, int] The address to ping
+    :param timeout: float The timeout for the ping
+    :return: dict
+    """
+    if isinstance(addr, str):
+        addr = addr.split(":")
+        addr[1] = int(addr[1])
+
+    ip, port = addr
+
+    if ip.split(".")[-1] in ("0", "255"):
+        return False
+
+    try:
+        await asyncio.wait_for(asyncio.open_connection(ip, port), timeout)
+        logger.print(f"Connected to {ip}:{port}{' ' * 10}")
+        return True
+    except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+        return False
+
+
+async def mcping(addr: tuple[str, int]):
+    """
+    This function pings a server
+
+    :param addr: tuple[str, int] The address to ping
+    :return: dict
+    """
+    if isinstance(addr, str):
+        addr = addr.split(":")
+        addr[1] = int(addr[1])
+
+    ip, port = addr
+
+    if ip.split(".")[-1] in ("0", "255"):
+        return False
+
+    try:
+        p = await MCSocket(ip, port)
+
+        await p.handshake_status(765)
+        await p.status_request()
+
+        return True
+    except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+        return False
+
+
+# Scanners
+
+
+async def async_scan_range(generator: IPGenerator, timeout: float = 1):
     """
     This function scans the network for devices
 
     :param generator: IPGenerator
     :param timeout: float
     """
+    # assuming the slowest scan speeds, lets get the number of sockets per second this thread can handle
+    maxSockets = int(max_pps * timeout)
+    last_ETA = 0
 
-    # test ips via tcp handshaking
-    for addr in generator:
-        ip, port = addr.split(":")
-        port = int(port)
+    try:
+        for addr_group in grouper(iter(generator), maxSockets):
+            addrs = {}
 
-        if ip.endswith(".255"):
-            continue
+            tStart = time.perf_counter()
+            async with asyncio.TaskGroup() as tg:
+                for addr in addr_group:
+                    addrs[addr] = tg.create_task(ping(addr, timeout=timeout))
+            tEnd = time.perf_counter()
 
-        s = socket.socket(socket.AF_INET)
-        try:
-            s.settimeout(timeout)
-            s.connect((ip, port))
-        except socket.timeout:
-            logger.print(f"Timeout on {addr}{' ' * 8}\r", log=False, end="")
-        except socket.error as e:
-            logger.print(f"Error on {addr}: {e}")
-            logger.print(traceback.format_exc())
-        except Exception as e:
-            logger.print(f"Error on {addr}: {e}")
-            logger.print(traceback.format_exc())
-        else:
-            logger.print(f"Connected to {addr}")
-            generator.validate(addr)
-        finally:
-            s.close()
+            ETA = datetime.datetime.now().timestamp() + (
+                generator.addrs.size / len(addrs)
+            ) * (tEnd - tStart)
+
+            if last_ETA == 0:
+                last_ETA = ETA
+            else:
+                last_ETA = (last_ETA + ETA) / 2
+
+            logger.print(
+                f"{round(len(addrs) / (tEnd - tStart), 2)}pps ({round((len(addrs) / (tEnd - tStart)) / max_pps * 100, 2)}% of max), "
+                f"{round((generator.num_ips - generator.addrs.size) / generator.num_ips * 100, 2)}% done, "
+                f"ETA: {datetime.datetime.fromtimestamp(ETA).strftime('%H:%M:%S')}"
+                f"{' ' * 20}",
+                end="\r",
+            )
+
+            for addr, status in addrs.items():
+                if status.result():
+                    generator.validate(addr)
+                    logger.print(f"Validated {addr}")
+    except Exception as e:
+        logger.print(f"Error scanning range")
+        logger.print(traceback.format_exc())
+        sentry_sdk.capture_exception(e)
+
+        # cancel the scan
+        generator.cancel()
 
 
-def scan_valid(generator: IPGenerator):
+def scan_range(generator: IPGenerator, timeout: float = 1):
+    """
+    This function scans the network for devices
+
+    :param generator: IPGenerator
+    :param timeout: float
+    """
+    asyncio.run(async_scan_range(generator, timeout=timeout))
+
+
+# Validators
+
+
+def scan_valid(generator: IPGenerator, timeout: float = 1):
     """
     Scans valid ips to test if they are a mc server
 
     :param generator: IPGenerator
+    :param timeout: float
     """
 
-    while len(generator.ips) > 0 or len(generator.valid_addr) > 0:
+    try:
+        while generator.addrs.size > 0 or generator.valid_addr.size > 0:
+            if len(generator.valid_addr) == 0:
+                time.sleep(timeout * 2)
+                continue
+
+            addr = generator.get_valid()
+            ip, port = addr.split(":")
+            port = int(port)
+
+            logger.print(f"Testing mc server at {ip}:{port}")
+
+            try:
+                status = serverLib.status(ip, port)
+            except Exception as e:
+                logger.print(f"Error getting status for {ip}")
+                logger.print(e)
+                sentry_sdk.capture_exception(e)
+                continue
+
+            if status is None:
+                continue
+
+            logger.print(f"Found mc server at {ip}:{port}")
+            generator.num_mc_servers += 1
+            serverLib.update(ip, port)
+    except Exception as e:
+        logger.print(f"Error scanning valid")
+        logger.print(traceback.format_exc())
+        sentry_sdk.capture_exception(e)
+
+
+def scan_valid2(generator: IPGenerator):
+    """
+    Tests if valid ips respond to status requests
+
+    :param generator: IPGenerator
+    """
+    while len(generator.addrs) > 0 or len(generator.valid_addr) > 0:
         if len(generator.valid_addr) == 0:
             time.sleep(1)
             continue
@@ -258,7 +412,7 @@ def scan_valid(generator: IPGenerator):
 
         if ip.endswith(".255"):
             continue
-        print(f"Testing mc server at {ip}:{port}")
+        logger.print(f"Testing mc server at {ip}:{port}")
 
         try:
             status = serverLib.status(ip, port)
@@ -276,18 +430,16 @@ def scan_valid(generator: IPGenerator):
         serverLib.update(ip, port)
 
 
-def main(mask: str = "5.78.0.0/16", timeout: float = 0.2, numThreads: int = 100):
-    numThreads = min(numThreads, max(max_threads, 1))
-    pps = numThreads / timeout
-    if pps > max_pps:
-        numThreads = int(max_pps * timeout)
-        logger.print(f"Reducing threads to {numThreads} to keep pps under {max_pps}")
-
+def main(mask: str = "10.0.0.0/24", timeout: float = 1):
     generator = IPGenerator(mask, (25565, 25566))
+
+    pps = generator.addrs.size / timeout
+    pps = min(pps, max_pps)
+
     logger.print(
-        f"Scan of {len(generator.ips)} ips started, sending at {numThreads / timeout} packets/s"
+        f"Scan of {len(generator.addrs)} ips started, sending at {pps} packets/s"
     )
-    eta = len(generator.ips) * (timeout + 10 / 1000) / numThreads
+    eta = len(generator.addrs) / pps * timeout
     logger.print(
         f"ETA: {logger.auto_range_time(eta)} (+/- {logger.auto_range_time(eta * 0.1)})"
     )
@@ -296,49 +448,30 @@ def main(mask: str = "5.78.0.0/16", timeout: float = 0.2, numThreads: int = 100)
     )
 
     tStart = time.perf_counter()
-    validate_thread = Thread(target=scan_valid, args=(generator,))
+    validate_thread = Thread(target=scan_valid, args=(generator, timeout))
     validate_thread.start()
 
-    pool = ThreadPool(numThreads)
+    scan_range(generator, timeout=timeout)
 
-    try:
-        pool.map(scan_range, [generator] * numThreads)
-    except KeyboardInterrupt:
-        logger.print("Scan cancelled")
-        generator.cancel()
-        pool.terminate()
-        pool.join()
-        validate_thread.join()
-        sys.exit(0)
-
-    pool.close()
-    pool.join()
     logger.print(
-        f"Main scan finished in {time.perf_counter() - tStart:.2f}s ({(time.perf_counter() - tStart - eta) / eta * 100:.2f}% error), waiting for validation to finish"
+        f"Main scan finished in {logger.auto_range_time(time.perf_counter() - tStart)} ({(time.perf_counter() - tStart - eta) / eta * 100:.2f}% error), {generator.num_servers} online servers found, waiting for validation to finish"
     )
 
     validate_thread.join()
     tEnd = time.perf_counter()
 
     logger.print(
-        f"Scan found {generator.num_mc_servers} mc servers ({(generator.num_mc_servers / generator.num_servers) * 100:.2f}% of online server and {generator.num_mc_servers / generator.num_ips * 100:.2f}% of scanned ips)"
+        f"Scan found {generator.num_mc_servers} mc servers ({(generator.num_mc_servers / (generator.num_servers + 1e-100)) * 100:.2f}% of online server and {generator.num_mc_servers / generator.num_ips * 100:.2f}% of scanned ips)"
     )
     logger.print(
         f"Scan took {(tEnd - tStart):.2f}s ({(tEnd - tStart - eta) / eta * 100:.2f}% error)"
     )
 
 
-def is_admin():
-    try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except Exception:
-        return False
-
-
 if __name__ == "__main__":
     # ensure running as root
     if not is_admin():
-        logger.print("Please run as admin")
+        logger.error("Please run as admin")
         sys.exit(1)
     else:
         logger.print("Running as admin")
