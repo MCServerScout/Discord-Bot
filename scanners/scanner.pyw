@@ -129,6 +129,7 @@ class IPGenerator:
         self.valid_addr = np.array([], dtype=np.uint64)
         self.num_servers = 0
         self.num_mc_servers = 0
+        self.scan_complete = False
 
     def __iter__(self):
         return self
@@ -334,7 +335,11 @@ async def async_scan_range(generator: IPGenerator, timeout: float = 1):
             for addr, status in addrs.items():
                 if status.result():
                     generator.validate(addr)
-                    logger.print(f"Validated {addr}")
+                    logger.print(
+                        f"Validated {addr} with {generator.valid_addr.size} valid addresses"
+                    )
+
+        generator.scan_complete = True
     except Exception as e:
         logger.print(f"Error scanning range")
         logger.print(traceback.format_exc())
@@ -357,32 +362,32 @@ def scan_range(generator: IPGenerator, timeout: float = 1):
 # Validators
 
 
-def scan_valid(generator: IPGenerator, timeout: float = 1):
-    asyncio.run(async_scan_valid(generator, timeout=timeout))
+def scan_valid(generator: IPGenerator):
+    asyncio.run(async_scan_valid(generator))
 
 
-async def async_scan_valid(generator: IPGenerator, timeout: float = 1):
+async def async_scan_valid(generator: IPGenerator):
     """
     Tests if valid ips respond to status requests
 
     :param generator: IPGenerator
-    :param timeout: float
     """
-    while len(generator.addrs) > 0 or len(generator.valid_addr) > 0:
-        if len(generator.valid_addr) == 0:
-            time.sleep(timeout * 2)
+    while generator.scan_complete is False or generator.valid_addr.size > 0:
+        if generator.valid_addr.size == 0:
+            await asyncio.sleep(1)
             continue
 
         tasks = []
 
         async with asyncio.TaskGroup() as tg:
-            for _ in range(min(len(generator.valid_addr), 5)):
+            for _ in range(min(generator.valid_addr.size, 5)):
                 addr = generator.get_valid()
                 if addr is None:
                     continue
 
                 ip, port = addr.split(":")
                 port = int(port)
+                logger.print(f"Testing mc server at {ip}:{port}")
 
                 tasks.append(tg.create_task(mcping((ip, port))))
 
@@ -391,6 +396,8 @@ async def async_scan_valid(generator: IPGenerator, timeout: float = 1):
                 generator.num_mc_servers += 1
                 logger.print(f"Found mc server at {ip}:{port}")
                 serverLib.update(ip, port)
+    else:
+        logger.print("No servers remaining to validate")
 
 
 def main(mask: str = "10.0.0.0/24", timeout: float = 1):
@@ -411,7 +418,7 @@ def main(mask: str = "10.0.0.0/24", timeout: float = 1):
     )
 
     tStart = time.perf_counter()
-    validate_thread = Thread(target=scan_valid, args=(generator, timeout))
+    validate_thread = Thread(target=scan_valid, args=(generator,))
     validate_thread.start()
 
     scan_range(generator, timeout=timeout)

@@ -1,4 +1,6 @@
 import asyncio
+import logging
+import time
 
 from pyutils.pycraft2 import Handshake, Status, packet
 from pyutils.pycraft2.packet import S2S_0xFF, States, S2CPacket
@@ -95,6 +97,8 @@ class MCSocket(AsyncObj):
         await self.writer.wait_closed()
 
     async def send_packet(self, p: "S2S_0xFF"):
+        tStart = time.perf_counter()
+
         assert isinstance(p, S2S_0xFF)
 
         if self.compress != -1:
@@ -103,11 +107,17 @@ class MCSocket(AsyncObj):
 
         await p.send(self)
 
+        tEnd = time.perf_counter()
+        logging.debug(f"Sent packet: {hex(p.id)} in {tEnd - tStart:.2f} seconds")
+
     async def recv_packet(self, state: int, version: int) -> "S2CPacket":
+        tStart = time.perf_counter()
         p = packet.S2CPacket(self, state, version)
         await p.read_response(self.compress)
 
-        print(f"Received packet: {hex(p.id)}")
+        logging.debug(f"Received packet: {hex(p.id)}")
+        tEnd = time.perf_counter()
+        logging.debug(f"Received packet: {hex(p.id)} in {tEnd - tStart:.2f} seconds")
 
         return p
 

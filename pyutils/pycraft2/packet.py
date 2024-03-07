@@ -1,4 +1,5 @@
 import json
+import logging
 import struct
 import zlib
 from ctypes import c_uint32 as unsigned_int32
@@ -200,7 +201,7 @@ class Packet:
     def read_varint(self):
         result = 0
         for i in range(5):
-            byte = int.from_bytes(self.read(1), "big")
+            byte = self.read(1)[0]
             result |= (byte & 0x7F) << 7 * i
             if not byte & 0x80:
                 break
@@ -259,6 +260,9 @@ class S2CPacket(Packet):
                     f"Connection closed with {length - len(result)} bytes remaining"
                 )
             elif not new:
+                logging.debug(
+                    f"IGNORED: Connection closed with {length - len(result)} bytes remaining"
+                )
                 return result
             result += new
         return result
@@ -319,6 +323,14 @@ class S2S_0xFF(S2CPacket):
 
     def __str__(self):
         return f"{self.name}({', '.join([f'{k}={v}' for k, v in self.__data.items()]) if self.__data else ''})"
+
+    @property
+    def id(self):
+        return self._info()["id"]
+
+    @id.setter
+    def id(self, value):
+        pass
 
     def toDict(self):
         return {
