@@ -11,14 +11,14 @@ class S2C_0x04(S2S_0xFF):
         - Data | Byte Array | The data of the message
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Login Plugin Request",
             "id": 0x04,
             "state": States.LOGIN,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "message_id": DataTypes.VARINT,
             "channel": DataTypes.STRING,

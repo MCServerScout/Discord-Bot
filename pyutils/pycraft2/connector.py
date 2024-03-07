@@ -60,17 +60,24 @@ class MCSocket(AsyncObj):
     """
 
     def __init__(self, *args, **kwargs):
-        super().__init__(args, kwargs)
+        super().__init__(*args, **kwargs)
         self.compress = None
         self.state = None
         self.version = None
 
-    async def __ainit__(self, host, port):
+    async def __ainit__(self, host, port: int = None, timeout: float = 1):
         """
         Connect to a Minecraft server.
         """
 
-        self.reader, self.writer = await asyncio.open_connection(host, port)
+        if isinstance(host, str) and port is None:
+            host = host.split(":")
+            host[1] = int(host[1])
+            host, port = host
+
+        self.reader, self.writer = await asyncio.wait_for(
+            asyncio.open_connection(host, port), timeout=timeout
+        )
         self.compress = -1
         self.addr = (host, port)
         self.state = 0
@@ -115,9 +122,7 @@ class MCSocket(AsyncObj):
 
     # Connection methods
 
-    async def handshake_status(self, version_id: int):
-        setattr(self.handshake_status, "__doc__", Handshake.C2S_0x00.__doc__)
-
+    async def handshake_status(self, version_id: int = 47):
         p = Handshake.C2S_0x00(
             protocol_version=version_id,
             server_address=self.addr[0],
@@ -128,8 +133,6 @@ class MCSocket(AsyncObj):
         await self.send_packet(p)
 
     async def handshake_login(self, version_id: int):
-        setattr(self.handshake_login, "__doc__", Handshake.C2S_0x00.__doc__)
-
         p = Handshake.C2S_0x00(
             protocol_version=version_id,
             server_address=self.addr[0],
@@ -140,8 +143,6 @@ class MCSocket(AsyncObj):
         await self.send_packet(p)
 
     async def status_request(self) -> dict:
-        setattr(self.status_request, "__doc__", Status.C2S_0x00.__doc__)
-
         p = Status.C2S_0x00()
         await self.send_packet(p)
 

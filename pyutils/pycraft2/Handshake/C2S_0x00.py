@@ -12,14 +12,14 @@ class C2S_0x00(S2S_0xFF):
         - Next State | VarInt Enum | 1 for Status, 2 for Login.
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Handshake (0x00)",
             "id": 0x00,
             "state": States.HANDSHAKE,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "protocol_version": DataTypes.VARINT,
             "server_address": DataTypes.STRING,

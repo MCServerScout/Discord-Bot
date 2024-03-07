@@ -12,14 +12,14 @@ class C2S_0x01(S2S_0xFF):
         - Public Key | Byte Array | The public key
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Encryption Request",
             "id": 0x01,
             "state": States.LOGIN,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "Shared Secret Length": DataTypes.VARINT,
             "Shared Secret": DataTypes.BYTE_ARRAY,

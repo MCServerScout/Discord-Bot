@@ -9,14 +9,14 @@ class S2C_0x00(S2S_0xFF):
         - reason | Json Chat | The reason for the disconnection
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Disconnect (0x00)",
             "id": 0x00,
             "state": States.LOGIN,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "reason": DataTypes.STRING,
         }

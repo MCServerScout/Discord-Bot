@@ -11,14 +11,14 @@ class S2C_0x02(S2S_0xFF):
         - ...
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Login Success",
             "id": 0x02,
             "state": States.LOGIN,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "UUID": DataTypes.UUID,
             "Username": DataTypes.STRING,

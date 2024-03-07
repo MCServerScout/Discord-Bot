@@ -9,12 +9,12 @@ class C2S_0x00(S2S_0xFF):
         - None
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Status Request",
             "id": 0x00,
             "state": States.STATUS,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {}

@@ -13,14 +13,14 @@ class S2C_0x01(S2S_0xFF):
         - Verify Token | Byte Array | The verify token
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Encryption Request (0x01)",
             "id": 0x01,
             "state": States.LOGIN,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "Server ID": DataTypes.STRING,
             "Public Key Length": DataTypes.VARINT,

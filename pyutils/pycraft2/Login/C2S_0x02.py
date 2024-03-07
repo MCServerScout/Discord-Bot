@@ -11,14 +11,14 @@ class C2S_0x02(S2S_0xFF):
         - Data | Byte Array | The data of the response (OPTIONAL)
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Login Plugin Response",
             "id": 0x02,
             "state": States.LOGIN,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "Message ID": DataTypes.VARINT,
             "Successful": DataTypes.BOOL,

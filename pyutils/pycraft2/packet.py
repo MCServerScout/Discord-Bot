@@ -69,7 +69,7 @@ class Packet:
         return result
 
     def send(self, _socket):
-        self.__data = self.__encode_varint(len(self.__data)) + self.__data
+        self.__data = self.encode_varint(len(self.__data)) + self.__data
         _socket.send(self.__data)
 
     def compress(self):
@@ -84,11 +84,11 @@ class Packet:
         Yes          Data	        Byte Array  zlib compressed packet data (see the sections below)
         """
 
-        self.__data = self.__encode_varint(cdata_len) + cdata
+        self.__data = self.encode_varint(cdata_len) + cdata
 
         self.locks = Locks.ENC_DEC
 
-    def __encode_varint(self, value: int):
+    def encode_varint(self, value: int):
         """Write varint with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 31 - 1``, minimum is ``-(2 ** 31)``.
@@ -106,7 +106,7 @@ class Packet:
             remaining >>= 7
         raise ValueError(f'The value "{value}" is too big to send in a varint')
 
-    def __encode_varlong(self, value: int):
+    def encode_varlong(self, value: int):
         """Write varlong with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 63 - 1``, minimum is ``-(2 ** 63)``.
@@ -124,21 +124,21 @@ class Packet:
             remaining >>= 7
         raise ValueError(f'The value "{value}" is too big to send in a varlong')
 
-    def __encode_utf8(self, string: str):
+    def encode_utf8(self, string: str):
         """Write utf-8 string with value ``string`` to ``self``.
 
         :param string: The string to write.
         """
-        return self.__encode_varint(len(string)) + string.encode("utf-8")
+        return self.encode_varint(len(string)) + string.encode("utf-8")
 
-    def __encode_string(self, string: str):
+    def encode_string(self, string: str):
         """Write string with value ``string`` to ``self``.
 
         :param string: The string to write.
         """
-        return self.__encode_utf8(string)
+        return self.encode_utf8(string)
 
-    def __encode_ushort(self, value: int):
+    def encode_ushort(self, value: int):
         """Write unsigned short with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 16 - 1``, minimum is 0.
@@ -148,7 +148,7 @@ class Packet:
             raise ValueError(f"The value {value} is out of range for an unsigned short")
         return struct.pack("!H", value)
 
-    def __encode_short(self, value: int):
+    def encode_short(self, value: int):
         """Write short with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 15 - 1``, minimum is ``-(2 ** 15)``.
@@ -158,7 +158,7 @@ class Packet:
             raise ValueError(f"The value {value} is out of range for a short")
         return struct.pack("!h", value)
 
-    def __encode_ulong(self, value: int):
+    def encode_ulong(self, value: int):
         """Write unsigned long with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 64 - 1``, minimum is 0.
@@ -168,7 +168,7 @@ class Packet:
             raise ValueError(f"The value {value} is out of range for an unsigned long")
         return struct.pack("!Q", value)
 
-    def __encode_long(self, value: int):
+    def encode_long(self, value: int):
         """Write long with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 63 - 1``, minimum is ``-(2 ** 63)``.
@@ -178,7 +178,7 @@ class Packet:
             raise ValueError(f"The value {value} is out of range for a long")
         return struct.pack("!q", value)
 
-    def __encode_uuid(self, value: str):
+    def encode_uuid(self, value: str):
         """Write a 128 bit UUID with value ``value`` to ``self``.
 
         :param value: The value to write.
@@ -188,25 +188,25 @@ class Packet:
         uuid1 = int(uuid[:16], 16)
         uuid2 = int(uuid[16:], 16)
 
-        return self.__encode_ulong(uuid1) + self.__encode_ulong(uuid2)
+        return self.encode_ulong(uuid1) + self.encode_ulong(uuid2)
 
-    def __encode_bool(self, value: bool):
+    def encode_bool(self, value: bool):
         """Write bool with value ``value`` to ``self``.
 
         :param value: The value to write.
         """
         return struct.pack("!?", value)
 
-    def __read_varint(self):
+    def read_varint(self):
         result = 0
         for i in range(5):
-            byte = self.read(1)
+            byte = int.from_bytes(self.read(1), "big")
             result |= (byte & 0x7F) << 7 * i
             if not byte & 0x80:
                 break
         return result
 
-    def __read_varlong(self):
+    def read_varlong(self):
         result = 0
         for i in range(10):
             byte = self.read(1)
@@ -215,29 +215,29 @@ class Packet:
                 break
         return result
 
-    def __read_string(self):
-        length = self.__read_varint()
+    def read_string(self):
+        length = self.read_varint()
         return self.read(length).decode("utf-8")
 
-    def __read_ushort(self):
+    def read_ushort(self):
         return struct.unpack("!H", self.read(2))[0]
 
-    def __read_short(self):
+    def read_short(self):
         return struct.unpack("!h", self.read(2))[0]
 
-    def __read_ulong(self):
+    def read_ulong(self):
         return struct.unpack("!Q", self.read(8))[0]
 
-    def __read_long(self):
+    def read_long(self):
         return struct.unpack("!q", self.read(8))[0]
 
-    def __read_uuid(self):
-        uuid1 = self.__read_ulong()
-        uuid2 = self.__read_ulong()
+    def read_uuid(self):
+        uuid1 = self.read_ulong()
+        uuid2 = self.read_ulong()
 
         return f"{uuid1:016x}-{uuid2:016x}"
 
-    def __read_bool(self):
+    def read_bool(self):
         return struct.unpack("!?", self.read(1))[0]
 
 
@@ -250,30 +250,34 @@ class S2CPacket(Packet):
         self.name = "S2C Packet ..."
         self.id = None
 
-    async def recv(self, length):
+    async def recv(self, length, ignore_exc=False):
         result = b""
         while len(result) < length:
             new = await self.socket.recv(length - len(result))
-            if not new:
-                raise EOFError("Connection closed")
+            if not new and not ignore_exc:
+                raise EOFError(
+                    f"Connection closed with {length - len(result)} bytes remaining"
+                )
+            elif not new:
+                return result
             result += new
         return result
 
     async def read_response(self, comp_threshold: int = -1):
         self.write(await self.recv(5))
-        length = self.__read_varint()
-        packet = await self.recv(length)
+        length = self.read_varint()
+        packet = await self.recv(length, ignore_exc=True)
         self.write(packet)
 
         if comp_threshold == -1:
-            self.id = self.__read_varint()
+            self.id = self.read_varint()
         else:
-            expected_len = self.__read_varint()
+            expected_len = self.read_varint()
             assert expected_len >= 0, f"Data length is negative: {expected_len}"
 
             # no compression
             if expected_len == 0:
-                self.id = self.__read_varint()
+                self.id = self.read_varint()
             else:
                 uncomp_data = zlib.decompress(self.read(len(self)))
 
@@ -281,11 +285,11 @@ class S2CPacket(Packet):
                     len(uncomp_data) == expected_len
                 ), f"Expected length: {expected_len}, actual length: {len(uncomp_data)}"
 
-                self.id = self.__read_varint()
+                self.id = self.read_varint()
                 self.write(uncomp_data)
 
     def read_json(self):
-        return json.loads(self.__read_string())
+        return json.loads(self.read_string())
 
 
 # Examples
@@ -299,27 +303,19 @@ class S2S_0xFF(S2CPacket):
 
     def __init__(self, version: int = 765, **kwargs):
         self.__data = kwargs
-        self.name = self.__info()["name"]
-        self.id = self.__info()["id"]
-        self.state = self.__info()["state"]
+        self.name = self._info()["name"]
+        self.id = self._info()["id"]
+        self.state = self._info()["state"]
         self.version = version
 
         super().__init__(b"", self.version, self.state)
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Example Packet",
             "id": 0xFF,
             "state": States.PLAY,
         }
-
-    def __getattr__(self, item):
-        if item in self.__data:
-            return self.__data[item]
-        else:
-            raise AttributeError(
-                f"{self.__class__.__name__} object has no attribute '{item}'"
-            )
 
     def __str__(self):
         return f"{self.name}({', '.join([f'{k}={v}' for k, v in self.__data.items()]) if self.__data else ''})"
@@ -331,40 +327,40 @@ class S2S_0xFF(S2CPacket):
             "data": self.__data,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "...": "...",
         }
 
     def toBytes(self):
-        b = self.__encode_varint(self.id)
+        b = self.encode_varint(self._info()["id"])
 
-        for k, v in self.__dataTypes().items():
+        for k, v in self._dataTypes().items():
             match v:
                 case "VarInt":
-                    b += self.__encode_varint(self.__data[k])
+                    b += self.encode_varint(self.__data[k])
                 case "VarLong":
-                    b += self.__encode_varlong(self.__data[k])
+                    b += self.encode_varlong(self.__data[k])
                 case "String":
-                    b += self.__encode_string(self.__data[k])
+                    b += self.encode_string(self.__data[k])
                 case "Unsigned Short":
-                    b += self.__encode_ushort(self.__data[k])
+                    b += self.encode_ushort(self.__data[k])
                 case "Short":
-                    b += self.__encode_short(self.__data[k])
+                    b += self.encode_short(self.__data[k])
                 case "Unsigned Long":
-                    b += self.__encode_ulong(self.__data[k])
+                    b += self.encode_ulong(self.__data[k])
                 case "Long":
-                    b += self.__encode_long(self.__data[k])
+                    b += self.encode_long(self.__data[k])
                 case "UUID":
-                    b += self.__encode_uuid(self.__data[k])
+                    b += self.encode_uuid(self.__data[k])
                 case "Boolean":
-                    b += self.__encode_bool(self.__data[k])
+                    b += self.encode_bool(self.__data[k])
                 case "Byte Array":
-                    b += self.__encode_varint(len(self.__data[k])) + self.__data[k]
+                    b += self.encode_varint(len(self.__data[k])) + self.__data[k]
                 case _:
                     raise ValueError(f"Unknown data type: {v}")
 
-        b = self.__encode_varint(len(b)) + b
+        b = self.encode_varint(len(b)) + b
         return b
 
     async def send(self, _socket):

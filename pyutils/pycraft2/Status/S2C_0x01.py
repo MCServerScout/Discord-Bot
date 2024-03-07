@@ -9,14 +9,14 @@ class S2C_0x01(S2S_0xFF):
         - Payload | Long | The client's payload, sent in the ping packet.
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Ping Response",
             "id": 0x01,
             "state": States.STATUS,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {
             "payload": DataTypes.LONG,
         }

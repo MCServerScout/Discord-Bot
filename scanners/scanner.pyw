@@ -280,11 +280,13 @@ async def mcping(addr: tuple[str, int]):
     try:
         p = await MCSocket(ip, port)
 
-        await p.handshake_status(765)
+        await p.handshake_status()
         await p.status_request()
 
         return True
     except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+        traceback.print_exc()
+
         return False
 
 
@@ -356,78 +358,39 @@ def scan_range(generator: IPGenerator, timeout: float = 1):
 
 
 def scan_valid(generator: IPGenerator, timeout: float = 1):
-    """
-    Scans valid ips to test if they are a mc server
-
-    :param generator: IPGenerator
-    :param timeout: float
-    """
-
-    try:
-        while generator.addrs.size > 0 or generator.valid_addr.size > 0:
-            if len(generator.valid_addr) == 0:
-                time.sleep(timeout * 2)
-                continue
-
-            addr = generator.get_valid()
-            ip, port = addr.split(":")
-            port = int(port)
-
-            logger.print(f"Testing mc server at {ip}:{port}")
-
-            try:
-                status = serverLib.status(ip, port)
-            except Exception as e:
-                logger.print(f"Error getting status for {ip}")
-                logger.print(e)
-                sentry_sdk.capture_exception(e)
-                continue
-
-            if status is None:
-                continue
-
-            logger.print(f"Found mc server at {ip}:{port}")
-            generator.num_mc_servers += 1
-            serverLib.update(ip, port)
-    except Exception as e:
-        logger.print(f"Error scanning valid")
-        logger.print(traceback.format_exc())
-        sentry_sdk.capture_exception(e)
+    asyncio.run(async_scan_valid(generator, timeout=timeout))
 
 
-def scan_valid2(generator: IPGenerator):
+async def async_scan_valid(generator: IPGenerator, timeout: float = 1):
     """
     Tests if valid ips respond to status requests
 
     :param generator: IPGenerator
+    :param timeout: float
     """
     while len(generator.addrs) > 0 or len(generator.valid_addr) > 0:
         if len(generator.valid_addr) == 0:
-            time.sleep(1)
+            time.sleep(timeout * 2)
             continue
 
-        addr = generator.get_valid()
-        ip, port = addr.split(":")
-        port = int(port)
+        tasks = []
 
-        if ip.endswith(".255"):
-            continue
-        logger.print(f"Testing mc server at {ip}:{port}")
+        async with asyncio.TaskGroup() as tg:
+            for _ in range(min(len(generator.valid_addr), 5)):
+                addr = generator.get_valid()
+                if addr is None:
+                    continue
 
-        try:
-            status = serverLib.status(ip, port)
-        except Exception as e:
-            logger.print(f"Error getting status for {ip}")
-            logger.print(e)
-            sentry_sdk.capture_exception(e)
-            continue
+                ip, port = addr.split(":")
+                port = int(port)
 
-        if status is None:
-            continue
+                tasks.append(tg.create_task(mcping((ip, port))))
 
-        logger.print(f"Found mc server at {ip}:{port}")
-        generator.num_mc_servers += 1
-        serverLib.update(ip, port)
+        for task in tasks:
+            if task.result():
+                generator.num_mc_servers += 1
+                logger.print(f"Found mc server at {ip}:{port}")
+                serverLib.update(ip, port)
 
 
 def main(mask: str = "10.0.0.0/24", timeout: float = 1):

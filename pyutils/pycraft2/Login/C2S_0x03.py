@@ -9,12 +9,12 @@ class C2S_0x03(S2S_0xFF):
         - None
     """
 
-    def __info(self):
+    def _info(self):
         return {
             "name": "Login Acknowledgement",
             "id": 0x03,
             "state": States.LOGIN,
         }
 
-    def __dataTypes(self):
+    def _dataTypes(self):
         return {}
