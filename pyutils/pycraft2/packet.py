@@ -1,7 +1,7 @@
 import json
-import logging
 import struct
 import zlib
+from ctypes import c_int32 as signed_int32
 from ctypes import c_uint32 as unsigned_int32
 
 
@@ -201,11 +201,11 @@ class Packet:
     def read_varint(self):
         result = 0
         for i in range(5):
-            byte = self.read(1)[0]
-            result |= (byte & 0x7F) << 7 * i
-            if not byte & 0x80:
-                break
-        return result
+            part = (self.read(1))[0]
+            result |= (part & 0x7F) << 7 * i
+            if not part & 0x80:
+                return signed_int32(result).value
+        raise ValueError("VarInt is too big")
 
     def read_varlong(self):
         result = 0
@@ -249,27 +249,46 @@ class S2CPacket(Packet):
         self.state = state
         self.version = version
         self.name = "S2C Packet ..."
-        self.id = None
+        self.id = 0xFF
 
     async def recv(self, length, ignore_exc=False):
         result = b""
         while len(result) < length:
-            new = await self.socket.recv(length - len(result))
+            try:
+                new = await self.socket.recv(length - len(result))
+            except TimeoutError:
+                new = b""
             if not new and not ignore_exc:
                 raise EOFError(
                     f"Connection closed with {length - len(result)} bytes remaining"
                 )
             elif not new:
-                logging.debug(
+                self.socket.logger.debug(
                     f"IGNORED: Connection closed with {length - len(result)} bytes remaining"
                 )
                 return result
             result += new
         return result
 
+    async def read_packet_length(self):
+        self.write(await self.socket.recv(3))
+
+        result = 0
+        for i in range(3):
+            part = self.read(1)
+            if not part:
+                raise EOFError("Connection closed")
+
+            part = part[0]
+            result |= (part & 0x7F) << 7 * i
+            if not part & 0x80:
+                return result - 1
+        raise ValueError("VarInt is too big")
+
     async def read_response(self, comp_threshold: int = -1):
-        self.write(await self.recv(5))
-        length = self.read_varint()
+        length = await self.read_packet_length()
+
+        self.socket.logger.debug(f"Packet length: {length}")
         packet = await self.recv(length, ignore_exc=True)
         self.write(packet)
 
@@ -293,7 +312,16 @@ class S2CPacket(Packet):
                 self.write(uncomp_data)
 
     def read_json(self):
-        return json.loads(self.read_string())
+        dict_str = self.read_string()
+
+        if dict_str.count("{") > dict_str.count("}"):
+            dict_str += "}" * (dict_str.count("{") - dict_str.count("}"))
+
+        try:
+            return json.loads(dict_str)
+        except json.JSONDecodeError as e:
+            self.socket.logger.debug(f"Failed to decode JSON {e}: {dict_str}")
+            return {}
 
 
 # Examples
@@ -305,14 +333,14 @@ class S2S_0xFF(S2CPacket):
         - FieldName | FieldType | Notes
     """
 
-    def __init__(self, version: int = 765, **kwargs):
+    def __init__(self, version: int = 47, **kwargs):
+        self.version = version
+        self.state = self._info()["state"]
+        super().__init__(b"", self.version, self.state)
+
         self.__data = kwargs
         self.name = self._info()["name"]
         self.id = self._info()["id"]
-        self.state = self._info()["state"]
-        self.version = version
-
-        super().__init__(b"", self.version, self.state)
 
     def _info(self):
         return {
@@ -323,14 +351,6 @@ class S2S_0xFF(S2CPacket):
 
     def __str__(self):
         return f"{self.name}({', '.join([f'{k}={v}' for k, v in self.__data.items()]) if self.__data else ''})"
-
-    @property
-    def id(self):
-        return self._info()["id"]
-
-    @id.setter
-    def id(self, value):
-        pass
 
     def toDict(self):
         return {

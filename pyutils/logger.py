@@ -9,6 +9,7 @@ import time
 import aiohttp
 import sentry_sdk
 import unicodedata
+from sentry_sdk import set_measurement
 
 norm = sys.stdout
 
@@ -185,8 +186,7 @@ class Logger:
         self.logging.warning(message)
 
     def war(self, message):
-        message = f"[{self.stack_trace(inspect.stack())}] {message}"
-        self.logging.warning(message)
+        self.warning(message)
 
     def exception(self, message, *_, exception: Exception = None):
         if exception is None:
@@ -308,7 +308,7 @@ class Logger:
             with sentry_sdk.start_transaction(
                 name=f"{func.__name__}", op=f"{func.__name__}"
             ):
-                sentry_sdk.set_context("timing", {"duration": tDelta})
+                set_measurement("duration", end - start, "second")
         return res
 
     async def async_timer(self, func: callable, *args, **kwargs):
@@ -326,7 +326,7 @@ class Logger:
             with sentry_sdk.start_transaction(
                 name=f"{func.__name__}", op=f"{func.__name__}"
             ):
-                sentry_sdk.set_context("timing", {"duration": tDelta})
+                sentry_sdk.set_context("timing", {"duration": end - start})
         return res
 
     @staticmethod
