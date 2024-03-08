@@ -34,7 +34,7 @@ from pyutils.player import Player
 from pyutils.server import Server
 from pyutils.text import Text
 from pyutils.twitch import Twitch
-from .Colors import *  # skipcq: PYL-W0614
+from .Colors import RED, BLUE, GREEN  # skipcq: PYL-W0614
 
 base_match = {
     "$match": {

@@ -7,7 +7,7 @@ class C2S_0x00(S2S_0xFF):
 
     Data:
         - Name | String(16) | The player's username
-        - UUID | 128 bit int | The player's UUID
+        - UUID | 128-bit int | The player's UUID
     """
 
     def _info(self):

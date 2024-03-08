@@ -336,7 +336,7 @@ class Logger:
 
         Args:
             seconds (float): The number of seconds
-            digits (int, optional): The number of digits to round to. Defaults to 0.
+            digits (int, optional): The number of digits to round to. Default to 0.
 
         Returns:
             str: The time string

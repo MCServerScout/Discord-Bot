@@ -11,7 +11,6 @@ import interactions
 import sentry_sdk
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -327,7 +326,6 @@ class Message:
 
             # create the embed
             self.logger.debug("Creating embed")
-            tStart = time.perf_counter()
             data["description"] = self.text.motd_parse(data["description"])
             domain = ""
             if "hostname" in data:

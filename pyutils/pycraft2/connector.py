@@ -44,20 +44,20 @@ class MCSocket(AsyncObj):
     """
     Helper class to ease the connection to a Minecraft server.
 
-    **NB:** This class is an async class, you should await the initialization of the object.
+    **NB: ** This class is an async class, you should await the initialization of the object.
 
     Example:
 
-    ```python
+    ```Py
     from pyutils.pycraft2.connector import MCSocket
     import asyncio
 
-    async def main():
+    Async def main():
         mc = await MCSocket("localhost", 25565)
         print(mc.async_state)
         await mc.close()
 
-    asyncio.run(main())
+    Asyncio.run(main())
     ```
     """
 

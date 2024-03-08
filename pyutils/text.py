@@ -219,22 +219,22 @@ class Text:
         try:
 
             def parse_extra(extra):
-                text = ""
+                _text = ""
                 last_color = ""
                 for ext in extra:
                     if "extra" in ext:
-                        text += parse_extra(ext["extra"])
+                        _text += parse_extra(ext["extra"])
                     else:
                         if "color" in ext:
                             if ext["color"] != last_color:
                                 last_color = ext["color"]
-                                text += self.color_mine(color=ext["color"])
-                            text += ext["text"]
+                                _text += self.color_mine(color=ext["color"])
+                            _text += ext["text"]
                         elif "text" in ext:
-                            text += ext["text"]
+                            _text += ext["text"]
                         elif isinstance(ext, str):
-                            text += ext
-                return text
+                            _text += ext
+                return _text
 
             text = ""
             if "text" in motd:

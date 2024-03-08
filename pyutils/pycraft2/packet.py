@@ -69,7 +69,7 @@ class Packet:
         self.__data = self.__data[length:]
         return result
 
-    def send(self, _socket):
+    async def send(self, _socket):
         self.__data = self.encode_varint(len(self.__data)) + self.__data
         _socket.send(self.__data)
 
@@ -93,7 +93,7 @@ class Packet:
     def encode_varint(value: int):
         """Write varint with value ``value`` to ``self``.
 
-        :param value: Maximum is ``2 ** 31 - 1``, minimum is ``-(2 ** 31)``.
+        :param value: The Maximum is ``2 ** 31-1 `` the minimum is ``-(2 ** 31)``.
         :raises ValueError: If value is out of range.
         """
         remaining = unsigned_int32(value).value
@@ -112,7 +112,7 @@ class Packet:
     def encode_varlong(value: int):
         """Write varlong with value ``value`` to ``self``.
 
-        :param value: Maximum is ``2 ** 63 - 1``, minimum is ``-(2 ** 63)``.
+        :param value: The Maximum is ``2 ** 63-1 `` the minimum is ``-(2 ** 63)``.
         :raises ValueError: If value is out of range.
         """
         remaining = unsigned_int32(value).value
@@ -145,7 +145,7 @@ class Packet:
     def encode_ushort(value: int):
         """Write unsigned short with value ``value`` to ``self``.
 
-        :param value: Maximum is ``2 ** 16 - 1``, minimum is 0.
+        :param value: The Maximum is 2 ** 16-1 `` the minimum is 0.
         :raises ValueError: If value is out of range.
         """
         if value < 0 or value > 2**16 - 1:
@@ -156,7 +156,7 @@ class Packet:
     def encode_short(value: int):
         """Write short with value ``value`` to ``self``.
 
-        :param value: Maximum is ``2 ** 15 - 1``, minimum is ``-(2 ** 15)``.
+        :param value: The Maximum is ``2 ** 15-1 `` the minimum is ``-(2 ** 15)``.
         :raises ValueError: If value is out of range.
         """
         if value < -(2**15) or value > 2**15 - 1:
@@ -167,7 +167,7 @@ class Packet:
     def encode_ulong(value: int):
         """Write unsigned long with value ``value`` to ``self``.
 
-        :param value: Maximum is ``2 ** 64 - 1``, minimum is 0.
+        :param value: The Maximum is 2 ** 64-1 `` the minimum is 0.
         :raises ValueError: If value is out of range.
         """
         if value < 0 or value > 2**64 - 1:
@@ -178,7 +178,7 @@ class Packet:
     def encode_long(value: int):
         """Write long with value ``value`` to ``self``.
 
-        :param value: Maximum is ``2 ** 63 - 1``, minimum is ``-(2 ** 63)``.
+        :param value: The Maximum is ``2 ** 63-1 `` the minimum is ``-(2 ** 63)``.
         :raises ValueError: If value is out of range.
         """
         if value < -(2**63) or value > 2**63 - 1:
@@ -186,7 +186,7 @@ class Packet:
         return struct.pack("!q", value)
 
     def encode_uuid(self, value: str):
-        """Write a 128 bit UUID with value ``value`` to ``self``.
+        """Write a 128-bit UUID with value ``value`` to ``self``.
 
         :param value: The value to write.
         """

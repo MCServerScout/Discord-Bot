@@ -110,7 +110,7 @@ class Server:
                         status["ip"]
                     ).all  # technically, \
                     # this uses requests and not aiohttp and is not asynchronous
-                    if not "bogon" in geo_data or not geo_data["bogon"]:
+                    if "bogon" not in geo_data or not geo_data["bogon"]:
                         if "latitude" not in geo_data:
                             self.logger.warning(
                                 f"Failed to get geo for {host}: {geo_data}"

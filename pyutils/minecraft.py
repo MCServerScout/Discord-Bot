@@ -91,7 +91,7 @@ class Minecraft:
         player_username: str,
         mine_token: str,
         version: int = -1,
-        session_attempts: int = 5,
+        # session_attempts: int = 5,
     ) -> ServerType:
         """
         Joins a minecraft server.
@@ -101,7 +101,7 @@ class Minecraft:
         :param player_username: The username of the player
         :param mine_token: The minecraft token
         :param version: The protocol version of the server
-        :param session_attempts: The number of times to attempt to authenticate the account
+        # :param session_attempts: The number of times to attempt to authenticate the account
 
         :return: The server type
         """
@@ -332,7 +332,7 @@ class Minecraft:
                     # iv
                     modes.CFB8(shared_secret),
                 )
-                encryptor = cipher.encryptor()
+                # encryptor = cipher.encryptor()
                 decryptor = cipher.decryptor()
 
                 # ----

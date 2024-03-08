@@ -7,7 +7,7 @@ class S2C_0x04(S2S_0xFF):
 
     Data:
         - Message ID | VarInt | The ID of the message
-        - Channel | String(Identifier) | The name of the channel
+        - Channel | String (Identifier) | The name of the channel
         - Data | Byte Array | The data of the message
     """
 
