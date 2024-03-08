@@ -67,7 +67,13 @@ class MCSocket(AsyncObj):
         self.state = None
         self.version = None
 
-    async def __ainit__(self, host, port: int = None, timeout: float = 1):
+    async def __ainit__(
+        self,
+        host,
+        port: int = None,
+        timeout: float = 0.2,
+        logger=logging.getLogger("pycraft2.connector"),
+    ):
         """
         Connect to a Minecraft server.
         """
@@ -84,13 +90,18 @@ class MCSocket(AsyncObj):
         self.addr = (host, port)
         self.state = 0
         self.version = 47
+        self.timeout = timeout
+        self.logger = logger
 
     async def send(self, data: bytes) -> None:
         self.writer.write(data)
         await self.writer.drain()
 
     async def recv(self, n: int) -> bytes:
-        return await self.reader.read(n)
+        try:
+            return await asyncio.wait_for(self.reader.read(n), timeout=self.timeout)
+        except (asyncio.TimeoutError, ConnectionResetError):
+            return b""
 
     async def close(self):
         self.writer.close()
@@ -108,16 +119,17 @@ class MCSocket(AsyncObj):
         await p.send(self)
 
         tEnd = time.perf_counter()
-        logging.debug(f"Sent packet: {hex(p.id)} in {tEnd - tStart:.2f} seconds")
+        self.logger.debug(f"Sent packet: {hex(p.id)} in {tEnd - tStart:.2f} seconds")
 
     async def recv_packet(self, state: int, version: int) -> "S2CPacket":
         tStart = time.perf_counter()
         p = packet.S2CPacket(self, state, version)
         await p.read_response(self.compress)
 
-        logging.debug(f"Received packet: {hex(p.id)}")
         tEnd = time.perf_counter()
-        logging.debug(f"Received packet: {hex(p.id)} in {tEnd - tStart:.2f} seconds")
+        self.logger.debug(
+            f"Received packet: {hex(p.id)} in {tEnd - tStart:.2f} seconds"
+        )
 
         return p
 
@@ -133,6 +145,13 @@ class MCSocket(AsyncObj):
     # Connection methods
 
     async def handshake_status(self, version_id: int = 47):
+        """
+        Send a handshake packet to the server
+
+        Args:
+            version_id (int, optional): The version of the protocol. Defaults to 47.
+        """
+
         p = Handshake.C2S_0x00(
             protocol_version=version_id,
             server_address=self.addr[0],
@@ -143,6 +162,13 @@ class MCSocket(AsyncObj):
         await self.send_packet(p)
 
     async def handshake_login(self, version_id: int):
+        """
+        Send a handshake packet to the server
+
+        Args:
+            version_id (int): The version of the protocol.
+        """
+
         p = Handshake.C2S_0x00(
             protocol_version=version_id,
             server_address=self.addr[0],
@@ -153,12 +179,33 @@ class MCSocket(AsyncObj):
         await self.send_packet(p)
 
     async def status_request(self) -> dict:
+        """
+        Send a status request to the server
+
+        Returns:
+            dict: The response from the server
+
+        Raises:
+            AssertionError: If the response is not a status response
+        """
+
         p = Status.C2S_0x00()
         await self.send_packet(p)
 
         # get a response
         response = await self.recv_packet(States.STATUS, self.version)
-        assert response.id == 0x00
+
+        if response.id == 0x54 and response.read(1) == b"T":
+            # this is a web server, not a minecraft server
+            raise ConnectionError("This is a web server, not a minecraft server")
+
+        if response.id != 0x00:
+            self.logger.debug(
+                f"Expected status response (0x00), got {hex(response.id)} with data {response.read(len(response))}"
+            )
+            raise AssertionError(
+                f"Expected status response (0x00), got {hex(response.id)} with data {response.read(len(response))}"
+            )
 
         # read the response
         json_data = response.read_json()

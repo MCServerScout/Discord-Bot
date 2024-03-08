@@ -2,8 +2,7 @@ import asyncio
 import ctypes
 import datetime
 import itertools
-import socket
-import struct
+import os.path
 import sys
 import time
 import traceback
@@ -15,6 +14,7 @@ import sentry_sdk
 from netaddr import IPNetwork
 from pymongo import MongoClient
 from pymongo.errors import ServerSelectionTimeoutError
+from sentry_sdk import metrics
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
 from pyutils import Utils
@@ -36,7 +36,8 @@ from pyutils.pycraft2.connector import MCSocket
     SENTRY_URI,
     max_threads,
     max_pps,
-) = ["..." for _ in range(15)]
+    correction_factor,
+) = ["..." for _ in range(16)]
 
 DEBUG = False
 try:
@@ -126,7 +127,9 @@ class IPGenerator:
         self.addrs += self.ports
         np.random.shuffle(self.addrs)
 
-        self.valid_addr = np.array([], dtype=np.uint64)
+        self.addrs = tuple(self.addrs)
+        self.valid_addr = ()
+
         self.num_servers = 0
         self.num_mc_servers = 0
         self.scan_complete = False
@@ -157,13 +160,13 @@ class IPGenerator:
 
         _addr = self.__addr2int(addr)
 
-        self.valid_addr = np.append(self.valid_addr, _addr)
+        self.valid_addr += (_addr,)
 
     def get_valid(self):
         """
         This function returns a valid address
         """
-        if self.valid_addr.size == 0:
+        if len(self.valid_addr) == 0:
             return None
 
         addr = self.valid_addr[0]
@@ -171,8 +174,9 @@ class IPGenerator:
         return self.int2addr(addr)
 
     def cancel(self):
-        self.valid_addr = np.array([], dtype=np.uint64)
-        self.addrs = np.array([], dtype=np.uint64)
+        self.valid_addr = ()
+        self.addrs = ()
+        self.scan_complete = True
 
     @staticmethod
     def __ip2int(ip):
@@ -183,7 +187,9 @@ class IPGenerator:
         :return: int
         """
         # ip -> hex -> bytes -> int
-        return struct.unpack("!L", socket.inet_aton(ip))[0]
+        return int.from_bytes(
+            b"".join(map(lambda x: bytes([int(x)]), ip.split("."))), "big"
+        )
 
     @staticmethod
     def __int2ip(ip):
@@ -194,10 +200,7 @@ class IPGenerator:
         :return: str
         """
         # int -> bytes -> ip
-        if isinstance(ip, np.uint32):
-            ip = int(ip)
-
-        return socket.inet_ntoa(struct.pack("!L", ip))
+        return ".".join(map(str, ip.to_bytes(4, "big")))
 
     def __addr2int(self, addr: str):
         """
@@ -219,15 +222,8 @@ class IPGenerator:
         :param addr: int
         :return: str
         """
-        if (
-            isinstance(addr, np.uint64)
-            or isinstance(addr, np.uint32)
-            or isinstance(addr, np.float64)
-        ):
-            addr = int(addr)
-
         ip = int(addr / 100_000)
-        port = addr - ip * 100_000
+        port = int(addr - ip * 100_000)
 
         ip = self.__int2ip(ip)
 
@@ -237,29 +233,32 @@ class IPGenerator:
 # Pingers
 
 
-async def ping(addr: tuple[str, int], timeout: float = 1):
+@metrics.timing("ping")
+async def ping(generator: IPGenerator, timeout: float = 1):
     """
     This function pings a server
 
-    :param addr: tuple[str, int] The address to ping
+    :param generator: IPGenerator The generator to get the next address from
     :param timeout: float The timeout for the ping
     :return: dict
     """
-    if isinstance(addr, str):
-        addr = addr.split(":")
-        addr[1] = int(addr[1])
+    with sentry_sdk.start_span(description=f"Ping", op="ping", sampled=True) as span:
+        addr = generator.__next__()
+        ip, port = addr.split(":")
+        port = int(port)
 
-    ip, port = addr
+        span.set_data("addr", {"ip": ip, "port": port})
 
-    if ip.split(".")[-1] in ("0", "255"):
-        return False
+        if ip.split(".")[-1] in ("0", "255"):
+            return False
 
-    try:
-        await asyncio.wait_for(asyncio.open_connection(ip, port), timeout)
-        logger.print(f"Connected to {ip}:{port}{' ' * 10}")
-        return True
-    except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
-        return False
+        try:
+            await asyncio.wait_for(asyncio.open_connection(ip, port), timeout)
+            logger.print(f"Connected to {ip}:{port}{' ' * 10}")
+            generator.validate(addr)
+            return True
+        except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
+            return False
 
 
 async def mcping(addr: tuple[str, int]):
@@ -279,15 +278,19 @@ async def mcping(addr: tuple[str, int]):
         return False
 
     try:
-        p = await MCSocket(ip, port)
+        p = await MCSocket(ip, port, logger=logger)
 
         await p.handshake_status()
         await p.status_request()
 
         return True
-    except (asyncio.TimeoutError, ConnectionRefusedError, OSError):
-        traceback.print_exc()
-
+    except (
+        asyncio.TimeoutError,
+        ConnectionRefusedError,
+        OSError,
+        AssertionError,
+        EOFError,
+    ):
         return False
 
 
@@ -301,45 +304,68 @@ async def async_scan_range(generator: IPGenerator, timeout: float = 1):
     :param generator: IPGenerator
     :param timeout: float
     """
-    # assuming the slowest scan speeds, lets get the number of sockets per second this thread can handle
-    maxSockets = int(max_pps * timeout)
+    # assuming the slowest scan speeds, let's get the number of sockets per second this thread can handle
+    maxSockets = int(max_pps * timeout * correction_factor)
+    logger.debug(f"maxSockets: {maxSockets}")
     last_ETA = 0
+    perc_of_max_pps = []
 
     try:
-        for addr_group in grouper(iter(generator), maxSockets):
-            addrs = {}
+        for _ in range(0, len(generator.addrs), maxSockets):
+            with sentry_sdk.start_transaction(op="scan_range", name="scan_range"):
+                tStart = time.perf_counter()
+                tasks = [
+                    ping(generator, timeout=timeout)
+                    for _ in range(min(maxSockets, len(generator.addrs)))
+                ]
+                await asyncio.gather(*tasks)
+                tEnd = time.perf_counter()
+                tasks = len(tasks)
 
-            tStart = time.perf_counter()
-            async with asyncio.TaskGroup() as tg:
-                for addr in addr_group:
-                    addrs[addr] = tg.create_task(ping(addr, timeout=timeout))
-            tEnd = time.perf_counter()
+                sentry_sdk.set_context("timing", {"duration": tEnd - tStart})
+                sentry_sdk.set_context("tasks", {"count": tasks})
 
-            ETA = datetime.datetime.now().timestamp() + (
-                generator.addrs.size / len(addrs)
-            ) * (tEnd - tStart)
+                ETA = datetime.datetime.now().timestamp() + (
+                    len(generator.addrs) / tasks
+                ) * (tEnd - tStart)
 
-            if last_ETA == 0:
-                last_ETA = ETA
-            else:
-                last_ETA = (last_ETA + ETA) / 2
+                if last_ETA == 0:
+                    last_ETA = ETA
+                else:
+                    last_ETA = (last_ETA + ETA) / 2
 
-            logger.print(
-                f"{round(len(addrs) / (tEnd - tStart), 2)}pps ({round((len(addrs) / (tEnd - tStart)) / max_pps * 100, 2)}% of max), "
-                f"{round((generator.num_ips - generator.addrs.size) / generator.num_ips * 100, 2)}% done, "
-                f"ETA: {datetime.datetime.fromtimestamp(ETA).strftime('%H:%M:%S')}"
-                f"{' ' * 20}",
-                end="\r",
-            )
+                perc_of_max_pps.append(tasks / (tEnd - tStart) / max_pps * 100)
 
-            for addr, status in addrs.items():
-                if status.result():
-                    generator.validate(addr)
-                    logger.print(
-                        f"Validated {addr} with {generator.valid_addr.size} valid addresses"
-                    )
+                logger.print(
+                    f"{round(tasks / (tEnd - tStart), 2)}pps ({round((tasks / (tEnd - tStart)) / max_pps * 100, 2)}% of max), "
+                    f"{round((generator.num_ips - len(generator.addrs)) / generator.num_ips * 100, 2)}% done, "
+                    f"ETA: {datetime.datetime.fromtimestamp(ETA).strftime('%H:%M:%S')} (dur of {logger.auto_range_time(tEnd - tStart, 2)})"
+                    f"{' ' * 20}",
+                    end="\r",
+                )
 
         generator.scan_complete = True
+        new_cor = correction_factor * (2 - np.mean(perc_of_max_pps) / 100)
+        logger.print(
+            f"Scan speed: {round(np.mean(perc_of_max_pps), 2)}% of max pps, "
+            f"new correction factor: {new_cor:.2f}"
+        )
+        with open(
+            os.path.join(
+                os.path.split(os.path.split(os.path.abspath(__file__))[0])[0],
+                "privVars.py",
+            ),
+            "r+",
+        ) as f:
+            lines = f.readlines()
+            for i, line in enumerate(lines):
+                if "correction_factor =" in line:
+                    lines[i] = f"correction_factor = {new_cor}\n"
+                    break
+            else:
+                lines.append(f"correction_factor = {new_cor}\n")
+            f.seek(0)
+            f.writelines(lines)
     except Exception as e:
         logger.print(f"Error scanning range")
         logger.print(traceback.format_exc())
@@ -356,7 +382,11 @@ def scan_range(generator: IPGenerator, timeout: float = 1):
     :param generator: IPGenerator
     :param timeout: float
     """
-    asyncio.run(async_scan_range(generator, timeout=timeout))
+    try:
+        asyncio.run(async_scan_range(generator, timeout=timeout))
+    except KeyboardInterrupt:
+        generator.cancel()
+        logger.print("Scan cancelled")
 
 
 # Validators
@@ -372,15 +402,16 @@ async def async_scan_valid(generator: IPGenerator):
 
     :param generator: IPGenerator
     """
-    while generator.scan_complete is False or generator.valid_addr.size > 0:
-        if generator.valid_addr.size == 0:
-            await asyncio.sleep(1)
+    while not generator.scan_complete or len(generator.valid_addr) > 0:
+        if len(generator.valid_addr) == 0:
+            await asyncio.sleep(0.5)
             continue
 
         tasks = []
 
+        tStart = time.perf_counter()
         async with asyncio.TaskGroup() as tg:
-            for _ in range(min(generator.valid_addr.size, 5)):
+            for _ in range(min(len(generator.valid_addr), 5)):
                 addr = generator.get_valid()
                 if addr is None:
                     continue
@@ -396,20 +427,25 @@ async def async_scan_valid(generator: IPGenerator):
                 generator.num_mc_servers += 1
                 logger.print(f"Found mc server at {ip}:{port}")
                 serverLib.update(ip, port)
+
+        tEnd = time.perf_counter()
+        logger.print(
+            f"Validated {len(tasks)} servers in {tEnd - tStart:.2f}s, (avg of {len(tasks) / (tEnd - tStart):.2f}pps)"
+        )
     else:
         logger.print("No servers remaining to validate")
 
 
-def main(mask: str = "10.0.0.0/24", timeout: float = 1):
+def main(mask: str = "5.9.0.0/15", timeout: float = 0.2):
     generator = IPGenerator(mask, (25565, 25566))
 
-    pps = generator.addrs.size / timeout
+    pps = len(generator.addrs) / timeout
     pps = min(pps, max_pps)
 
     logger.print(
         f"Scan of {len(generator.addrs)} ips started, sending at {pps} packets/s"
     )
-    eta = len(generator.addrs) / pps * timeout
+    eta = len(generator.addrs) / pps
     logger.print(
         f"ETA: {logger.auto_range_time(eta)} (+/- {logger.auto_range_time(eta * 0.1)})"
     )
