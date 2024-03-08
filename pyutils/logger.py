@@ -54,12 +54,12 @@ def filter_msg(msg: str) -> str | None:
             "Sending data to websocket: {" in msg,
             "event.ctx.responses" in msg,
             re.match(
-                r"(POST|PATCH)::https://discord.com/api/v\d{1,2}/\S+\s[1-5][0-9]{2}",
+                r"(POST|PATCH)::https://discord.com/api/v",
                 msg,
             )
             is not None,
             msg.startswith("[http_client."),
-            re.match(r"^\s*\^\s*$", msg) is not None,
+            msg.strip().endswith(" ^"),
         )
     ) and not any(
         (
@@ -347,7 +347,7 @@ class Logger:
             "min": str(round(seconds // 60, digits)),
             "s": str(round(seconds, digits)),
             "ms": str(round(seconds * 1000, digits)),
-            "us": str(round(seconds * 1000000, digits)),
+            "µs": str(round(seconds * 1000000, digits)),
             "ns": str(round(seconds * 1000000000, digits)),
         }
 

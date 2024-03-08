@@ -217,6 +217,10 @@ class Text:
             dict: The parsed motd dict
         """
         try:
+            if not motd:
+                return {
+                    "text": "...",
+                }
 
             def parse_extra(extra):
                 _text = ""

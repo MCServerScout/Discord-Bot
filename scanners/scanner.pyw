@@ -6,6 +6,7 @@ import os.path
 import sys
 import time
 import traceback
+from asyncio import Queue
 from threading import Thread
 from typing import Iterator
 
@@ -113,22 +114,20 @@ class IPGenerator:
 
         # the ips are stored as integers for efficiency
         # they are a series of ints from net.first to net.first + net.size
-        self.addrs = np.arange(self.num_ips, dtype=np.uint64) + int(
-            IPNetwork(mask).first
-        )
+        addrs = np.arange(self.num_ips, dtype=np.uint64) + int(IPNetwork(mask).first)
 
         self.port_range = port_range
 
         # make the ips list duplicate for the number of ports
-        self.addrs = np.repeat(self.addrs, self.num_ports) * 100_000
+        addrs = np.repeat(addrs, self.num_ports) * 100_000
         self.ports = np.arange(*port_range, dtype=np.uint64)
         self.ports = np.tile(self.ports, self.num_ips)
-        self.addrs = self.addrs.astype(np.uint64)
+        self.addrs = addrs.astype(np.uint64)
         self.addrs += self.ports
         np.random.shuffle(self.addrs)
+        self.valid_addr = Queue(self.num_ips)
 
-        self.addrs = tuple(self.addrs)
-        self.valid_addr = ()
+        self.addr_index = 0
 
         self.num_servers = 0
         self.num_mc_servers = 0
@@ -138,21 +137,21 @@ class IPGenerator:
         return self
 
     def __next__(self):
-        if len(self.addrs) == 0:
+        if self.addr_index >= self.num_ips or self.scan_complete:
             raise StopIteration
 
-        addr = self.addrs[0]
-        self.addrs = self.addrs[1:]
+        addr = int(self.addrs[self.addr_index])
+        self.addr_index += 1
 
         return self.int2addr(addr)
-
-    def __getitem__(self, index):
-        return self.int2addr(self.addrs[index])
 
     def validate(self, addr: str | tuple[str, int]):
         """
         This function validates an address
         """
+        if self.scan_complete:
+            return
+
         if isinstance(addr, tuple):
             addr = f"{addr[0]}:{addr[1]}"
 
@@ -160,22 +159,24 @@ class IPGenerator:
 
         _addr = self.__addr2int(addr)
 
-        self.valid_addr += (_addr,)
+        self.valid_addr.put_nowait(_addr)
 
-    def get_valid(self):
+    async def get_valid(self, no_wait=False):
         """
         This function returns a valid address
         """
-        if len(self.valid_addr) == 0:
+        if self.valid_addr.empty() or self.scan_complete:
             return None
 
-        addr = self.valid_addr[0]
-        self.valid_addr = self.valid_addr[1:]
+        if no_wait:
+            addr = self.valid_addr.get_nowait()
+        else:
+            addr = await self.valid_addr.get()
         return self.int2addr(addr)
 
     def cancel(self):
-        self.valid_addr = ()
-        self.addrs = ()
+        self.valid_addr = Queue()
+        self.addrs = np.array([])
         self.scan_complete = True
 
     @staticmethod
@@ -326,7 +327,7 @@ async def async_scan_range(generator: IPGenerator, timeout: float = 1):
                 sentry_sdk.set_context("tasks", {"count": tasks})
 
                 ETA = datetime.datetime.now().timestamp() + (
-                    len(generator.addrs) / tasks
+                    (generator.num_ips - generator.addr_index) / tasks
                 ) * (tEnd - tStart)
 
                 if last_ETA == 0:
@@ -338,7 +339,7 @@ async def async_scan_range(generator: IPGenerator, timeout: float = 1):
 
                 logger.print(
                     f"{round(tasks / (tEnd - tStart), 2)}pps ({round((tasks / (tEnd - tStart)) / max_pps * 100, 2)}% of max), "
-                    f"{round((generator.num_ips - len(generator.addrs)) / generator.num_ips * 100, 2)}% done, "
+                    f"{round(generator.addr_index / generator.num_ips * 100, 2)}% done, "
                     f"ETA: {datetime.datetime.fromtimestamp(ETA).strftime('%H:%M:%S')} (dur of {logger.auto_range_time(tEnd - tStart, 2)})"
                     f"{' ' * 20}",
                     end="\r",
@@ -402,8 +403,8 @@ async def async_scan_valid(generator: IPGenerator):
 
     :param generator: IPGenerator
     """
-    while not generator.scan_complete or len(generator.valid_addr) > 0:
-        if len(generator.valid_addr) == 0:
+    while not generator.scan_complete or not generator.valid_addr.empty():
+        if generator.valid_addr.empty():
             await asyncio.sleep(0.5)
             continue
 
@@ -411,8 +412,8 @@ async def async_scan_valid(generator: IPGenerator):
 
         tStart = time.perf_counter()
         async with asyncio.TaskGroup() as tg:
-            for _ in range(min(len(generator.valid_addr), 5)):
-                addr = generator.get_valid()
+            for _ in range(min(generator.valid_addr.qsize(), 5)):
+                addr = await generator.get_valid(no_wait=True)
                 if addr is None:
                     continue
 
@@ -436,15 +437,13 @@ async def async_scan_valid(generator: IPGenerator):
         logger.print("No servers remaining to validate")
 
 
-def main(mask: str = "5.9.0.0/15", timeout: float = 0.2):
+def main(mask: str = "5.0.0.0/8", timeout: float = 0.2):
     generator = IPGenerator(mask, (25565, 25566))
 
-    pps = len(generator.addrs) / timeout
+    pps = generator.num_ips / timeout
     pps = min(pps, max_pps)
 
-    logger.print(
-        f"Scan of {len(generator.addrs)} ips started, sending at {pps} packets/s"
-    )
+    logger.print(f"Scan of {generator.num_ips} ips started, sending at {pps} packets/s")
     eta = len(generator.addrs) / pps
     logger.print(
         f"ETA: {logger.auto_range_time(eta)} (+/- {logger.auto_range_time(eta * 0.1)})"

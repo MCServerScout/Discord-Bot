@@ -6,6 +6,7 @@ import re
 import socket
 import threading
 import traceback
+from json import JSONDecodeError
 from typing import Optional, Mapping, Any
 
 import ipinfo
@@ -379,6 +380,9 @@ class Server:
             return self.ServerType(ip, version, "OFFLINE")
         except OSError:
             self.logger.print("Server did not respond")
+            return self.ServerType(ip, version, "UNKNOWN")
+        except (UnicodeDecodeError, JSONDecodeError):
+            self.logger.print("Unicode decode error")
             return self.ServerType(ip, version, "UNKNOWN")
         except Exception as err:
             self.logger.print(f"{traceback.format_exc()}")
