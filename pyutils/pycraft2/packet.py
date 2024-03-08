@@ -89,7 +89,8 @@ class Packet:
 
         self.locks = Locks.ENC_DEC
 
-    def encode_varint(self, value: int):
+    @staticmethod
+    def encode_varint(value: int):
         """Write varint with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 31 - 1``, minimum is ``-(2 ** 31)``.
@@ -107,7 +108,8 @@ class Packet:
             remaining >>= 7
         raise ValueError(f'The value "{value}" is too big to send in a varint')
 
-    def encode_varlong(self, value: int):
+    @staticmethod
+    def encode_varlong(value: int):
         """Write varlong with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 63 - 1``, minimum is ``-(2 ** 63)``.
@@ -139,7 +141,8 @@ class Packet:
         """
         return self.encode_utf8(string)
 
-    def encode_ushort(self, value: int):
+    @staticmethod
+    def encode_ushort(value: int):
         """Write unsigned short with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 16 - 1``, minimum is 0.
@@ -149,7 +152,8 @@ class Packet:
             raise ValueError(f"The value {value} is out of range for an unsigned short")
         return struct.pack("!H", value)
 
-    def encode_short(self, value: int):
+    @staticmethod
+    def encode_short(value: int):
         """Write short with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 15 - 1``, minimum is ``-(2 ** 15)``.
@@ -159,7 +163,8 @@ class Packet:
             raise ValueError(f"The value {value} is out of range for a short")
         return struct.pack("!h", value)
 
-    def encode_ulong(self, value: int):
+    @staticmethod
+    def encode_ulong(value: int):
         """Write unsigned long with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 64 - 1``, minimum is 0.
@@ -169,7 +174,8 @@ class Packet:
             raise ValueError(f"The value {value} is out of range for an unsigned long")
         return struct.pack("!Q", value)
 
-    def encode_long(self, value: int):
+    @staticmethod
+    def encode_long(value: int):
         """Write long with value ``value`` to ``self``.
 
         :param value: Maximum is ``2 ** 63 - 1``, minimum is ``-(2 ** 63)``.
@@ -191,7 +197,8 @@ class Packet:
 
         return self.encode_ulong(uuid1) + self.encode_ulong(uuid2)
 
-    def encode_bool(self, value: bool):
+    @staticmethod
+    def encode_bool(value: bool):
         """Write bool with value ``value`` to ``self``.
 
         :param value: The value to write.
@@ -342,7 +349,8 @@ class S2S_0xFF(S2CPacket):
         self.name = self._info()["name"]
         self.id = self._info()["id"]
 
-    def _info(self):
+    @staticmethod
+    def _info():
         return {
             "name": "Example Packet",
             "id": 0xFF,
@@ -359,7 +367,8 @@ class S2S_0xFF(S2CPacket):
             "data": self.__data,
         }
 
-    def _dataTypes(self):
+    @staticmethod
+    def _dataTypes():
         return {
             "...": "...",
         }
