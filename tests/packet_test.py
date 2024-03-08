@@ -17,10 +17,11 @@ def check_foo_packets(name: str):
 
     for file in files:
         file = os.path.join(directory, file)
-        with open(file, "r") as f:
-            if file.endswith("__init__.py"):
-                continue
 
+        if file.endswith("__init__.py") or file.endswith("__pycache__"):
+            continue
+
+        with open(file, "r") as f:
             content = f.read()
             expected_name = file.split(".")[0]
             expected_name = os.path.split(expected_name)[-1]
@@ -35,12 +36,12 @@ def check_foo_packets(name: str):
             ), f"Expected id to be {expected_id} in {file}"
 
             assert (
-                "def __info(self):" in content
-            ), f"Expected __info method to be in {file}"
+                "def _info(self):" in content
+            ), f"Expected _info method to be in {file}"
 
             assert (
-                "def __dataTypes(self):" in content
-            ), f"Expected __dataTypes method to be in {file}"
+                "def _dataTypes(self):" in content
+            ), f"Expected _dataTypes method to be in {file}"
 
     return 1
 
