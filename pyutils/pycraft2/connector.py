@@ -112,9 +112,8 @@ class MCSocket(AsyncObj):
 
         assert isinstance(p, S2S_0xFF)
 
-        if self.compress != -1:
-            if len(p) > self.compress:
-                p.compress()
+        if self.compress != -1 and len(p) > self.compress:
+            p.compress()
 
         await p.send(self)
 
