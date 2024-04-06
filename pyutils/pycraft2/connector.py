@@ -272,20 +272,23 @@ class MCSocket(AsyncObj):
 
     @staticmethod
     async def attempt_session_join(verify_hash: str, mc_token: str, profile: dict):
-        async with aiohttp.ClientSession() as session, session.post(
-            "https://sessionserver.mojang.com/session/minecraft/join",
-            json={
-                "accessToken": mc_token,
-                "selectedProfile": {
-                    "id": profile["id"].replace("-", ""),
-                    "name": profile["name"],
+        async with (
+            aiohttp.ClientSession() as session,
+            session.post(
+                "https://sessionserver.mojang.com/session/minecraft/join",
+                json={
+                    "accessToken": mc_token,
+                    "selectedProfile": {
+                        "id": profile["id"].replace("-", ""),
+                        "name": profile["name"],
+                    },
+                    "serverId": verify_hash,
                 },
-                "serverId": verify_hash,
-            },
-            headers={
-                "Content-Type": "application/json",
-            },
-        ) as resp:
+                headers={
+                    "Content-Type": "application/json",
+                },
+            ) as resp,
+        ):
             return resp.status
 
     # Encryption methods
