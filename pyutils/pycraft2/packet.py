@@ -345,6 +345,9 @@ class S2S_0xFF(S2CPacket):
         self.state = self._info()["state"]
         super().__init__(b"", self.version, self.state)
 
+        assert (
+            kwargs.keys() <= self._dataTypes().keys()
+        ), f"Unknown data type: {kwargs.keys() - self._dataTypes().keys()}"
         self.__data = kwargs
         self.name = self._info()["name"]
         self.id = self._info()["id"]
@@ -358,7 +361,7 @@ class S2S_0xFF(S2CPacket):
         }
 
     def __str__(self):
-        return f"{self.name}({', '.join([f'{k}={v}' for k, v in self.__data.items()]) if self.__data else ''})"
+        return f"{self.name}({', '.join([f'{k}={v}' for k, v in self.__data.items()]) if self.__data else ''}, version={self.version}, state={self.state})"
 
     def toDict(self):
         return {
@@ -367,11 +370,41 @@ class S2S_0xFF(S2CPacket):
             "data": self.__data,
         }
 
+    def copy(self):
+        kwargs = self.__data.copy()
+        kwargs["version"] = self.version
+        kwargs["state"] = self.state
+
     @staticmethod
     def _dataTypes():
         return {
             "...": "...",
         }
+
+    def read_type(self, _type: DataTypes):
+        match _type:
+            case DataTypes.VARINT:
+                return self.read_varint()
+            case DataTypes.VARLONG:
+                return self.read_varlong()
+            case DataTypes.STRING:
+                return self.read_string()
+            case DataTypes.USHORT:
+                return self.read_ushort()
+            case DataTypes.SHORT:
+                return self.read_short()
+            case DataTypes.ULONG:
+                return self.read_ulong()
+            case DataTypes.LONG:
+                return self.read_long()
+            case DataTypes.UUID:
+                return self.read_uuid()
+            case DataTypes.BOOL:
+                return self.read_bool()
+            case DataTypes.BYTE_ARRAY:
+                return self.read(self.read_varint())
+            case _:
+                raise ValueError(f"Unknown data type: {_type}")
 
     def toBytes(self):
         b = self.encode_varint(self._info()["id"])
@@ -407,3 +440,15 @@ class S2S_0xFF(S2CPacket):
     async def send(self, _socket):
         _socket.set_state(self.state)
         await _socket.send(self.toBytes())
+
+    def __getitem__(self, key):
+        if key not in self.__data.keys() and key not in self._info().keys():
+            raise KeyError(f"Key '{key}' not found")
+
+        return self.__data[key] if key in self.__data else self._info()[key]
+
+    def __setitem__(self, key, value):
+        if key not in self.__data:
+            raise KeyError(f"Key '{key}' not found")
+
+        self.__data[key] = value

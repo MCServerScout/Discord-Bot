@@ -24,7 +24,6 @@ from interactions.client.utils import (
     AnsiColors,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -80,15 +79,15 @@ class Buttons(Extension):
     def __init__(
         self,
         *_,
-        mcLib,
-        messageLib,
-        playerLib,
+        mc_lib,
+        message_lib,
+        player_lib,
         logger,
-        databaseLib,
-        serverLib,
-        twitchLib,
-        Scanner,
-        textLib,
+        database_lib,
+        server_lib,
+        twitch_lib,
+        scanner,
+        text_lib,
         cstats,
         azure_client_id,
         azure_redirect_uri,
@@ -96,15 +95,15 @@ class Buttons(Extension):
     ):
         super().__init__()
 
-        self.mcLib = mcLib
-        self.messageLib = messageLib
-        self.playerLib = playerLib
+        self.mcLib = mc_lib
+        self.messageLib = message_lib
+        self.playerLib = player_lib
         self.logger = logger
-        self.databaseLib = databaseLib
-        self.serverLib = serverLib
-        self.twitchLib = twitchLib
-        self.Scanner = Scanner
-        self.textLib = textLib
+        self.databaseLib = database_lib
+        self.serverLib = server_lib
+        self.twitchLib = twitch_lib
+        self.Scanner = scanner
+        self.textLib = text_lib
         self.cstats = cstats
         self.azure_client_id = azure_client_id
         self.azure_redirect_uri = azure_redirect_uri
@@ -502,7 +501,7 @@ class Buttons(Extension):
                 value = menu.ctx.values[0]
                 self.logger.print(f"sort method: {value}")
                 sort_method = {}
-                extra = []  # used to extra that the sort method exists
+                extra: list[dict] = []  # used to extra that the sort method exists
 
                 match value:
                     case "players":
@@ -765,14 +764,14 @@ class Buttons(Extension):
 
             # step three it's joining time
             # get the activation code url
-            url, vCode = self.mcLib.get_activation_code_url(
+            url, v_code = self.mcLib.get_activation_code_url(
                 clientID=self.azure_client_id, redirect_uri=self.azure_redirect_uri
             )
 
             verify_cache[str(org.id)] = TimedCache(
                 timeout=280,
                 **{
-                    "vCode": vCode,
+                    "vCode": v_code,
                     "org": org,
                     "pipeline": pipeline,
                     "index": 0,
@@ -830,12 +829,12 @@ class Buttons(Extension):
         try:
             org = ctx.message
             org_org_id = org.embeds[0].footer.text.split(" ")[1]
-            Oorg = ctx.channel.get_message(org_org_id)
-            self.logger.print(f"org: {Oorg}")
+            oorg = ctx.channel.get_message(org_org_id)
+            self.logger.print(f"org: {oorg}")
 
             self.logger.print("submit called")
             # get the files attached to the message
-            cache = verify_cache[str(Oorg.id)]
+            cache = verify_cache[str(oorg.id)]
 
             if cache == {}:
                 await ctx.send(
@@ -848,7 +847,7 @@ class Buttons(Extension):
                 )
                 return
 
-            vCode = cache["vCode"]
+            v_code = cache["vCode"]
             pipeline = cache["pipeline"]
             index = cache["index"]
 
@@ -906,7 +905,7 @@ class Buttons(Extension):
                     clientID=self.azure_client_id,
                     redirect_uri=self.azure_redirect_uri,
                     act_code=code,
-                    verify_code=vCode,
+                    verify_code=v_code,
                 )
 
                 if res["type"] == "error":
@@ -952,9 +951,9 @@ class Buttons(Extension):
 
             # try and join the server
             host = self.databaseLib.get_doc_at_index(pipeline, index)
-            ServerType = self.mcLib.ServerType
+            server_type = self.mcLib.ServerType
 
-            res: ServerType = await self.mcLib.join(
+            res: server_type = await self.mcLib.join(
                 ip=host["ip"],
                 port=host["port"],
                 player_username=name,

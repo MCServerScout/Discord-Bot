@@ -6,9 +6,9 @@ class S2C_0x04(S2S_0xFF):
     Login Plugin Request (0x04) Packet
 
     Data:
-        - Message ID | VarInt | The ID of the message
-        - Channel | String (Identifier) | The name of the channel
-        - Data | Byte Array | The data of the message
+        - message_id | VarInt | The ID of the message
+        - channel | String (Identifier) | The name of the channel
+        - data | Byte Array | The data of the message
     """
 
     def _info(self):

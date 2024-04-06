@@ -12,6 +12,7 @@ country_converter~=1.2
 kaleido~=0.2
 discord-py-interactions~=5.11
 pytest~=7.4
+pytest-asyncio~=0.23.6
 interactions-dynamic-help~=1.0
 sentry_sdk~=1.40.5
 scapy~=2.5.0

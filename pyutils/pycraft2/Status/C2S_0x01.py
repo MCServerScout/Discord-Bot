@@ -6,7 +6,7 @@ class C2S_0x01(S2S_0xFF):
     Ping Request (0x01)
 
     Data:
-        - Payload | Long | Any number
+        - payload | Long | Any number
     """
 
     def _info(self):

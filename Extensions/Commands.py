@@ -31,6 +31,7 @@ from pyutils.logger import Logger
 from pyutils.message import Message
 from pyutils.minecraft import Minecraft
 from pyutils.player import Player
+from pyutils.scanner import Scanner
 from pyutils.server import Server
 from pyutils.text import Text
 from pyutils.twitch import Twitch
@@ -51,34 +52,34 @@ class Commands(Extension):
     def __init__(
         self,
         *_,
-        mcLib: "Minecraft",
-        messageLib: "Message",
-        playerLib: "Player",
+        mc_lib: "Minecraft",
+        message_lib: "Message",
+        player_lib: "Player",
         logger: "Logger",
-        databaseLib: "Database",
-        serverLib: "Server",
-        twitchLib: "Twitch",
-        Scanner,
-        textLib: "Text",
-        cstats,
-        azure_client_id,
-        azure_redirect_uri,
-        client_id,
-        client_secret,
-        upload_serv,
+        database_lib: "Database",
+        server_lib: "Server",
+        twitch_lib: "Twitch",
+        scanner: "Scanner",
+        text_lib: "Text",
+        cstats="",
+        azure_client_id="",
+        azure_redirect_uri="",
+        client_id="",
+        client_secret="",
+        upload_serv="",
         **__,
     ):
         super().__init__()
 
-        self.mcLib = mcLib
-        self.messageLib = messageLib
-        self.playerLib = playerLib
+        self.mcLib = mc_lib
+        self.messageLib = message_lib
+        self.playerLib = player_lib
         self.logger = logger
-        self.databaseLib = databaseLib
-        self.serverLib = serverLib
-        self.twitchLib = twitchLib
-        self.Scanner = Scanner
-        self.textLib = textLib
+        self.databaseLib = database_lib
+        self.serverLib = server_lib
+        self.twitchLib = twitch_lib
+        self.Scanner = scanner
+        self.textLib = text_lib
         self.cstats = cstats
         self.azure_client_id = azure_client_id
         self.azure_redirect_uri = azure_redirect_uri
@@ -264,6 +265,7 @@ class Commands(Extension):
                             color=BLUE,
                         ),
                         components=self.messageLib.buttons(),
+                        context=ctx,
                     )
 
                 self.logger.debug(
@@ -284,7 +286,9 @@ class Commands(Extension):
                     )
             if max_players is not None:
                 if max_players.isnumeric():
-                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                    pipeline[0]["$match"]["$and"].append(
+                        {"players.max": int(max_players)}
+                    )
                 elif (
                     max_players.startswith(("[", "("))
                     and max_players.endswith(("]", ")"))
@@ -321,7 +325,7 @@ class Commands(Extension):
             if online_players is not None:
                 if online_players.isnumeric():
                     pipeline[0]["$match"]["$and"].append(
-                        {"players.max": online_players}
+                        {"players.max": int(online_players)}
                     )
                 elif (
                     online_players.startswith(("[", "("))
@@ -417,7 +421,9 @@ class Commands(Extension):
                     ]
                 )
                 if max_players.isnumeric():
-                    pipeline[0]["$match"]["$and"].append({"players.max": max_players})
+                    pipeline[0]["$match"]["$and"].append(
+                        {"players.max": int(max_players)}
+                    )
                 elif (
                     max_players.startswith(("[", "("))
                     and max_players.endswith(("]", ")"))
@@ -1112,6 +1118,12 @@ class Commands(Extension):
             # get the total number of players in players.sample
             pipeline = [
                 {"$unwind": "$players.sample"},
+                {
+                    "$group": {
+                        "_id": {"$toLower": "$players.sample.id"},
+                        "total": {"$sum": 1},
+                    }
+                },
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
             ]
             total_sample_players = self.databaseLib.aggregate(pipeline)

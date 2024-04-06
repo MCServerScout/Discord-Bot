@@ -45,35 +45,67 @@ class StreamToLogger:
         return text1 + "\n" + text2
 
 
-def filter_msg(msg: str) -> str | None:
-    if any(
-        (
-            "To sign in, use a web browser to open the page" in msg,
-            "email_modal" in msg,
-            "heartbeat" in msg.lower(),
-            "Sending data to websocket: {" in msg,
-            "event.ctx.responses" in msg,
-            re.match(
-                r"(POST|PATCH)::https://discord.com/api/v",
-                msg,
-            )
-            is not None,
-            msg.startswith("[http_client."),
-            msg.strip().endswith(" ^"),
-        )
-    ) and not any(
-        (
-            "exception" in msg.lower(),
-            "raised" in msg.lower(),
-            "error" in msg.lower(),
-        )
-    ):
-        return
-    return msg
-
-
-class EmailFileHandler(logging.FileHandler):
+class FilteredFileHandler(logging.FileHandler):
     def emit(self, record):
+        def filter_msg(msg: str) -> str | None:
+            if any(
+                (
+                    "To sign in, use a web browser to open the page" in msg,
+                    "email_modal" in msg,
+                    "heartbeat" in msg.lower(),
+                    "Sending data to websocket: {" in msg,
+                    "event.ctx.responses" in msg,
+                    re.match(
+                        r"(POST|PATCH)::https://discord.com/api/v",
+                        msg,
+                    )
+                    is not None,
+                    msg.startswith("[http_client."),
+                    msg.strip().endswith("^"),
+                )
+            ) and not any(
+                (
+                    "exception" in msg.lower(),
+                    "raised" in msg.lower(),
+                    "error" in msg.lower(),
+                )
+            ):
+                return
+            return msg
+
+        if filter_msg(record.getMessage()) is None:
+            return
+        super().emit(record)
+
+
+class FilteredConsoleHandler(logging.StreamHandler):
+    def emit(self, record):
+        def filter_msg(msg: str) -> str | None:
+            if any(
+                (
+                    "To sign in, use a web browser to open the page" in msg,
+                    "email_modal" in msg,
+                    "heartbeat" in msg.lower(),
+                    "Sending data to websocket: {" in msg,
+                    "event.ctx.responses" in msg,
+                    re.match(
+                        r"(POST|PATCH)::https://discord.com/api/v",
+                        msg,
+                    )
+                    is not None,
+                    msg.startswith("[http_client."),
+                    msg.strip().endswith("^"),
+                )
+            ) and not any(
+                (
+                    "exception" in msg.lower(),
+                    "raised" in msg.lower(),
+                    "error" in msg.lower(),
+                )
+            ):
+                return
+            return msg
+
         if filter_msg(record.getMessage()) is None:
             return
         super().emit(record)
@@ -95,15 +127,16 @@ class Logger:
         """
         self.__last_print = None
         self.DEBUG = debug
-        self.logging = logging
+        self.logging = logging.getLogger()
         self.webhook = discord_webhook
 
         logging.basicConfig(
             level=level if not self.DEBUG else logging.DEBUG,
-            format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+            format="%(asctime)s %(levelname)s %(name)s [%(filename)s-%(module)s.%(funcName)s]: %(message)s",
             datefmt="%d-%b %H:%M:%S",
             handlers=[
-                EmailFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
+                FilteredFileHandler("log.log", mode="a", encoding="utf-8", delay=False),
+                logging.StreamHandler(sys.stdout),
             ],
         )
 
@@ -151,49 +184,34 @@ class Logger:
 
         return out
 
-    def info(self, message):
-        """Same level as print but no console output"""
-        message = f"[{self.stack_trace(inspect.stack())}] {message}"
-        self.logging.info(message)
+    def info(self, *args, **kwargs):
+        self.logging.info(*args, **kwargs)
 
     def log(self, *args, **kwargs):
-        """Overload for log"""
         self.logging.log(*args, **kwargs)
 
-    def error(self, *message, **kwargs):
-        message = " ".join([str(arg) for arg in message])
-        message = f"[{self.stack_trace(inspect.stack())}] {message}"
-        self.logging.error(message, **kwargs)
-        self.print(message, log=False)
+    def error(self, *args, **kwargs):
+        self.logging.error(*args, **kwargs)
 
-    def critical(self, *message):
+    def critical(self, *message, **kwargs):
         message = " ".join([str(arg) for arg in message])
-        message = f"[{self.stack_trace(inspect.stack())}] {message}"
-        self.logging.critical(message)
+        self.logging.critical(message, **kwargs)
         self.hook(message)
-        self.print(message, log=False)
 
     def debug(self, *args, **kwargs):
-        msg = " ".join([str(arg) for arg in args])
-        msg = f"[{self.stack_trace(inspect.stack())}] {msg}"
-        self.logging.debug(msg)
-        if self.DEBUG:
-            self.print(*args, **kwargs, log=False)
+        self.logging.debug(*args, **kwargs)
 
-    def warning(self, message):
-        message = f"[{self.stack_trace(inspect.stack())}] {message}"
-        self.print(message, log=False)
-        self.logging.warning(message)
+    def warning(self, *args, **kwargs):
+        self.logging.warning(*args, **kwargs)
 
-    def war(self, message):
-        self.warning(message)
+    def war(self, *args, **kwargs):
+        self.warning(*args, **kwargs)
 
     def exception(self, message, *_, exception: Exception = None):
         if exception is None:
             message = f"[{self.stack_trace(inspect.stack())}] {message}"
             self.logging.exception(message)
             self.hook(message)
-            self.print(message, log=False)
         else:
             # pretty print the exception, function calls, and variables
             stacks = inspect.trace()
@@ -227,37 +245,8 @@ class Logger:
 
         return text1 + "\n" + text2
 
-    def print(self, *args, log=True, **kwargs):
-        msg = " ".join([str(arg) for arg in args])
-        msg = str(msg)
-        msg = filter_msg(msg)
-
-        if msg is None:
-            return
-
-        if "end" in kwargs:
-            msg += kwargs["end"]
-            kwargs["end"] = ""
-
-        stack_tr = self.stack_trace(inspect.stack())
-        if not stack_tr.lower().startswith("logger."):
-            msg = f"[{stack_tr}] {msg}"
-
-        if (
-            self.__last_print != msg
-        ):  # prevent duplicate messages and spamming the console
-            sys.stdout = norm  # output to console
-            if self.__last_print is not None and self.__last_print.endswith("\r"):
-                print(f"{' ' * len(self.__last_print)}\r", end="")
-
-            self.__last_print = str(msg) + (
-                "" if "end" not in kwargs else kwargs["end"]
-            )
-            print(msg, **kwargs)
-            sys.stdout = self.out  # output to log.log
-
-        if log:
-            self.logging.info(msg)
+    def print(self, *args, **kwargs):
+        self.logging.info(*args, **kwargs)
 
     def hook(self, message: str):
         try:
@@ -269,7 +258,6 @@ class Logger:
             loop.run_until_complete(self.async_hook(message))
 
     async def async_hook(self, message: str):
-        message = filter_msg(message)
         if self.webhook is not None and self.webhook != "" and message is not None:
             async with aiohttp.ClientSession() as session, session.post(
                 self.webhook,

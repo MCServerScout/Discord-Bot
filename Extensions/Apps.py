@@ -7,15 +7,15 @@ class Apps(Extension):
     def __init__(
         self,
         *_,
-        mcLib,
-        messageLib,
-        playerLib,
+        mc_lib,
+        message_lib,
+        player_lib,
         logger,
-        databaseLib,
-        serverLib,
-        twitchLib,
-        Scanner,
-        textLib,
+        database_lib,
+        server_lib,
+        twitch_lib,
+        scanner,
+        text_lib,
         cstats,
         azure_client_id,
         azure_redirect_uri,
@@ -23,15 +23,15 @@ class Apps(Extension):
     ):
         super().__init__()
 
-        self.mcLib = mcLib
-        self.messageLib = messageLib
-        self.playerLib = playerLib
+        self.mcLib = mc_lib
+        self.messageLib = message_lib
+        self.playerLib = player_lib
         self.logger = logger
-        self.databaseLib = databaseLib
-        self.serverLib = serverLib
-        self.twitchLib = twitchLib
-        self.Scanner = Scanner
-        self.textLib = textLib
+        self.databaseLib = database_lib
+        self.serverLib = server_lib
+        self.twitchLib = twitch_lib
+        self.Scanner = scanner
+        self.textLib = text_lib
         self.cstats = cstats
         self.azure_client_id = azure_client_id
         self.azure_redirect_uri = azure_redirect_uri

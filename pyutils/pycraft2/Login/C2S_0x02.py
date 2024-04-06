@@ -6,9 +6,9 @@ class C2S_0x02(S2S_0xFF):
     Login Plugin Response (0x02) Packet
 
     Data:
-        - Message ID | VarInt | The ID of the message
-        - Successful | Boolean | Whether the response was successful
-        - Data | Byte Array | The data of the response (OPTIONAL)
+        - message_id | VarInt | The ID of the message
+        - successful | Boolean | Whether the response was successful
+        - data | Byte Array | The data of the response (OPTIONAL)
     """
 
     def _info(self):
@@ -20,7 +20,7 @@ class C2S_0x02(S2S_0xFF):
 
     def _dataTypes(self):
         return {
-            "Message ID": DataTypes.VARINT,
-            "Successful": DataTypes.BOOL,
-            "Data": DataTypes.BYTE_ARRAY,
+            "message_id": DataTypes.VARINT,
+            "successful": DataTypes.BOOL,
+            "data": DataTypes.BYTE_ARRAY,
         }

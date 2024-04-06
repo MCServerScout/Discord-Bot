@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import ctypes
 import datetime
@@ -18,8 +19,14 @@ from pymongo.errors import ServerSelectionTimeoutError
 from sentry_sdk import metrics
 from sentry_sdk.integrations.aiohttp import AioHttpIntegration
 
-from pyutils import Utils
-from pyutils.pycraft2.connector import MCSocket
+try:
+    from pyutils import Utils
+    from pyutils.pycraft2.connector import MCSocket
+except ImportError:
+    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+    from pyutils import Utils
+    from pyutils.pycraft2.connector import MCSocket
 
 (
     DISCORD_WEBHOOK,
@@ -342,7 +349,6 @@ async def async_scan_range(generator: IPGenerator, timeout: float = 1):
                     f"{round(generator.addr_index / generator.num_ips * 100, 2)}% done, "
                     f"ETA: {datetime.datetime.fromtimestamp(ETA).strftime('%H:%M:%S')} (dur of {logger.auto_range_time(tEnd - tStart, 2)})"
                     f"{' ' * 20}",
-                    end="\r",
                 )
 
         generator.scan_complete = True
@@ -437,8 +443,60 @@ async def async_scan_valid(generator: IPGenerator):
         logger.print("No servers remaining to validate")
 
 
-def main(mask: str = "5.0.0.0/8", timeout: float = 0.2):
-    generator = IPGenerator(mask, (25565, 25566))
+def main():
+    global max_pps
+    if max_pps == "...":
+        max_pps = 1000
+
+    # parse args
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--mask",
+        type=str,
+        default="5.0.0.0/8",
+        help="The ipv4 mask to scan as a subnet mask (e.g. 10.0.0.0/24 scan 10.0.0.0-10.0.0.255)",
+    )
+    parser.add_argument(
+        "--ports", type=str, default="25565-25566", help="The port (range) to scan"
+    )
+    parser.add_argument(
+        "--timeout", type=float, default=0.2, help="The timeout for each ping"
+    )
+    parser.add_argument(
+        "--max-pps",
+        type=int,
+        default=max_pps,
+        help="The maximum pings per second to send",
+    )
+    args = parser.parse_args()
+
+    mask = args.mask
+    timeout = args.timeout
+    max_pps = args.max_pps
+    port_range = args.ports.replace(" ", "")
+
+    if "," in port_range:
+        port_range = port_range.split(",")
+        p_out = ()
+        for p in port_range:
+            if "-" in p:
+                p_out += tuple(map(int, p.split("-")))
+            else:
+                p_out += (int(p),)
+
+        port_range = p_out
+    elif "-" in port_range:
+        port_range = tuple(map(int, port_range.split("-")))
+    else:
+        port_range = (port_range,)
+
+    port_range = tuple(map(int, port_range))
+    port_range = (min(port_range), max(port_range))
+
+    if port_range[0] == port_range[1]:
+        port_range = (port_range[0], port_range[0] + 1)
+
+    generator = IPGenerator(mask, port_range=port_range)
 
     pps = generator.num_ips / timeout
     pps = min(pps, max_pps)

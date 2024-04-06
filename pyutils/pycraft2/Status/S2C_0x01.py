@@ -6,7 +6,7 @@ class S2C_0x01(S2S_0xFF):
     Ping Response (0x01) sent by the server to the client.
 
     Data:
-        - Payload | Long | The client's payload, sent in the ping packet.
+        - payload | Long | The client's payload, sent in the ping packet.
     """
 
     def _info(self):

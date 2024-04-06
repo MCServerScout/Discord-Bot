@@ -157,15 +157,15 @@ PINK = 0xFFC0CB  # offline
 # Load extensions
 exts = ["Apps", "Buttons", "Commands"]
 kwargs = {
-    "messageLib": messageLib,
-    "playerLib": playerLib,
+    "message_lib": messageLib,
+    "player_lib": playerLib,
     "logger": logger,
-    "databaseLib": databaseLib,
-    "serverLib": serverLib,
-    "twitchLib": twitchLib,
-    "Scanner": Scanner,
-    "textLib": textLib,
-    "mcLib": mcLib,
+    "database_lib": databaseLib,
+    "server_lib": serverLib,
+    "twitch_lib": twitchLib,
+    "scanner": Scanner,
+    "text_lib": textLib,
+    "mc_lib": mcLib,
     "cstats": cstats,
     "azure_client_id": azure_client_id,
     "azure_redirect_uri": azure_redirect_uri,
