@@ -968,9 +968,10 @@ class Commands(Extension):
             )
 
             # load the file
-            async with aiohttp.ClientSession() as session, session.get(
-                file.url
-            ) as resp:
+            async with (
+                aiohttp.ClientSession() as session,
+                session.get(file.url) as resp,
+            ):
                 data = await resp.read()
                 lines = data.decode("utf-8").split("\n")
             # remove the newlines
