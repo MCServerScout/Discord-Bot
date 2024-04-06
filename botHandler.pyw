@@ -215,19 +215,19 @@ def main():
                 print_and_log("Restarted too soon, waiting 5 min")
 
                 # mark docker health file as unhealthy
-                with open("/assets/health", "w") as f:
+                with open("assets/health", "w") as f:
                     f.write("unhealthy")
                 time.sleep(60 * 15)
             elif time.time() - last_run < 60 * 15:  # 15 min
                 print_and_log("Someone royally messed up, waiting 60 min")
 
                 # mark docker health file as unhealthy
-                with open("/assets/health", "w") as f:
+                with open("assets/health", "w") as f:
                     f.write("unhealthy")
                 time.sleep(60 * 60)
             else:
                 # mark docker health file as healthy
-                with open("/assets/health", "w") as f:
+                with open("assets/health", "w") as f:
                     f.write("healthy")
             last_run = time.time()
 
