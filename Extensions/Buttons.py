@@ -24,6 +24,7 @@ from interactions.client.utils import (
     AnsiColors,
 )
 from interactions.ext.paginators import Paginator
+
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -501,7 +502,8 @@ class Buttons(Extension):
                 value = menu.ctx.values[0]
                 self.logger.print(f"sort method: {value}")
                 sort_method = {}
-                extra: list[dict] = []  # used to extra that the sort method exists
+                # used to extra that the sort method exists
+                extra: list[dict] = []
 
                 match value:
                     case "players":
