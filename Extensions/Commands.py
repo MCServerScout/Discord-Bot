@@ -2,13 +2,10 @@ import asyncio
 import copy
 import io
 import json
-import os
 import re
 import traceback
 from datetime import datetime
-from threading import Thread
 
-import aiohttp
 import country_converter
 import requests
 import sentry_sdk
@@ -20,8 +17,6 @@ from interactions import (
     OptionType,
     ShortText,
     Modal,
-    SlashCommandChoice,
-    Attachment,
     File,
 )
 from interactions.ext.paginators import Paginator
@@ -541,17 +536,23 @@ class Commands(Extension):
             pipeline.append({"$limit": total})
 
             if total == 0:
+                self.logger.debug("No servers found, saving pipeline to file")
+                with open("pipeline.json", "w") as f:
+                    formated_pipe = json.dumps(pipeline, indent=4)
+                    f.write(formated_pipe)
                 await msg.edit(
                     embed=self.messageLib.standard_embed(
                         title="No servers found",
-                        description="Try again with different parameters",
+                        description="Try again with different parameters, "
+                        "the pipeline.json file has been added for debugging.",
                         color=RED,
                     ),
                     components=self.messageLib.buttons(),
+                    file=File(
+                        file_name="pipeline.json",
+                        file=io.BytesIO(formated_pipe.encode()),
+                    ),
                 )
-                self.logger.debug("No servers found, saving pipeline to file")
-                with open("pipeline.json", "w") as f:
-                    f.write(json.dumps(pipeline, indent=4))
                 return
 
             # check how many servers match
@@ -897,151 +898,6 @@ class Commands(Extension):
                 embed=self.messageLib.standard_embed(
                     title="Error",
                     description="An error occurred while trying to get the streamers",
-                    color=RED,
-                ),
-                ephemeral=True,
-            )
-            return
-
-    # command to upload a character-separated file of ip subnets
-    @slash_command(
-        name="scan",
-        description="Scan a list of IP subnets",
-        options=[
-            SlashCommandOption(
-                name="file",
-                description="The file of delimited IP subnets",
-                type=OptionType.ATTACHMENT,
-                required=True,
-            ),
-            SlashCommandOption(
-                name="delimiter",
-                description="The delimiter to use",
-                type=OptionType.STRING,
-                required=True,
-                choices=[
-                    SlashCommandChoice(
-                        name="comma",
-                        value=",",
-                    ),
-                    SlashCommandChoice(
-                        name="semicolon",
-                        value=";",
-                    ),
-                    SlashCommandChoice(
-                        name="space",
-                        value=" ",
-                    ),
-                    SlashCommandChoice(
-                        name="line break",
-                        value="\n",
-                    ),
-                ],
-            ),
-        ],
-    )
-    async def scan(self, ctx: SlashContext, file: Attachment, delimiter: str):
-        try:
-            with sentry_sdk.configure_scope() as scope:
-                scope.add_attachment(filename=file.filename, path=file.url)
-
-            await ctx.defer(ephemeral=True)
-
-            # make sure the bot is running on linux
-            if os.name != "posix":
-                await ctx.send(
-                    embed=self.messageLib.standard_embed(
-                        title="Error",
-                        description="This command only works on Linux hosts",
-                        color=RED,
-                    ),
-                    ephemeral=True,
-                )
-                return
-            await ctx.send(
-                embed=self.messageLib.standard_embed(
-                    title="Loading...",
-                    description="Loading the scanner with the provided ranges",
-                    color=GREEN,
-                ),
-                ephemeral=True,
-            )
-
-            # load the file
-            async with (
-                aiohttp.ClientSession() as session,
-                session.get(file.url) as resp,
-            ):
-                data = await resp.read()
-                lines = data.decode("utf-8").split("\n")
-            # remove the newlines
-            lines = delimiter.join(lines)
-            lines = lines.split(delimiter)
-            lines = [line.strip() for line in lines]
-
-            # loop through each range and make sure it's a valid mask
-            for line in lines:
-                pattern = r"^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}\/(1[0-9]|2[0-9]|3[0-2])$"
-                if re.match(pattern, line) is None:
-                    await ctx.send(
-                        embed=self.messageLib.standard_embed(
-                            title="Error",
-                            description="Invalid subnet: " + line,
-                            color=RED,
-                        ),
-                        ephemeral=True,
-                    )
-                    return
-
-            # send the user how many ranges we're scanning
-            await ctx.send(
-                embed=self.messageLib.standard_embed(
-                    title="Loading...",
-                    description="Scanning " + str(len(lines)) + " ranges",
-                    color=GREEN,
-                ),
-                ephemeral=True,
-            )
-
-            def _scan(ip_ranges):
-                from pyutils.scanner import Scanner
-
-                scan_func = self.Scanner(
-                    logger_func=self.logger, serverLib=self.serverLib
-                )
-                scan_func.start(ip_ranges=ip_ranges)
-
-            try:
-                from pyutils.scanner import Scanner
-            except ImportError:
-                await ctx.send(
-                    embed=self.messageLib.standard_embed(
-                        title="Error",
-                        description="Scanner import error",
-                        color=RED,
-                    ),
-                    ephemeral=True,
-                )
-                return
-            else:
-                scanner = Thread(target=_scan, args=(lines,))
-                scanner.start()
-                await ctx.send(
-                    embed=self.messageLib.standard_embed(
-                        title="Success",
-                        description="Started the scanner",
-                        color=GREEN,
-                    ),
-                    ephemeral=True,
-                )
-        except Exception as err:
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
-            sentry_sdk.capture_exception(err)
-
-            await ctx.send(
-                embed=self.messageLib.standard_embed(
-                    title="Error",
-                    description="An error occurred while trying to scan the file",
                     color=RED,
                 ),
                 ephemeral=True,

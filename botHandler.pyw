@@ -193,7 +193,7 @@ def update():
 
         contents = requests.get(handler_url).text
         with open(__file__, "r") as f:
-            if f.read() != contents:
+            if f.read().strip() != contents.strip():
                 print_and_log("Updating botHandler")
                 with open(__file__, "w") as n:
                     n.write(contents)

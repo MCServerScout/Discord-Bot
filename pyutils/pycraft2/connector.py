@@ -177,7 +177,7 @@ class MCSocket(AsyncObj):
         """
 
         t_start = time.perf_counter()
-        p = packet.S2CPacket(self, state=state, version=version)
+        p = packet.S2S_0xFF(_socket=self, state=state, version=version)
         await p.read_response(self.compress)
 
         t_end = time.perf_counter()
@@ -345,13 +345,10 @@ class MCSocket(AsyncObj):
         await self.send_packet(p)
 
         # get a response
-        response = await self.recv_packet(States.STATUS, self.version)
+        response = await self.recv_packet(state=States.STATUS, version=self.version)
+        response = self.classify_packet(response, States.STATUS, self.version)
 
-        if response.id == 0x54 and response.read(1) == b"T":
-            # this is a web server, not a minecraft server
-            raise ConnectionError("This is a web server, not a minecraft server")
-
-        if response.id != 0x00:
+        if not isinstance(response, Status.S2C_0x00):
             self.logger.debug(
                 f"Expected status response (0x00), got {hex(response.id)} with data {response.read(len(response))}"
             )
@@ -382,8 +379,9 @@ class MCSocket(AsyncObj):
 
         # get a response
         response = await self.recv_packet(States.STATUS, self.version)
+        response = self.classify_packet(response, States.STATUS, self.version)
 
-        if response.id != 0x01:
+        if not isinstance(response, Status.S2C_0x01):
             self.logger.debug(
                 f"Expected status response (0x01), got {hex(response.id)} with data {response.read(len(response))}"
             )
@@ -416,7 +414,8 @@ class MCSocket(AsyncObj):
     async def login(self, mc_token: str, username: str = "", uuid: str = ""):
         """
         Send a login start packet to the server
-        You must provide either a username or a UUID (UUID is preferred and overrides the username)
+        You must provide either a username or a UUID
+        (UUID is preferred and overrides the username)
 
         Args:
             mc_token (str): The Mojang access token

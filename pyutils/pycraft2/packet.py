@@ -340,10 +340,10 @@ class S2S_0xFF(S2CPacket):
         - FieldName | FieldType | Notes
     """
 
-    def __init__(self, version: int = 47, **kwargs):
+    def __init__(self, version: int = 47, _socket=b"", **kwargs):
         self.version = version
         self.state = self._info()["state"]
-        super().__init__(b"", self.version, self.state)
+        super().__init__(_socket, version=self.version, state=self.state)
 
         assert (
             kwargs.keys() <= self._dataTypes().keys()

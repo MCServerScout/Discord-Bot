@@ -324,7 +324,9 @@ async def async_scan_range(generator: IPGenerator, timeout: float = 1):
                 tStart = time.perf_counter()
                 tasks = [
                     ping(generator, timeout=timeout)
-                    for _ in range(min(maxSockets, len(generator.addrs)))
+                    for _ in range(
+                        min(maxSockets, len(generator.addrs) - generator.addr_index)
+                    )
                 ]
                 await asyncio.gather(*tasks)
                 tEnd = time.perf_counter()
@@ -453,7 +455,7 @@ def main():
     parser.add_argument(
         "--mask",
         type=str,
-        default="5.0.0.0/8",
+        default="5.78.0.0/16",
         help="The ipv4 mask to scan as a subnet mask (e.g. 10.0.0.0/24 scan 10.0.0.0-10.0.0.255)",
     )
     parser.add_argument(
