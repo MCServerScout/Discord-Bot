@@ -1,5 +1,6 @@
 """Class for server connection and communication.
 """
+
 import datetime
 import re
 import socket

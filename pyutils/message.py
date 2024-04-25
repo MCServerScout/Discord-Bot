@@ -1,4 +1,5 @@
 """Useful functions for sending messages to the user."""
+
 import base64
 import datetime
 import io
@@ -11,6 +12,7 @@ import interactions
 import sentry_sdk
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
+
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -355,9 +357,11 @@ class Message:
             embed = self.standard_embed(
                 title=f"{is_online} {data['ip']}:{data['port']}",
                 description=f"{domain}\n```ansi\n{self.text.color_ansi(str(data['description']['text']))}\n```",
-                color=(GREEN if is_online == "🟢" else PINK)
-                if is_online != "🟡"
-                else None,
+                color=(
+                    (GREEN if is_online == "🟢" else PINK)
+                    if is_online != "🟡"
+                    else None
+                ),
             ).set_image(url="attachment://favicon.png")
 
             # set the footer to say the index, pipeline, and total servers
@@ -481,21 +485,23 @@ class Message:
 
             return {
                 "embed": embed,
-                "components": self.buttons(  # These are whether the buttons are disabled
-                    index + 1 >= total_servers,  # next
-                    index <= 0,  # previous
-                    total_servers <= 1,  # jump
-                    type(pipeline) is dict,  # update
-                    "sample" not in data["players"]
-                    or type(pipeline) is dict
-                    or len(data["players"]["sample"]) == 0,  # players
-                    total_servers <= 1,  # sort
-                    not data["hasForgeData"],  # mods
-                    data["lastSeen"] <= time.time() - 300,  # join
-                    twitch_count <= 0,  # streams
-                )
-                if not fast
-                else self.buttons(),
+                "components": (
+                    self.buttons(  # These are whether the buttons are disabled
+                        index + 1 >= total_servers,  # next
+                        index <= 0,  # previous
+                        total_servers <= 1,  # jump
+                        type(pipeline) is dict,  # update
+                        "sample" not in data["players"]
+                        or type(pipeline) is dict
+                        or len(data["players"]["sample"]) == 0,  # players
+                        total_servers <= 1,  # sort
+                        not data["hasForgeData"],  # mods
+                        data["lastSeen"] <= time.time() - 300,  # join
+                        twitch_count <= 0,  # streams
+                    )
+                    if not fast
+                    else self.buttons()
+                ),
                 "files": [
                     interactions.File(
                         file_name="favicon.png",
