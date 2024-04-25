@@ -11,7 +11,6 @@ import interactions
 import sentry_sdk
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -236,7 +235,7 @@ class Message:
             elif not fast:
                 self.logger.debug("Full response")
                 try:
-                    status = self.timer(
+                    status = await self.async_timer(
                         self.server.update, host=data["ip"], port=data["port"]
                     )
 

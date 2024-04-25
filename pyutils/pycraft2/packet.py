@@ -32,6 +32,8 @@ class DataTypes:
     VARINT = "VarInt"
     VARLONG = "VarLong"
     STRING = "String"
+    UTF8 = "UTF-8"
+    UTF16BE = "UTF-16BE"
     USHORT = "Unsigned Short"
     SHORT = "Short"
     ULONG = "Unsigned Long"
@@ -133,6 +135,13 @@ class Packet:
         :param string: The string to write.
         """
         return self.encode_varint(len(string)) + string.encode("utf-8")
+
+    def encode_utf16be(self, string: str):
+        """Write utf-16be string with value ``string`` to ``self``.
+
+        :param string: The string to write.
+        """
+        return self.encode_varint(len(string)) + string.encode("utf-16be")
 
     def encode_string(self, string: str):
         """Write string with value ``string`` to ``self``.
@@ -318,8 +327,16 @@ class S2CPacket(Packet):
                 self.id = self.read_varint()
                 self.write(uncomp_data)
 
-    def read_json(self):
-        dict_str = self.read_string()
+    def read_json(self, dict_str: str) -> dict:
+        """
+        Read JSON from a string, with some room for error in the string
+
+        Args:
+            dict_str (str): The string to read from
+
+        Returns:
+            dict: The JSON object
+        """
 
         if dict_str.count("{") > dict_str.count("}"):
             dict_str += "}" * (dict_str.count("{") - dict_str.count("}"))
@@ -344,6 +361,11 @@ class S2S_0xFF(S2CPacket):
         self.version = version
         self.state = self._info()["state"]
         super().__init__(_socket, version=self.version, state=self.state)
+
+        if "version" in kwargs:
+            del kwargs["version"]
+        if "_socket" in kwargs:
+            del kwargs["_socket"]
 
         assert (
             kwargs.keys() <= self._dataTypes().keys()
@@ -389,6 +411,10 @@ class S2S_0xFF(S2CPacket):
                 return self.read_varlong()
             case DataTypes.STRING:
                 return self.read_string()
+            case DataTypes.UTF8:
+                return self.read_string()
+            case DataTypes.UTF16BE:
+                return self.read_string()
             case DataTypes.USHORT:
                 return self.read_ushort()
             case DataTypes.SHORT:
@@ -417,6 +443,10 @@ class S2S_0xFF(S2CPacket):
                     b += self.encode_varlong(self.__data[k])
                 case "String":
                     b += self.encode_string(self.__data[k])
+                case "UTF-8":
+                    b += self.encode_utf8(self.__data[k])
+                case "UTF-16BE":
+                    b += self.encode_utf16be(self.__data[k])
                 case "Unsigned Short":
                     b += self.encode_ushort(self.__data[k])
                 case "Short":

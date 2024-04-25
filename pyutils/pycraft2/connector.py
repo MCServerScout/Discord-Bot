@@ -77,6 +77,7 @@ class MCSocket(AsyncObj):
         self.encrypting = None
         self.state = None
         self.version = None
+        self.addr = None
 
     async def __ainit__(
         self,
@@ -103,6 +104,12 @@ class MCSocket(AsyncObj):
         self.version = 47
         self.timeout = timeout
         self.logger = logger
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.close()
 
     async def send(self, data: bytes) -> None:
         """
@@ -164,7 +171,7 @@ class MCSocket(AsyncObj):
         t_end = time.perf_counter()
         self.logger.debug(f"Sent packet: {hex(p.id)} in {t_end - t_start:.2f} seconds")
 
-    async def recv_packet(self, state: int, version: int) -> "S2CPacket":
+    async def recv_packet(self, state: int, version: int) -> "S2S_0xFF":
         """
         Receive a packet from the server
 
@@ -177,7 +184,7 @@ class MCSocket(AsyncObj):
         """
 
         t_start = time.perf_counter()
-        p = packet.S2S_0xFF(_socket=self, state=state, version=version)
+        p = packet.S2S_0xFF(version=version, _socket=self)
         await p.read_response(self.compress)
 
         t_end = time.perf_counter()
@@ -330,6 +337,20 @@ class MCSocket(AsyncObj):
         self.version = version_id
         await self.send_packet(p)
 
+    async def handshake_status_1_6(self, version_id: int = 47):
+        """
+        Send a handshake packet to the server
+
+        Args:
+            version_id (int, optional): The version of the protocol. Defaults to 47.
+        """
+
+        p = Handshake.C2S_0xFE(
+            version=version_id,
+            hostname=self.addr[0],
+            port=self.addr[1],
+        )
+
     async def status_request(self) -> dict:
         """
         Send a status request to the server
@@ -346,7 +367,13 @@ class MCSocket(AsyncObj):
 
         # get a response
         response = await self.recv_packet(state=States.STATUS, version=self.version)
-        response = self.classify_packet(response, States.STATUS, self.version)
+
+        try:
+            response = self.classify_packet(response, States.STATUS, self.version)
+        except ValueError:
+            raise AssertionError(
+                f"Expected status response, got {hex(response.id)} with data {response.read(len(response))}"
+            )
 
         if not isinstance(response, Status.S2C_0x00):
             self.logger.debug(
@@ -357,7 +384,7 @@ class MCSocket(AsyncObj):
             )
 
         # read the response
-        json_data = response.read_json()
+        json_data = response.read_json(response["json_response"])
         return json_data
 
     async def status_ping(self, payload: int) -> int:
@@ -427,6 +454,7 @@ class MCSocket(AsyncObj):
             ValueError: If the UUID is invalid
             ValueError: If the username is invalid
             ConnectionError: If the server disconnects
+            NotImplementedError: If the server requests a plugin
         """
 
         if not uuid and not username:
@@ -492,7 +520,7 @@ class MCSocket(AsyncObj):
                 raise ConnectionError(p["reason"])
             case Login.S2C_0x04():
                 # plugin request
-                raise ConnectionError("Plugin request is not supported")
+                raise NotImplementedError("Plugin request is not supported")
             case Login.S2C_0x02():
                 # login success
                 return p
@@ -553,7 +581,7 @@ class MCSocket(AsyncObj):
                 raise ConnectionError(p["reason"])
             case Login.S2C_0x04():
                 # plugin request
-                raise ConnectionError("Plugin request is not supported")
+                raise NotImplementedError("Plugin request is not supported")
             case Login.S2C_0x03():
                 # set compression
                 self.set_compression(p["threshold"])
@@ -565,3 +593,51 @@ class MCSocket(AsyncObj):
         # send a login ack
         p = Login.C2S_0x03()
         await self.send_packet(p)
+
+    async def login_cracked(self, username: str):
+        """
+        Send a login start packet to the server
+        You must provide a username
+
+        Args:
+            username (str): The username to use
+
+        Raises:
+            ValueError: If the username is invalid
+            ConnectionError: If the server sends an invalid packet
+            ConnectionRefusedError: If the server disconnects
+            NotImplementedError: If the server requests encryption or a plugin
+        """
+
+        if not username:
+            raise ValueError("You must provide a username")
+
+        p = Login.C2S_0x00(name=username)
+        await self.send_packet(p)
+
+        # receive the response
+        p = await self.recv_packet(States.LOGIN, self.version)
+        p = self.classify_packet(p, States.LOGIN, self.version)
+
+        # essentially an if statement
+        match p:
+            case Login.S2C_0x03():
+                # set compression
+                self.set_compression(p["threshold"])
+                # receive another packet
+                p = await self.recv_packet(States.LOGIN, self.version)
+
+        match p:
+            case Login.S2C_0x00():
+                # disconnect
+                raise ConnectionRefusedError(p["reason"])
+            case Login.S2C_0x04():
+                # plugin request
+                raise NotImplementedError("Plugin request is not supported")
+            case Login.S2C_0x02():
+                # login success
+                return p
+            case Login.S2C_0x01():
+                raise NotImplementedError("Encryption is required")
+            case _:
+                raise ConnectionError("Unexpected packet: " + str(p))

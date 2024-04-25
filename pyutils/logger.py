@@ -282,7 +282,7 @@ class Logger:
 
     def timer(self, func: callable, *args, **kwargs):
         if inspect.iscoroutinefunction(func):
-            self.error("Function is a coroutine")
+            self.error(f"Function is a coroutine: {func.__name__}({args}, {kwargs})")
             return
 
         start = time.perf_counter()
@@ -301,7 +301,9 @@ class Logger:
 
     async def async_timer(self, func: callable, *args, **kwargs):
         if not inspect.iscoroutinefunction(func):
-            self.error("Function is not a coroutine")
+            self.error(
+                f"Function is not a coroutine: {func.__name__}({args}, {kwargs})"
+            )
             return
 
         start = time.perf_counter()

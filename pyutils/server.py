@@ -1,7 +1,6 @@
 """Class for server connection and communication.
 """
 import datetime
-import json
 import re
 import socket
 import threading
@@ -11,10 +10,10 @@ from typing import Optional, Mapping, Any
 
 import ipinfo
 from bson import json_util
-from mcstatus.protocol.connection import Connection, TCPSocketConnection
 
 from .database import Database
 from .logger import Logger
+from .pycraft2.connector import MCSocket
 from .text import Text
 
 
@@ -81,7 +80,7 @@ class Server:
         self.text = text
         self.ipinfoHandle = ipinfo.getHandler(ipinfo_token)
 
-    def update(
+    async def update(
         self,
         host: str,
         port: int = 25565,
@@ -161,7 +160,7 @@ class Server:
                 return json_util.loads(json_util.dumps(status))
 
             # get the status response
-            status2 = self.status(host)
+            status2 = await self.status(host)
 
             if status2 is None:
                 self.logger.warning(f"Failed to get status for {host}")
@@ -177,7 +176,9 @@ class Server:
                 self.logger.info(f"Got status for {host}: {status}")
 
             server_type = (
-                self.join(ip=host, port=port, version=status["version"]["protocol"])
+                await self.join(
+                    ip=host, port=port, version=status["version"]["protocol"]
+                )
                 if not fast
                 else self.ServerType(host, status["version"]["protocol"], "UNKNOWN")
             )
@@ -224,7 +225,7 @@ class Server:
             else:
                 return None
 
-    def status(
+    async def status(
         self,
         ip: str,
         port: int = 25565,
@@ -241,45 +242,13 @@ class Server:
             Optional[dict]: The status response dict
         """
         try:
-            connection = TCPSocketConnection((ip, port))
+            connection = await MCSocket(ip, port)
 
-            # Send a handshake packet: ID, protocol version, server address, server port, intention to log in
-            # This does not change between versions
-            handshake = Connection()
+            async with connection as con:
+                await con.handshake_status(version)
 
-            handshake.write_varint(0)  # Packet ID
-            handshake.write_varint(version)  # Protocol version
-            handshake.write_utf(ip)  # Server address
-            handshake.write_ushort(int(port))  # Server port
-            handshake.write_varint(1)  # Intention to get status
+                data = await con.status_request()
 
-            connection.write_buffer(handshake)
-
-            # Send status request packet
-            # This does not change between versions
-            request = Connection()
-
-            request.write_varint(0)  # Packet ID
-            connection.write_buffer(request)
-
-            # Read response
-            try:
-                response = connection.read_buffer()
-            except socket.error:
-                return None
-            res_id = response.read_varint()
-
-            if res_id == -1:
-                self.logger.warning("Connection error")
-                return None
-            elif res_id != 0:
-                self.logger.warning("Invalid packet ID received: " + str(hex(res_id)))
-                return None
-            elif res_id == 0:
-                length = response.read_varint()
-                data = response.read(length)
-
-                data = json.loads(data.decode("utf8"))
                 return data
         except TimeoutError:
             self.logger.warning("Connection error (timeout)")
@@ -290,12 +259,15 @@ class Server:
         except socket.gaierror:
             self.logger.warning("Connection error (invalid host)")
             return None
+        except AssertionError:
+            self.logger.warning("Connection error (assertion)")
+            return None
         except Exception as err:
             self.logger.print(f"{traceback.format_exc()}")
             self.logger.error(err)
             return None
 
-    def join(
+    async def join(
         self,
         ip: str,
         port: int,
@@ -303,72 +275,29 @@ class Server:
         player_username: str = "Pilot1783",
     ) -> ServerType:
         try:
-            connection = TCPSocketConnection((ip, port))
-            # Send a handshake packet: ID, protocol version, server address, server port, intention to log in
-            # This does not change between versions
-            handshake = Connection()
+            connection = MCSocket(ip, port)
+            await connection.handshake_login(version)
 
-            handshake.write_varint(0)  # Packet ID
-            handshake.write_varint(version)  # Protocol version
-            handshake.write_utf(ip)  # Server address
-            handshake.write_ushort(int(port))  # Server port
-            handshake.write_varint(2)  # Intention to login
-
-            connection.write_buffer(handshake)
-
-            # Send login start packet: ID, username, include sig data, has uuid, uuid
-            login_start = Connection()
-
-            login_start.write_varint(0)  # Packet ID
-            login_start.write_utf(player_username)  # Username
-            connection.write_buffer(login_start)
-
-            # Read response
-            response = connection.read_buffer()
-            _id: int = response.read_varint()
-            if _id == 2:
-                self.logger.print("Logged in successfully")
-                return self.ServerType(ip, version, "CRACKED")
-            elif _id == 0:
-                reason = response.read_utf()
-                modded = "Forge" in reason
-                if modded:
-                    self.logger.print("Modded server")
+            try:
+                response = await connection.login_cracked(player_username)
+            except ConnectionRefusedError as err:
+                msg = str(err)
+                return self.ServerType(ip, version, f"OFFLINE: {msg}")
+            except ConnectionError as err:
+                msg = str(err)
+                if "Unexpected packet: " in msg:
+                    self.logger.print("Unsupported server")
+                    return self.ServerType(ip, version, "UNKNOWN")
+            except NotImplementedError as err:
+                msg = str(err)
+                if "Plugin request is not supported" in msg:
+                    self.logger.print("Unsupported server")
+                    return self.ServerType(ip, version, "MODDED")
                 else:
-                    self.logger.print("Vanilla server")
-                return self.ServerType(
-                    ip, version, "VANILLA" if not modded else "MODDED"
-                )
-            elif _id == 3:
-                self.logger.print("Setting compression")
-                compression_threshold = response.read_varint()
-                self.logger.print(f"Compression threshold: {compression_threshold}")
-
-                response = connection.read_buffer()
-                _id: int = response.read_varint()
-            if _id == 1:
-                self.logger.print("Logged in successfully")
-
-                return self.ServerType(ip, version, "CRACKED")
-            elif _id == 0:
-                reason = response.read_utf()
-                modded = "Forge" in reason
-                if modded:
-                    self.logger.print("Modded server")
-                else:
-                    self.logger.print("Vanilla server")
-                return self.ServerType(
-                    ip, version, "VANILLA" if not modded else "MODDED"
-                )
+                    self.logger.print("Unsupported server")
+                    return self.ServerType(ip, version, "PREMIUM")
             else:
-                self.logger.warning("Unknown response: " + str(_id))
-                try:
-                    reason = response.read_utf()
-                except TimeoutError:
-                    return self.ServerType(ip, version, "OFFLINE")
-
-                self.logger.debug("Reason: " + reason)
-                return self.ServerType(ip, version, "UNKNOWN")
+                return self.ServerType(ip, version, "CRACKED")
         except TimeoutError:
             self.logger.print("Connection error (timeout)")
             return self.ServerType(ip, version, "OFFLINE")

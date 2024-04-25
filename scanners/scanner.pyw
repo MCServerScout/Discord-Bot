@@ -299,6 +299,9 @@ async def mcping(addr: tuple[str, int]):
         AssertionError,
         EOFError,
     ):
+        logger.debug(
+            f"Failed to connect to {ip}:{port} with error: {traceback.format_exc()}"
+        )
         return False
 
 
@@ -455,7 +458,7 @@ def main():
     parser.add_argument(
         "--mask",
         type=str,
-        default="5.78.0.0/16",
+        default="5.0.0.0/8",
         help="The ipv4 mask to scan as a subnet mask (e.g. 10.0.0.0/24 scan 10.0.0.0-10.0.0.255)",
     )
     parser.add_argument(

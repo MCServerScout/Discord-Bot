@@ -118,7 +118,7 @@ class Player:
         Returns:
             str: list of players
         """
-        data = self.server.update(host=ip, port=port, fast=True)
+        data = await self.server.update(host=ip, port=port, fast=True)
 
         if data is None:
             self.logger.print(f"Server {ip}:{port} not found in database")
