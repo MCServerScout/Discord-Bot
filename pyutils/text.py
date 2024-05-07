@@ -373,6 +373,21 @@ class Text:
                     int(rng[1].endswith(")")),
                     int(rng[1][:-1]),
                 )
+            elif len(rng) > 0:
+                # attempt to parse the range
+
+                if out[0][0] not in ("(", "[") or out[-1][-1] not in (")", "]"):
+                    raise ValueError("Invalid range")
+
+                out[0] = (
+                    int(rng[0].startswith("(")),
+                    int(rng[0][1:]),
+                )
+
+                out[1] = (
+                    int(rng[-1].endswith(")")),
+                    int(rng[-1][:-1]),
+                )
             else:
                 raise ValueError("Invalid range")
 
