@@ -12,7 +12,6 @@ import interactions
 import sentry_sdk
 from bson import json_util
 from interactions import ActionRow, ComponentContext, ContextMenuContext, File
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -358,9 +357,7 @@ class Message:
                 title=f"{is_online} {data['ip']}:{data['port']}",
                 description=f"{domain}\n```ansi\n{self.text.color_ansi(str(data['description']['text']))}\n```",
                 color=(
-                    (GREEN if is_online == "🟢" else PINK)
-                    if is_online != "🟡"
-                    else None
+                    (GREEN if is_online == "🟢" else PINK) if is_online != "🟡" else None
                 ),
             ).set_image(url="attachment://favicon.png")
 
@@ -655,7 +652,7 @@ class Message:
                     pipeline = await resp.text()
 
                 return index, (
-                    json_util.loads(pipeline) if pipeline is not None else None
+                    json_util.loads(pipeline) if (pipeline or None) else None
                 )
 
         return None
