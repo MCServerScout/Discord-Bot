@@ -273,14 +273,14 @@ class Server:
         ip: str,
         port: int,
         version: int = 47,
-        player_username: str = "Pilot1783",
+        player_username: str = "Pilot1782",
     ) -> ServerType:
         try:
-            connection = MCSocket(ip, port)
+            connection = await MCSocket(host=ip, port=port)
             await connection.handshake_login(version)
 
             try:
-                response = await connection.login_cracked(player_username)
+                await connection.login_cracked(player_username)
             except ConnectionRefusedError as err:
                 msg = str(err)
                 return self.ServerType(ip, version, f"OFFLINE: {msg}")
