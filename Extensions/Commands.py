@@ -975,13 +975,9 @@ class Commands(Extension):
             # get the total number of players in players.sample
             pipeline = [
                 {"$unwind": "$players.sample"},
-                {
-                    "$group": {
-                        "_id": {"$toLower": "$players.sample.id"},
-                        "total": {"$sum": 1},
-                    }
-                },
+                {"$group": {"_id": {"$toLower": "$players.sample.id"}}},
                 {"$group": {"_id": None, "total": {"$sum": 1}}},
+                {"$project": {"_id": 0, "total": 1}},
             ]
             total_sample_players = self.databaseLib.aggregate(pipeline)
             if (
