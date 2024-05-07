@@ -458,6 +458,8 @@ class Minecraft:
 
         base_url = "https://login.microsoftonline.com/consumers/oauth2/v2.0/authorize"
 
+        state = int("0x" + os.urandom(16).hex(), 0)
+
         return (
             urllib.parse.urlparse(base_url)
             ._replace(
@@ -469,6 +471,7 @@ class Minecraft:
                         "response_mode": "query",
                         "scope": "XboxLive.signin offline_access",
                         "prompt": "select_account",
+                        "state": state,
                         "code_challenge": code_challenge,
                         "code_challenge_method": code_challenge_method,
                     }
@@ -476,6 +479,7 @@ class Minecraft:
             )
             .geturl(),
             code_verifier,
+            state,
         )
 
     def get_activation_code(self):

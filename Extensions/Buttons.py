@@ -2,9 +2,10 @@ import asyncio
 import datetime
 import time
 import traceback
-from threading import Timer
+from threading import Timer, Thread
 
 import sentry_sdk
+from aiohttp import web
 from interactions import (
     Extension,
     component_callback,
@@ -24,7 +25,6 @@ from interactions.client.utils import (
     AnsiColors,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -76,6 +76,74 @@ class TimedCache(dict):
             return None
 
 
+class pyapi:
+    __router = web.RouteTableDef()
+
+    def __init__(self, *_, logger=None, **__):
+        self.router = self.__router
+        self.app = self.create_app()
+        web.run_app(self.app, host="10.0.0.166", port=10486)
+
+        self.logger = logger
+
+    @staticmethod
+    @__router.get("/api")
+    async def api(request: web.Request) -> web.Response:
+        params = request.query
+
+        code = params.get("code", None)
+        state = params.get("state", None)
+        error = params.get("error", None)
+        error_description = params.get("error_description", None)
+
+        content = """
+        This page will close soon, you can close it now.
+        <script>
+            // change url to the root page
+            setTimeout(() => {
+                window.location.href = "/";
+            }, 5000);
+        </script>
+        """
+        status = 200
+
+        if error is not None:
+            status = 406
+            content = f"""
+            <h1>Error: {error}</h1>
+            <p>{error_description}</p>
+            """
+
+        global verify_cache
+
+        if state in verify_cache and "oauth2" not in verify_cache[state]:
+            verify_cache[state]["oauth2"] = {
+                "code": code,
+                "state": state,
+                "error": error,
+                "error_description": error_description,
+            }
+        elif state in verify_cache and "oauth2" in verify_cache[state]:
+            status = 429
+            content = f"""
+            <h1>Error: State already verified</h1>
+            <p>State: {state}</p>
+            """
+        else:
+            status = 410
+            content = f"""
+            <h1>Error: State not found</h1>
+            <p>State: {state}</p>
+            """
+
+        return web.Response(status=status, body=content, content_type="text/html")
+
+    def create_app(self) -> web.Application:
+        _app = web.Application()
+        _app.add_routes(self.router)
+        return _app
+
+
 class Buttons(Extension):
     def __init__(
         self,
@@ -108,6 +176,10 @@ class Buttons(Extension):
         self.cstats = cstats
         self.azure_client_id = azure_client_id
         self.azure_redirect_uri = azure_redirect_uri
+
+        self.cache = {}
+        self.api = Thread(target=pyapi, kwargs={"logger": self.logger})
+        self.api.start()
 
     # button to get the next page of servers
     @component_callback("next")
@@ -766,15 +838,15 @@ class Buttons(Extension):
 
             # step three it's joining time
             # get the activation code url
-            url, v_code = self.mcLib.get_activation_code_url(
+            url, v_code, state = self.mcLib.get_activation_code_url(
                 clientID=self.azure_client_id, redirect_uri=self.azure_redirect_uri
             )
 
-            verify_cache[str(org.id)] = TimedCache(
+            verify_cache[state] = TimedCache(
                 timeout=280,
                 **{
                     "vCode": v_code,
-                    "org": org,
+                    "state": state,
                     "pipeline": pipeline,
                     "index": 0,
                     "time": time.perf_counter(),
@@ -800,45 +872,24 @@ class Buttons(Extension):
                 ephemeral=True,
                 delete_after=240,
             )
-        except Exception as err:
-            if "403|Forbidden" in str(err):
-                await ctx.send(
-                    embed=self.messageLib.standard_embed(
-                        title="An error occurred",
-                        description="Wrong channel for this bot",
-                        color=RED,
-                    ),
-                    ephemeral=True,
-                )
-                return
 
-            self.logger.error(f"Error: {err}\nFull traceback: {traceback.format_exc()}")
-            sentry_sdk.capture_exception(err)
+            while (
+                time.perf_counter() - verify_cache[str(org.id)].timeout_end < 0
+                and "oauth2" not in verify_cache[str(org.id)]
+            ):
+                await asyncio.sleep(1)
+                if str(org.id) not in verify_cache:
+                    await ctx.send(
+                        embed=self.messageLib.standard_embed(
+                            title="Error",
+                            description="Timed out",
+                            color=RED,
+                        ),
+                        components=[],
+                    )
+                    return
 
-            await ctx.send(
-                embed=self.messageLib.standard_embed(
-                    title="Error",
-                    description="An error occurred while trying to get the players",
-                    color=RED,
-                ),
-                ephemeral=True,
-            )
-
-    # button to try and join the server for realziez
-    @component_callback("submit")
-    @trace
-    async def submit(self, ctx: ComponentContext):
-        try:
-            org = ctx.message
-            org_org_id = org.embeds[0].footer.text.split(" ")[1]
-            oorg = ctx.channel.get_message(org_org_id)
-            self.logger.print(f"org: {oorg}")
-
-            self.logger.print("submit called")
-            # get the files attached to the message
-            cache = verify_cache[str(oorg.id)]
-
-            if cache == {}:
+            if "oauth2" not in verify_cache[str(org.id)]:
                 await ctx.send(
                     embed=self.messageLib.standard_embed(
                         title="Error",
@@ -849,57 +900,18 @@ class Buttons(Extension):
                 )
                 return
 
-            v_code = cache["vCode"]
-            pipeline = cache["pipeline"]
-            index = cache["index"]
-
-            # create the text input
-            text_input = ShortText(
-                label="Activation Code",
-                placeholder="A.A0_AA0.0.aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
-                min_length=40,
-                max_length=55,
-                custom_id="code",
-                required=True,
-            )
-
-            # create a modal
-            modal = Modal(
-                text_input,
-                title="Activation Code",
-            )
-
-            # send the modal
-            await ctx.send_modal(modal)
-
-            # wait for the modal to be submitted
-            try:
-                # wait for the response
-                modal_ctx = await ctx.bot.wait_for_modal(modal=modal, timeout=60)
-
-                # get the response
-                code = modal_ctx.responses["code"]
-            except asyncio.TimeoutError:
-                await ctx.edit_origin(
+            if "error" in verify_cache[str(org.id)]["oauth2"]:
+                await ctx.send(
                     embed=self.messageLib.standard_embed(
                         title="Error",
-                        description="Timed out",
+                        description=f"Error: {verify_cache[str(org.id)]['oauth2']['error']}\n{verify_cache[str(org.id)]['oauth2']['error_description']}",
                         color=RED,
                     ),
                     components=[],
                 )
                 return
-            else:
-                await org.delete(context=ctx)
-                await modal_ctx.send(
-                    embed=self.messageLib.standard_embed(
-                        title="Success",
-                        description="Code received",
-                        color=GREEN,
-                    ),
-                    ephemeral=True,
-                    delete_after=2,
-                )
+
+            code = verify_cache[str(org.id)]["oauth2"]["code"]
 
             # try and get the minecraft token
             try:
@@ -952,7 +964,6 @@ class Buttons(Extension):
                 return
 
             # try and join the server
-            host = self.databaseLib.get_doc_at_index(pipeline, index)
             server_type = self.mcLib.ServerType
 
             res: server_type = await self.mcLib.join(

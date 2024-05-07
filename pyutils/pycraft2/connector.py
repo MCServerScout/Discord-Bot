@@ -429,6 +429,10 @@ class MCSocket(AsyncObj):
             version_id (int): The version of the protocol.
         """
 
+        assert self.addr is not None, "Address is not set"
+        assert self.addr[0] is not None, "Host is not set"
+        assert self.addr[1] is not None, "Port is not set"
+
         p = Handshake.C2S_0x00(
             protocol_version=version_id,
             server_address=self.addr[0],
@@ -612,7 +616,7 @@ class MCSocket(AsyncObj):
         if not username:
             raise ValueError("You must provide a username")
 
-        p = Login.C2S_0x00(name=username)
+        p = Login.C2S_0x00(name=username, uuid="f" * 32)
         await self.send_packet(p)
 
         # receive the response

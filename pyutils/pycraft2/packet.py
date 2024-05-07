@@ -369,7 +369,7 @@ class S2S_0xFF(S2CPacket):
 
         assert (
             kwargs.keys() <= self._dataTypes().keys()
-        ), f"Unknown data type: {kwargs.keys() - self._dataTypes().keys()}"
+        ), f"Unknown data type(s): {kwargs.keys() - self._dataTypes().keys()}"
         self.__data = kwargs
         self.name = self._info()["name"]
         self.id = self._info()["id"]
