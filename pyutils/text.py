@@ -34,9 +34,11 @@ class Text:
 
         # escape all unicode chars
         text = "".join(
-            char.encode("unicode_escape").decode("utf-8")
-            if unicodedata.category(char) in ("Cc", "Cf", "Cn", "Co", "Cs")
-            else char
+            (
+                char.encode("unicode_escape").decode("utf-8")
+                if unicodedata.category(char) in ("Cc", "Cf", "Cn", "Co", "Cs")
+                else char
+            )
             for char in text
         )
 
@@ -71,9 +73,11 @@ class Text:
         # loop through and escape all unicode chars that are not \u001b or \n
         text = "".join(
             [
-                char
-                if char in ("\u001b", "\n")
-                else unicodedata.normalize("NFKD", char)
+                (
+                    char
+                    if char in ("\u001b", "\n")
+                    else unicodedata.normalize("NFKD", char)
+                )
                 for char in text
             ]
         )
