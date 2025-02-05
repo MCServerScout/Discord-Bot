@@ -67,13 +67,13 @@ class Scanner:
     #             ports="25560-25575",
     #             arguments="--rate=" + str(self.max_pps // self.max_threads),
     #         )
-    # 
+    #
     #         hosts = json.loads(scanner.scan_result)["scan"]
     #         host_ips = hosts.keys()
     #         self.logger.debug(f"Found {len(host_ips)} hosts in {ip_range}") if len(
     #             host_ips
     #         ) > 0 else None
-    # 
+    #
     #         for ip in host_ips:
     #             host = hosts[ip]
     #             for port in host:

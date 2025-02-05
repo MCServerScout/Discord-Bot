@@ -15,7 +15,7 @@ class Utils:
 
     def __init__(
         self,
-            col,
+        col,
         discord_webhook: str,
         log: Logger = None,
         debug: bool = True,
