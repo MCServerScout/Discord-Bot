@@ -293,7 +293,7 @@ class S2CPacket(Packet):
         for i in range(3):
             part = self.read(1)
             if not part:
-                raise EOFError("Connection closed")
+                raise EOFError(f"Connection closed, current: {i} of 3 ({result})")
 
             part = part[0]
             result |= (part & 0x7F) << 7 * i
@@ -472,7 +472,7 @@ class S2S_0xFF(S2CPacket):
         await _socket.send(self.toBytes())
 
     def __getitem__(self, key):
-        if key not in self.__data.keys() and key not in self._info().keys():
+        if key not in self.__data and key not in self._info():
             raise KeyError(f"Key '{key}' not found")
 
         return self.__data[key] if key in self.__data else self._info()[key]

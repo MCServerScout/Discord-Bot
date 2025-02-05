@@ -345,6 +345,8 @@ class MCSocket(AsyncObj):
             version_id (int, optional): The version of the protocol. Defaults to 47.
         """
 
+        raise NotImplementedError("Handshake not implemented yet for <=1.6")
+
         p = Handshake.C2S_0xFE(
             version=version_id,
             hostname=self.addr[0],

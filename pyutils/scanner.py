@@ -1,12 +1,9 @@
-import json
 import queue
 import random
 import threading
 import time
-import traceback
 from multiprocessing.pool import ThreadPool
 
-import masscan
 from netaddr import IPNetwork
 
 
@@ -61,33 +58,33 @@ class Scanner:
 
         return ip_range
 
-    def scan_range(self, ip_range):
-        try:
-            # step one, get a range of online ips
-            scanner = masscan.PortScanner()
-            scanner.scan(
-                ip_range,
-                ports="25560-25575",
-                arguments="--rate=" + str(self.max_pps // self.max_threads),
-            )
-
-            hosts = json.loads(scanner.scan_result)["scan"]
-            host_ips = hosts.keys()
-            self.logger.debug(f"Found {len(host_ips)} hosts in {ip_range}") if len(
-                host_ips
-            ) > 0 else None
-
-            for ip in host_ips:
-                host = hosts[ip]
-                for port in host:
-                    if port["status"] == "open":
-                        self.logger.debug(f"Found open port {port['port']} on {ip}")
-                        self.que.put(ip + ":" + str(port["port"]))
-                        self.counts[-1] += 1
-        except Exception as err:
-            self.logger.error(f"Error scanning {ip_range}: {err}")
-            self.logger.print(traceback.format_exc())
-            raise err
+    # def scan_range(self, ip_range):
+    #     try:
+    #         # step one, get a range of online ips
+    #         scanner = masscan.PortScanner()
+    #         scanner.scan(
+    #             ip_range,
+    #             ports="25560-25575",
+    #             arguments="--rate=" + str(self.max_pps // self.max_threads),
+    #         )
+    # 
+    #         hosts = json.loads(scanner.scan_result)["scan"]
+    #         host_ips = hosts.keys()
+    #         self.logger.debug(f"Found {len(host_ips)} hosts in {ip_range}") if len(
+    #             host_ips
+    #         ) > 0 else None
+    # 
+    #         for ip in host_ips:
+    #             host = hosts[ip]
+    #             for port in host:
+    #                 if port["status"] == "open":
+    #                     self.logger.debug(f"Found open port {port['port']} on {ip}")
+    #                     self.que.put(ip + ":" + str(port["port"]))
+    #                     self.counts[-1] += 1
+    #     except Exception as err:
+    #         self.logger.error(f"Error scanning {ip_range}: {err}")
+    #         self.logger.print(traceback.format_exc())
+    #         raise err
 
     def scan_starter(self, ip_list):
         self.logger.debug("Starting scans")

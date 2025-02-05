@@ -240,15 +240,15 @@ if __name__ == "__main__":
         bot.start()
     except KeyboardInterrupt:
         logger.print("Keyboard interrupt, stopping bot")
-        asyncio.run(bot.close())
+        asyncio.run(bot.stop())
     except Exception as e:
         if "Error: The Websocket closed with code: 1000" in str(e):
             logger.print("Websocket closed, restarting bot")
 
             time.sleep(5)
-            asyncio.run(bot.close())
+            asyncio.run(bot.stop())
         else:
             logger.debug(traceback.format_exc())
             logger.critical(e)
             logger.print("Stopping bot")
-            asyncio.run(bot.close())
+            asyncio.run(bot.stop())

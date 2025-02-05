@@ -62,39 +62,7 @@ class FilteredFileHandler(logging.FileHandler):
                     is not None,
                     msg.startswith("[http_client."),
                     msg.strip().endswith("^"),
-                )
-            ) and not any(
-                (
-                    "exception" in msg.lower(),
-                    "raised" in msg.lower(),
-                    "error" in msg.lower(),
-                )
-            ):
-                return
-            return msg
-
-        if filter_msg(record.getMessage()) is None:
-            return
-        super().emit(record)
-
-
-class FilteredConsoleHandler(logging.StreamHandler):
-    def emit(self, record):
-        def filter_msg(msg: str) -> str | None:
-            if any(
-                (
-                    "To sign in, use a web browser to open the page" in msg,
-                    "email_modal" in msg,
-                    "heartbeat" in msg.lower(),
-                    "Sending data to websocket: {" in msg,
-                    "event.ctx.responses" in msg,
-                    re.match(
-                        r"(POST|PATCH)::https://discord.com/api/v",
-                        msg,
-                    )
-                    is not None,
-                    msg.startswith("[http_client."),
-                    msg.strip().endswith("^"),
+                    "POST /api/2/envelope/ HTTP/1.1" in msg,
                 )
             ) and not any(
                 (

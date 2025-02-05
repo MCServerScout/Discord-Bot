@@ -6,7 +6,6 @@ from typing import List, Optional
 import pymongo
 import sentry_sdk
 from pymongo.results import UpdateResult
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace
 
@@ -18,7 +17,7 @@ class Database:
 
     def __init__(
         self,
-        col: pymongo.collection.Collection,
+            col,
         logger: "Logger",
     ):
         self.col = col

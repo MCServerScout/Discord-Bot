@@ -2,7 +2,7 @@ import asyncio
 import datetime
 import time
 import traceback
-from threading import Timer, Thread
+from threading import Timer
 
 import sentry_sdk
 from aiohttp import web
@@ -25,7 +25,6 @@ from interactions.client.utils import (
     AnsiColors,
 )
 from interactions.ext.paginators import Paginator
-
 # noinspection PyProtectedMember
 from sentry_sdk import trace, set_tag
 
@@ -83,7 +82,7 @@ class pyapi:
     def __init__(self, *_, logger=None, **__):
         self.router = self.__router
         self.app = self.create_app()
-        web.run_app(self.app, host="10.0.0.166", port=10486)
+        web.run_app(self.app, host="127.0.0.1", port=10486)
 
         self.logger = logger
 
@@ -179,8 +178,8 @@ class Buttons(Extension):
         self.azure_redirect_uri = azure_redirect_uri
 
         self.cache = {}
-        self.api = Thread(target=pyapi, kwargs={"logger": self.logger})
-        self.api.start()
+        # self.api = Thread(target=pyapi, kwargs={"logger": self.logger})
+        # self.api.start()
 
     # button to get the next page of servers
     @component_callback("next")

@@ -1,4 +1,3 @@
-import pymongo
 import sentry_sdk
 
 from .database import Database
@@ -16,7 +15,7 @@ class Utils:
 
     def __init__(
         self,
-        col: pymongo.collection.Collection,
+            col,
         discord_webhook: str,
         log: Logger = None,
         debug: bool = True,
